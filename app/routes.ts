@@ -1,8 +1,16 @@
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
+import {
+  type RouteConfig,
+  index,
+  layout,
+  route,
+} from "@react-router/dev/routes";
 
 export default [
   // 索引路由在其父级 URL 处呈现到其父级Outlet （类似于默认子路由）。
-  index("routes/login.tsx"),
-  route("home", "routes/home.tsx"),
-  route("devices", "routes/device/index.tsx"),
+  index("login/login.tsx"),
+
+  layout("routes/home.tsx", [
+    route("home", "dashboard/dashboard.tsx"),
+    route("devices", "device/device.tsx"),
+  ]),
 ] satisfies RouteConfig;

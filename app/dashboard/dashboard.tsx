@@ -8,7 +8,7 @@ import { LoadBox } from "./load";
 
 export default function DashboardView() {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full ml-1">
       <div className="flex flex-1">
         {[<CPUBox />, <CountBox />, <NetworkBox />].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
@@ -36,6 +36,8 @@ export function Cardbox({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={`flex-1 m-1 rounded-[20px] ${className}`}>{children}</div>
+    <div className={`flex-1 mb-2 mr-2 rounded-[20px] ${className}`}>
+      {children}
+    </div>
   );
 }

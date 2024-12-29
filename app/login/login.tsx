@@ -1,16 +1,21 @@
 import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
-
-
 export default function LoginView() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   return (
-    <div className="flex items-center justify-center h-screen bg-white">
+    <div className="flex items-center justify-center h-screen ">
       {/* <Tabs defaultValue="account" className="w-[400px]">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="account">登录</TabsTrigger>
@@ -20,9 +25,7 @@ export default function LoginView() {
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>登录</CardTitle>
-          <CardDescription>
-            输入正确的账号密码登录
-          </CardDescription>
+          <CardDescription>输入正确的账号密码登录</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="space-y-1">
@@ -64,6 +67,5 @@ export default function LoginView() {
         </TabsContent>
       </Tabs> */}
     </div>
-
-  )
+  );
 }

@@ -1,5 +1,4 @@
 import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
 import { Button } from "~/components/ui/button";
 import {
   NavigationMenu,
@@ -13,7 +12,7 @@ import {
 import React from "react";
 import { cn } from "~/lib/utils";
 import DashboardView from "~/dashboard/dashboard";
-import { Link } from "react-router";
+import { Link, Outlet } from "react-router";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -63,12 +62,18 @@ const components: { title: string; href: string; description: string }[] = [
 export default function Home() {
   return (
     <div className="flex flex-col h-screen">
-      <div className="flex justify-between h-12 bg-white">
+      <div className="flex justify-between min-h-14 bg-white pl-3">
         <NavigationMenu>
           <NavigationMenuList>
             <NavigationMenuItem>
-              <NavigationMenuTrigger>控制台</NavigationMenuTrigger>
-              <NavigationMenuContent>
+              <NavigationMenuItem>
+                <Link to="/home">
+                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                    控制台
+                  </NavigationMenuLink>
+                </Link>
+              </NavigationMenuItem>
+              {/* <NavigationMenuContent>
                 <ul className="grid gap-3 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
@@ -76,7 +81,6 @@ export default function Home() {
                         className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
                         href="/"
                       >
-                        {/* <Icons.logo className="h-6 w-6" /> */}
                         <div className="mb-2 mt-4 text-lg font-medium">
                           shadcn/ui
                         </div>
@@ -100,7 +104,7 @@ export default function Home() {
                     Styles for headings, paragraphs, lists...etc
                   </ListItem>
                 </ul>
-              </NavigationMenuContent>
+              </NavigationMenuContent> */}
             </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuTrigger>分屏监控</NavigationMenuTrigger>
@@ -120,7 +124,7 @@ export default function Home() {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <Link to="/docs">
+              <Link to="/devices">
                 <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                   国标设备
                 </NavigationMenuLink>
@@ -206,8 +210,8 @@ export default function Home() {
           </NavigationMenuList>
         </NavigationMenu>
       </div>
-      <div className="flex-1">
-        <DashboardView />
+      <div className="flex-1 m-2 ">
+        <Outlet />
       </div>
     </div>
   );
