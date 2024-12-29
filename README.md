@@ -98,3 +98,14 @@ This template comes with [Tailwind CSS](https://tailwindcss.com/) already config
 ---
 
 Built with ❤️ using React Router.
+
+
+路由跳转
+
+```tsx
+const navigate = useNavigate();
+
+const handleClick = () => {
+		navigate('/about');
+}
+```
