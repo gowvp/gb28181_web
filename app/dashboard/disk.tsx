@@ -21,14 +21,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "~/components/ui/chart";
+import type { Disk } from "~/service/model/state";
 
-const chartData = [
-  { month: "/home", desktop: 186, mobile: 80 },
-  { month: "/", desktop: 305, mobile: 200 },
-];
 const chartConfig = {
-  desktop: {
-    label: "Desktop",
+  used: {
+    label: "used",
     color: "hsl(var(--chart-1))",
   },
   mobile: {
@@ -39,7 +36,17 @@ const chartConfig = {
     color: "hsl(var(--background))",
   },
 } satisfies ChartConfig;
-export function DiskBox() {
+export function DiskBox({ data }: { data: Disk[] }) {
+  // const chartData = [
+  //   { name: "/home", desktop: 186, mobile: 80 },
+  //   { name: "/", desktop: 305, mobile: 200 },
+  // ];
+
+  const processedData = data.map((item) => ({
+    ...item,
+    total: Math.round(item.total / 1024 / 1024 / 1024),
+    used: Math.round(item.used / 1024 / 1024 / 1024),
+  }));
   return (
     <Card className="h-full">
       <CardHeader>
@@ -50,7 +57,7 @@ export function DiskBox() {
         <ChartContainer config={chartConfig}>
           <BarChart
             accessibilityLayer
-            data={chartData}
+            data={processedData}
             layout="vertical"
             margin={{
               right: 16,
@@ -58,7 +65,7 @@ export function DiskBox() {
           >
             <CartesianGrid horizontal={false} />
             <YAxis
-              dataKey="month"
+              dataKey="name"
               type="category"
               tickLine={false}
               tickMargin={10}
@@ -66,26 +73,26 @@ export function DiskBox() {
               tickFormatter={(value) => value.slice(0, 3)}
               hide
             />
-            <XAxis dataKey="desktop" type="number" hide />
+            <XAxis dataKey="used" type="number" />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent indicator="line" />}
             />
             <Bar
-              dataKey="desktop"
+              dataKey="used"
               layout="vertical"
-              fill="var(--color-desktop)"
+              fill="var(--color-used)"
               radius={4}
             >
               <LabelList
-                dataKey="month"
+                dataKey="name"
                 position="insideLeft"
                 offset={8}
                 className="fill-[--color-label]"
                 fontSize={12}
               />
               <LabelList
-                dataKey="desktop"
+                dataKey="used"
                 position="right"
                 offset={8}
                 className="fill-foreground"

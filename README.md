@@ -31,6 +31,19 @@ const handleClick = () => {
 }
 ```
 
+vite 配置代理
+```ts
+ server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:18081",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
+  },
+```
+
 
 ### 部署
 

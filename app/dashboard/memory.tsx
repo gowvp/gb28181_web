@@ -14,39 +14,16 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "~/components/ui/chart";
+import type { Stat } from "~/service/model/state";
 
-const chartData = [
-  { month: "22:10", memory: 18.6 },
-  { month: "22:20", memory: 30.5 },
-  { month: "22:30", memory: 23.7 },
-  { month: "22:40", memory: 18.6 },
-  { month: "22:50", memory: 23.7 },
-  { month: "22:60", memory: 21.4 },
-  { month: "22:70", memory: 7.3 },
-  { month: "22:80", memory: 7.3 },
-  { month: "22:90", memory: 7.3 },
-  { month: "22:10", memory: 7.3 },
-  { month: "22:20", memory: 7.3 },
-  { month: "22:30", memory: 7.3 },
-  { month: "22:40", memory: 7.3 },
-  { month: "22:50", memory: 7.3 },
-  { month: "22:60", memory: 7.3 },
-  { month: "22:70", memory: 7.3 },
-  { month: "22:80", memory: 7.3 },
-  { month: "22:90", memory: 7.3 },
-  { month: "22:10", memory: 7.3 },
-  { month: "22:20", memory: 20.9 },
-  { month: "22:30", memory: 21.4 },
-  { month: "22:40", memory: 21.4 },
-];
 const chartConfig = {
-  memory: {
-    label: "memory",
+  use: {
+    label: "use",
     color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig;
 
-export function MemoryBox() {
+export function MemoryBox({ data }: { data: Stat[] }) {
   return (
     <Card className="h-full">
       <CardHeader>
@@ -57,7 +34,7 @@ export function MemoryBox() {
         <ChartContainer config={chartConfig}>
           <AreaChart
             accessibilityLayer
-            data={chartData}
+            data={data}
             margin={{
               left: -20,
               right: 12,
@@ -65,26 +42,27 @@ export function MemoryBox() {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="time"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => value.slice(0, 5)}
+              tickFormatter={(value: string) => value.substring(11, 11 + 8)}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
-              tickMargin={8}
-              tickCount={3}
+              tickMargin={2}
+              tickCount={5}
+              tickFormatter={(v, idx) => v + "%"}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 
             <Area
-              dataKey="memory"
+              dataKey="use"
               type="natural"
-              fill="var(--color-memory)"
+              fill="var(--color-use)"
               fillOpacity={0.4}
-              stroke="var(--color-memory)"
+              stroke="var(--color-use)"
               stackId="a"
             />
           </AreaChart>

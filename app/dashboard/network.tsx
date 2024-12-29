@@ -1,7 +1,7 @@
 import React from "react";
 
 import { TrendingUp } from "lucide-react";
-import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   Card,
   CardContent,
@@ -16,15 +16,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "~/components/ui/chart";
+import type { NetStat, Stat } from "~/service/model/state";
 
-const chartData = [
-  { month: "22:10", up: 186, down: 80 },
-  { month: "22:11", up: 305, down: 200 },
-  { month: "22:12", up: 237, down: 120 },
-  { month: "22:13", up: 73, down: 190 },
-  { month: "22:14", up: 209, down: 130 },
-  { month: "22:15", up: 214, down: 140 },
-];
 const chartConfig = {
   up: {
     label: "up",
@@ -35,7 +28,21 @@ const chartConfig = {
     color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
-export function NetworkBox() {
+export function NetworkBox({ data }: { data: NetStat[] }) {
+  // const chartData = [
+  //   { month: "22:10", up: 186, down: 80 },
+  //   { month: "22:11", up: 305, down: 200 },
+  //   { month: "22:12", up: 237, down: 120 },
+  //   { month: "22:13", up: 73, down: 190 },
+  //   { month: "22:14", up: 209, down: 130 },
+  //   { month: "22:15", up: 214, down: 140 },
+  // ];
+
+  const processedData = data.map((item) => ({
+    ...item,
+    up: item.up / 1000 / 1000, // 对 up 值进行预处理
+    down: item.down / 1000 / 1000,
+  }));
   return (
     <Card className="h-full">
       <CardHeader>
@@ -46,7 +53,7 @@ export function NetworkBox() {
         <ChartContainer config={chartConfig}>
           <LineChart
             accessibilityLayer
-            data={chartData}
+            data={processedData}
             margin={{
               left: 12,
               right: 12,
@@ -54,11 +61,20 @@ export function NetworkBox() {
           >
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="time"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
-              tickFormatter={(value) => value.slice(0, 5)}
+              tickFormatter={(value: string) => value.slice(11, 11 + 8)}
+            />
+
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickCount={5}
+              tickFormatter={(v, idx) => v + "MB"}
+              ticks={[0, 8, 16, 24, 32]}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
             <Line

@@ -11,4 +11,14 @@ export default defineConfig({
     },
   },
   plugins: [reactRouter(), tsconfigPaths()],
+
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:18082",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
+  },
 });

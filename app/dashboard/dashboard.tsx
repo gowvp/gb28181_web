@@ -5,19 +5,35 @@ import { NetworkBox } from "./network";
 import { MemoryBox } from "./memory";
 import { DiskBox } from "./disk";
 import { LoadBox } from "./load";
+import { useQuery } from "@tanstack/react-query";
+import { FindStats } from "~/service/api/state";
 
 export default function DashboardView() {
+  const query = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: FindStats,
+    refetchInterval: 5000,
+  });
+
   return (
     <div className="flex flex-col h-full ml-1">
       <div className="flex flex-1">
-        {[<CPUBox />, <CountBox />, <NetworkBox />].map((item, index) => (
+        {[
+          <CPUBox data={query.data?.data.cpu ?? []} />,
+          <CountBox />,
+          <NetworkBox data={query.data?.data.net ?? []} />,
+        ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
             {item}
           </Cardbox>
         ))}
       </div>
       <div className="flex flex-1">
-        {[<MemoryBox />, <LoadBox />, <DiskBox />].map((item, index) => (
+        {[
+          <MemoryBox data={query.data?.data.mem ?? []} />,
+          <LoadBox />,
+          <DiskBox data={query.data?.data.disk ?? []} />,
+        ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
             {item}
           </Cardbox>
