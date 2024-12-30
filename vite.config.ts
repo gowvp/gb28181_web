@@ -4,14 +4,14 @@ import tailwindcss from "tailwindcss";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   css: {
     postcss: {
       plugins: [tailwindcss, autoprefixer],
     },
   },
   plugins: [reactRouter(), tsconfigPaths()],
-
+  base: mode === "development" ? "/" : "/web/",
   server: {
     proxy: {
       "/api": {
@@ -21,4 +21,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

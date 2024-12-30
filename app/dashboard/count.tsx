@@ -1,6 +1,5 @@
 import React from "react";
 
-import { TrendingUp } from "lucide-react";
 import { ChartContainer, type ChartConfig } from "~/components/ui/chart";
 import { Card, CardContent, CardFooter } from "~/components/ui/card";
 import {

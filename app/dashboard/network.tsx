@@ -1,12 +1,8 @@
-import React from "react";
-
-import { TrendingUp } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
@@ -16,7 +12,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "~/components/ui/chart";
-import type { NetStat, Stat } from "~/service/model/state";
+import type { NetStat } from "~/service/model/state";
 
 const chartConfig = {
   up: {

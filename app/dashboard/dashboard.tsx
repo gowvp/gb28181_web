@@ -7,12 +7,16 @@ import { DiskBox } from "./disk";
 import { LoadBox } from "./load";
 import { useQuery } from "@tanstack/react-query";
 import { FindStats } from "~/service/api/state";
+import { ErrorHandle } from "~/service/http";
 
 export default function DashboardView() {
   const query = useQuery({
     queryKey: ["dashboard"],
     queryFn: FindStats,
     refetchInterval: 5000,
+    throwOnError: (error, query) => {
+      return false;
+    },
   });
 
   return (

@@ -44,6 +44,33 @@ vite 配置代理
   },
 ```
 
+## 生产模式公共前缀
+
+开发模式下，Vite 默认的开发服务器是以 / 为根路径运行的，而生产环境会以设置的 base 作为根路径。为了兼容开发模式和生产模式，可以按以下方式进行配置。
+值为 `./` 会导致开发模式下出错
+
+
+1.  更新 vite.config.ts
+```ts
+ base: mode === "development" ? "/" : "/web/",
+```
+2. 更新 react-router.config.ts
+```ts
+  basename: import.meta.env.MODE === "development" ? "/" : "/web/",
+```
+
+3. 其它静态文件
+```tsx
+<img src={`${import.meta.env.BASE_URL}assets/logo.png`} alt="Logo" />
+```
+
+## 开发与生成环境区分
+
+`yarn dev` 加载 `.env.development` 环境变量
+
+`yarn build` 加载 `.env.production` 环境变量
+
+
 
 ### 部署
 
