@@ -6,7 +6,7 @@ import { MemoryBox } from "./memory";
 import { DiskBox } from "./disk";
 import { LoadBox } from "./load";
 import { useQuery } from "@tanstack/react-query";
-import { FindStats } from "~/service/api/state";
+import { FindStats } from "~/service/api/stat";
 import { ErrorHandle } from "~/service/http";
 
 export default function DashboardView() {

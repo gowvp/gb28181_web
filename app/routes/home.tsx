@@ -11,7 +11,7 @@ import {
 } from "~/components/ui/navigation-menu";
 import React from "react";
 import { cn } from "~/lib/utils";
-import DashboardView from "~/dashboard/dashboard";
+import DashboardView from "~/routes/dashboard/dashboard";
 import { Link, Outlet } from "react-router";
 
 export function meta({}: Route.MetaArgs) {
