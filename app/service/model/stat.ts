@@ -15,7 +15,7 @@ export type Disk = {
 
 export type Stat = {
   time: string;
-  use: number;
+  used: number;
   [property: string]: any;
 };
 

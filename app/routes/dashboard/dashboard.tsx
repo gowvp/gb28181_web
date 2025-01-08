@@ -10,6 +10,7 @@ import { FindStats } from "~/service/api/stat";
 import { ErrorHandle } from "~/service/http";
 
 export default function DashboardView() {
+  // 使用 react-query 固定间隔获取一次服务端状态信息
   const query = useQuery({
     queryKey: ["dashboard"],
     queryFn: FindStats,
@@ -23,8 +24,11 @@ export default function DashboardView() {
     <div className="flex flex-col h-full ml-1">
       <div className="flex flex-1">
         {[
+          // cpu 面积图
           <CPUBox data={query.data?.data.cpu ?? []} />,
+          // 设备统计饼图
           <CountBox />,
+          // 网络 IO 折线图
           <NetworkBox data={query.data?.data.net ?? []} />,
         ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
@@ -34,8 +38,11 @@ export default function DashboardView() {
       </div>
       <div className="flex flex-1">
         {[
+          // 内存使用面积图
           <MemoryBox data={query.data?.data.mem ?? []} />,
+          // 流负载信息柱状图
           <LoadBox />,
+          // 磁盘使用条形图
           <DiskBox data={query.data?.data.disk ?? []} />,
         ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
