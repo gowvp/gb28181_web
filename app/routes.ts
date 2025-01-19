@@ -12,5 +12,6 @@ export default [
   layout("routes/home.tsx", [
     route("home", "routes/dashboard/dashboard.tsx"),
     route("devices", "routes/device/device.tsx"),
+    route("rtmps", "routes/rtmp/rtmp.tsx"),
   ]),
 ] satisfies RouteConfig;

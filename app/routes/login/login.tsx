@@ -1,3 +1,4 @@
+import React from "react";
 import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import {
@@ -10,7 +11,6 @@ import {
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 export default function LoginView() {
   const navigate = useNavigate();

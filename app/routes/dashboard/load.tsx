@@ -1,9 +1,9 @@
+import React from "react";
 import { Bar, BarChart, CartesianGrid, Rectangle, XAxis } from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
@@ -77,6 +77,7 @@ export function LoadBox() {
                   <Rectangle
                     {...props}
                     fillOpacity={0.8}
+                    // eslint-disable-next-line react/prop-types
                     stroke={props.payload.fill}
                     strokeDasharray={4}
                     strokeDashoffset={4}

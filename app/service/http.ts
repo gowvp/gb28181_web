@@ -1,9 +1,9 @@
 import axios, { AxiosError, type GenericAbortSignal } from "axios";
-type Error = {
-  reason: string;
-  msg: string;
-  details?: any;
-};
+// type Error = {
+//   reason: string;
+//   msg: string;
+//   details?: unknown;
+// };
 
 const codeMessage: { [key: number]: string } = {
   200: "服务器成功返回请求的数据。",
@@ -55,8 +55,8 @@ service.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    let resp = error.response;
-    let errTips = resp?.data["msg"];
+    const resp = error.response;
+    // const errTips = resp?.data["msg"];
 
     let errorText = "";
 
@@ -134,7 +134,7 @@ async function request<T>(
 // 查询
 export async function GET<T>(
   url: string,
-  params?: any,
+  params?: object,
   signal?: GenericAbortSignal,
   timeOut?: number,
   responseType?: "json" | "blob" | "arraybuffer",
@@ -146,7 +146,7 @@ export async function GET<T>(
 // 添加
 export async function POST<T>(
   url: string,
-  params?: any,
+  params?: object,
   signal?: GenericAbortSignal,
   timeOut?: number,
   responseType?: "json" | "blob" | "arraybuffer",
@@ -164,24 +164,24 @@ export async function POST<T>(
 }
 
 // 更新
-export async function PUT<T>(url: string, params?: any) {
+export async function PUT<T>(url: string, params?: object) {
   return request<T>(url, "PUT", params);
 }
 
 // 删除
-export async function DELETE<T>(url: string, params?: any) {
+export async function DELETE<T>(url: string, params?: object) {
   return request<T>(url, "DELETE", params);
 }
 
 // ErrorHandle 仅处理 400 错误，此错误为业务逻辑相关错误
-export function ErrorHandle(error: any) {
+export function ErrorHandle(error: object) {
   const err = error as AxiosError;
   if (!err.response || !err.response.data) {
     return;
   }
-  const data = err.response.data as Error;
+  // const data = err.response.data as Error;
 
-  const key = Date.now().toString();
+  // const key = Date.now().toString();
   if (err.response.status == 400) {
     // message.error({
     //   content: `${data.msg} ${data.details?.length > 0 ? "😦" : ""}`,
@@ -205,7 +205,7 @@ export function ErrorHandle(error: any) {
 //fetch 请求
 interface IFetch {
   method: "GET" | "POST" | "DELETE" | "PUT";
-  data?: any;
+  data?: object;
   headers?: { [key: string]: string };
   keepalive?: boolean;
 }

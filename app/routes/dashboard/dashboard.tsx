@@ -7,7 +7,6 @@ import { DiskBox } from "./disk";
 import { LoadBox } from "./load";
 import { useQuery } from "@tanstack/react-query";
 import { FindStats } from "~/service/api/stat";
-import { ErrorHandle } from "~/service/http";
 
 export default function DashboardView() {
   // 使用 react-query 固定间隔获取一次服务端状态信息
@@ -15,7 +14,7 @@ export default function DashboardView() {
     queryKey: ["dashboard"],
     queryFn: FindStats,
     refetchInterval: 5000,
-    throwOnError: (error, query) => {
+    throwOnError: () => {
       return false;
     },
   });
@@ -25,11 +24,11 @@ export default function DashboardView() {
       <div className="flex flex-1">
         {[
           // cpu 面积图
-          <CPUBox data={query.data?.data.cpu ?? []} />,
+          <CPUBox key={"cpubox"} data={query.data?.data.cpu ?? []} />,
           // 设备统计饼图
-          <CountBox />,
+          <CountBox key={"countbox"} />,
           // 网络 IO 折线图
-          <NetworkBox data={query.data?.data.net ?? []} />,
+          <NetworkBox key={"networkbox"} data={query.data?.data.net ?? []} />,
         ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
             {item}
@@ -39,11 +38,11 @@ export default function DashboardView() {
       <div className="flex flex-1">
         {[
           // 内存使用面积图
-          <MemoryBox data={query.data?.data.mem ?? []} />,
+          <MemoryBox key={"memorybox"} data={query.data?.data.mem ?? []} />,
           // 流负载信息柱状图
-          <LoadBox />,
+          <LoadBox key={"loadbox"} />,
           // 磁盘使用条形图
-          <DiskBox data={query.data?.data.disk ?? []} />,
+          <DiskBox key={"diskbox"} data={query.data?.data.disk ?? []} />,
         ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
             {item}
@@ -57,7 +56,6 @@ export default function DashboardView() {
 export function Cardbox({
   className,
   children,
-  ...props
 }: {
   className?: string;
   children?: React.ReactNode;

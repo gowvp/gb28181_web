@@ -1,5 +1,4 @@
 import type { Route } from "./+types/home";
-import { Button } from "~/components/ui/button";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -11,10 +10,10 @@ import {
 } from "~/components/ui/navigation-menu";
 import React from "react";
 import { cn } from "~/lib/utils";
-import DashboardView from "~/routes/dashboard/dashboard";
 import { Link, Outlet } from "react-router";
 
-export function meta({}: Route.MetaArgs) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars, no-empty-pattern
+function meta({}: Route.MetaArgs) {
   return [
     { title: "GoWVP 开箱即用的国标平台" },
     { name: "description", content: "GOWVP" },
@@ -132,7 +131,7 @@ export default function Home() {
             </NavigationMenuItem>
 
             <NavigationMenuItem>
-              <Link to="/docs">
+              <Link to="/rtmps">
                 <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                   推流列表
                 </NavigationMenuLink>

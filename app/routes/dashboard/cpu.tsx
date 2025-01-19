@@ -1,9 +1,9 @@
+import React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
@@ -52,7 +52,7 @@ export function CPUBox({ data }: { data: Stat[] }) {
               axisLine={false}
               tickMargin={2}
               tickCount={5}
-              tickFormatter={(v, idx) => v + "%"}
+              tickFormatter={(v) => v + "%"}
               ticks={[0, 25, 50, 75, 100]}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />

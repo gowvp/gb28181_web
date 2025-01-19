@@ -3,25 +3,21 @@ export type FindStatResponse = {
   disk: Disk[];
   mem: Stat[];
   net: NetStat[];
-  [property: string]: any;
 };
 
 export type Disk = {
   name: string;
   total: number;
   used: number;
-  [property: string]: any;
 };
 
 export type Stat = {
   time: string;
   used: number;
-  [property: string]: any;
 };
 
 export type NetStat = {
   time: string;
   up: number;
   down: number;
-  [property: string]: any;
 };

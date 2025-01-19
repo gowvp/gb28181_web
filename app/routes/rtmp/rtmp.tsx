@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
-import { ArrowUpDown, Edit, Info, SquarePlus, Trash } from "lucide-react";
+import { ArrowUpDown, Edit, SquarePlus, Trash } from "lucide-react";
 
 const data: Payment[] = [
   {
@@ -155,17 +155,15 @@ const columns: ColumnDef<Payment>[] = [
     id: "actions",
     enableHiding: false,
     cell: () => {
+      // const payment = row.original;
+
       return (
         <div>
           <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
             <Edit className="h-4 w-4" />
-            刷新
+            播放
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
-            <Edit className="h-4 w-4" />
-            通道
-          </Button>
           <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
             <Edit className="h-4 w-4" />
             编辑
@@ -185,7 +183,7 @@ const columns: ColumnDef<Payment>[] = [
   },
 ];
 
-export default function DeviceView() {
+export default function RTMPView() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -226,7 +224,17 @@ export default function DeviceView() {
           className="w-30"
         />
 
-        <span className="mx-3">在线状态</span>
+        <span className="mx-3">流媒体</span>
+        <Input
+          placeholder="Filter emails..."
+          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
+          onChange={(event) =>
+            table.getColumn("email")?.setFilterValue(event.target.value)
+          }
+          className="w-30"
+        />
+
+        <span className="mx-3">推流状态</span>
         <Input
           placeholder="Filter emails..."
           value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
@@ -238,11 +246,7 @@ export default function DeviceView() {
 
         <Button className="mx-3">
           <SquarePlus />
-          添加设备
-        </Button>
-        <Button>
-          <Info />
-          平台信息
+          添加通道
         </Button>
       </div>
 
