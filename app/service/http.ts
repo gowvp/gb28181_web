@@ -1,9 +1,4 @@
-import axios, { AxiosError, type GenericAbortSignal } from "axios";
-// type Error = {
-//   reason: string;
-//   msg: string;
-//   details?: unknown;
-// };
+import axios, { type GenericAbortSignal } from "axios";
 
 const codeMessage: { [key: number]: string } = {
   200: "服务器成功返回请求的数据。",
@@ -171,35 +166,6 @@ export async function PUT<T>(url: string, params?: object) {
 // 删除
 export async function DELETE<T>(url: string, params?: object) {
   return request<T>(url, "DELETE", params);
-}
-
-// ErrorHandle 仅处理 400 错误，此错误为业务逻辑相关错误
-export function ErrorHandle(error: object) {
-  const err = error as AxiosError;
-  if (!err.response || !err.response.data) {
-    return;
-  }
-  // const data = err.response.data as Error;
-
-  // const key = Date.now().toString();
-  if (err.response.status == 400) {
-    // message.error({
-    //   content: `${data.msg} ${data.details?.length > 0 ? "😦" : ""}`,
-    //   duration: 2,
-    //   key: key,
-    //   onClick(e) {
-    //     message.destroy(key);
-    //     data.details?.map((v: string) => {
-    //       if (v) {
-    //         message.error({
-    //           content: v,
-    //           duration: 3,
-    //         });
-    //       }
-    //     });
-    //   },
-    // });
-  }
 }
 
 //fetch 请求

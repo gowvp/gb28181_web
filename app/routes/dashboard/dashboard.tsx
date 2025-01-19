@@ -10,7 +10,7 @@ import { FindStats } from "~/service/api/stat";
 
 export default function DashboardView() {
   // 使用 react-query 固定间隔获取一次服务端状态信息
-  const query = useQuery({
+  const { data } = useQuery({
     queryKey: ["dashboard"],
     queryFn: FindStats,
     refetchInterval: 5000,
@@ -24,11 +24,11 @@ export default function DashboardView() {
       <div className="flex flex-1">
         {[
           // cpu 面积图
-          <CPUBox key={"cpubox"} data={query.data?.data.cpu ?? []} />,
+          <CPUBox key={"cpubox"} data={data?.data.cpu ?? []} />,
           // 设备统计饼图
           <CountBox key={"countbox"} />,
           // 网络 IO 折线图
-          <NetworkBox key={"networkbox"} data={query.data?.data.net ?? []} />,
+          <NetworkBox key={"networkbox"} data={data?.data.net ?? []} />,
         ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
             {item}
@@ -38,11 +38,11 @@ export default function DashboardView() {
       <div className="flex flex-1">
         {[
           // 内存使用面积图
-          <MemoryBox key={"memorybox"} data={query.data?.data.mem ?? []} />,
+          <MemoryBox key={"memorybox"} data={data?.data.mem ?? []} />,
           // 流负载信息柱状图
           <LoadBox key={"loadbox"} />,
           // 磁盘使用条形图
-          <DiskBox key={"diskbox"} data={query.data?.data.disk ?? []} />,
+          <DiskBox key={"diskbox"} data={data?.data.disk ?? []} />,
         ].map((item, index) => (
           <Cardbox key={index} className="bg-blue-200">
             {item}

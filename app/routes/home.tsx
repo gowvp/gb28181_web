@@ -65,13 +65,13 @@ export default function Home() {
         <NavigationMenu>
           <NavigationMenuList>
             <NavigationMenuItem>
-              <NavigationMenuItem>
-                <Link to="/home">
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    控制台
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
+              {/* <NavigationMenuItem> */}
+              <Link to="/home">
+                <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+                  控制台
+                </NavigationMenuLink>
+              </Link>
+              {/* </NavigationMenuItem> */}
               {/* <NavigationMenuContent>
                 <ul className="grid gap-3 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-3">
@@ -193,18 +193,18 @@ export default function Home() {
             <NavigationMenuItem>
               <NavigationMenuTrigger>欢迎, admin</NavigationMenuTrigger>
               {/* <NavigationMenuContent>
-              <ul className="grid gap-3 p-4 md:w-[300px] lg:w-[400px]">
-                <ListItem href="/settings/profile" title="个人资料">
-                  管理您的个人信息和偏好设置。
-                </ListItem>
-                <ListItem href="/settings/security" title="安全设置">
-                  更新密码、双重认证等。
-                </ListItem>
-                <ListItem href="/settings/notifications" title="通知设置">
-                  配置您的通知偏好。
-                </ListItem>
-              </ul>
-            </NavigationMenuContent> */}
+                <ul className="grid gap-3 p-4 md:w-[300px] lg:w-[400px]">
+                  <ListItem href="/settings/profile" title="个人资料">
+                    管理您的个人信息和偏好设置。
+                  </ListItem>
+                  <ListItem href="/settings/security" title="安全设置">
+                    更新密码、双重认证等。
+                  </ListItem>
+                  <ListItem href="/settings/notifications" title="通知设置">
+                    配置您的通知偏好。
+                  </ListItem>
+                </ul>
+              </NavigationMenuContent> */}
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>

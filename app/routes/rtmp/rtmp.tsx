@@ -1,8 +1,6 @@
 import * as React from "react";
 import {
   type ColumnDef,
-  type ColumnFiltersState,
-  type SortingState,
   type VisibilityState,
   flexRender,
   getCoreRowModel,
@@ -11,7 +9,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
 import {
   Table,
@@ -22,161 +19,109 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
-import { ArrowUpDown, Edit, SquarePlus, Trash } from "lucide-react";
+import { Edit, SquarePlay } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { FindRTMPs } from "~/service/api/rtmp";
+import type { RTMPItem } from "~/service/model/rtmp";
+import { AddForm } from "./add";
+import { toastError } from "~/components/util/toast";
+import { useState } from "react";
+import useDebounce from "~/components/util/debounce";
+import { XButtonDelete } from "~/components/xui/button";
 
-const data: Payment[] = [
-  {
-    id: "m5gr84i9",
-    amount: 316,
-    name: "success",
-    email: "ken99@yahoo.com",
-  },
-  {
-    id: "3u1reuv4",
-    amount: 242,
-    name: "success",
-    email: "Abe45@gmail.com",
-  },
-  {
-    id: "derv1ws0",
-    amount: 837,
-    name: "processing",
-    email: "Monserrat44@gmail.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    name: "success",
-    email: "Silas22@gmail.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    name: "failed",
-    email: "carmella@hotmail.com",
-  },
-];
-
-export type Payment = {
-  id: string;
-  amount: number;
-  name: string;
-  email: string;
-};
-
-const columns: ColumnDef<Payment>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+const columns: ColumnDef<RTMPItem>[] = [
   {
     accessorKey: "name",
     header: "名称",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
+    cell: ({ row }) => <div>{row.getValue("name")}</div>,
+  },
+  // {
+  //   accessorKey: "id",
+  //   header: "设备编号",
+  //   cell: ({ row }) => <div>{row.getValue("id")}</div>,
+  // },
+  {
+    accessorKey: "app",
+    header: "应用名",
+    cell: ({ row }) => <div>{row.getValue("app")}</div>,
   },
   {
-    accessorKey: "id",
-    header: "设备编号",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
+    accessorKey: "stream",
+    header: "流 ID",
+    cell: ({ row }) => <div>{row.getValue("stream")}</div>,
   },
   {
-    accessorKey: "address",
-    header: "地址",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "厂家",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-
-  {
-    accessorKey: "factory",
-    header: "信令协议",
-    cell: () => <div className="capitalize">{"TCP"}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "通道数",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "状态",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "最近心跳",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
+    accessorKey: "status",
+    header: "推流状态",
+    cell: ({ row }) => <div>{row.getValue("status")}</div>,
   },
 
-  {
-    accessorKey: "factory",
-    header: "最近注册",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
+  // {
+  //   accessorKey: "factory",
+  //   header: "信令协议",
+  //   cell: () => <div>{"TCP"}</div>,
+  // },
 
   {
-    accessorKey: "email",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown />
-        </Button>
-      );
+    accessorKey: "media_stream_id",
+    header: "流媒体",
+    cell: ({ row }) => {
+      let value: string = row.getValue("media_stream_id") ?? "";
+      if (value == "") {
+        value = "-";
+      }
+      return <div>{value}</div>;
     },
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
+  },
+
+  {
+    accessorKey: "pushed_at",
+    header: "推流时间",
+    cell: ({ row }) => {
+      let value: string = row.getValue("pushed_at");
+      if (value.startsWith("197")) {
+        value = "-";
+      }
+      return <div className="lowercase">{value}</div>;
+    },
   },
 
   {
     id: "actions",
-    enableHiding: false,
+    // enableHiding: false,
+    header: "操作",
     cell: () => {
-      // const payment = row.original;
-
+      // const FindRTMPsResponse = row.original;
       return (
         <div>
-          <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
-            <Edit className="h-4 w-4" />
+          <Button
+            onClick={() =>
+              toastError({
+                title: "播放",
+                description: "此功能暂未实现",
+              })
+            }
+            variant="ghost"
+            size="sm"
+          >
+            <SquarePlay className="h-4 w-4" />
             播放
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
-            <Edit className="h-4 w-4" />
-            编辑
-          </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => console.log("delete")}
+            onClick={() =>
+              toastError({
+                title: "编辑",
+                description: "此功能暂未实现",
+              })
+            }
           >
-            <Trash className="h-4 w-4" />
-            删除
+            <Edit className="h-4 w-4" />
+            编辑
           </Button>
+          <XButtonDelete />
         </div>
       );
     },
@@ -184,19 +129,27 @@ const columns: ColumnDef<Payment>[] = [
 ];
 
 export default function RTMPView() {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
+  const [filters, setFilters] = useState({
+    page: 1,
+    size: 10,
+    key: "",
+  });
+
+  const { data } = useQuery({
+    queryKey: ["rtmps", filters],
+    queryFn: () => FindRTMPs(filters),
+    // refetchInterval: 8000,
+  });
+
+  const debouncedFilters = useDebounce(setFilters, 500);
+
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
   const table = useReactTable({
-    data,
+    data: data?.data.items ?? [],
     columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -204,8 +157,6 @@ export default function RTMPView() {
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
-      sorting,
-      columnFilters,
       columnVisibility,
       rowSelection,
     },
@@ -216,15 +167,14 @@ export default function RTMPView() {
       <div className="flex justify-end items-center py-4">
         <span className="mr-3">搜索</span>
         <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }
-          className="w-30"
+          placeholder="可输入应用名/流 ID 模糊搜索"
+          onChange={(event) => {
+            debouncedFilters({ ...filters, key: event.target.value });
+          }}
+          className="w-56"
         />
 
-        <span className="mx-3">流媒体</span>
+        {/* <span className="mx-3">流媒体</span>
         <Input
           placeholder="Filter emails..."
           value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
@@ -232,9 +182,9 @@ export default function RTMPView() {
             table.getColumn("email")?.setFilterValue(event.target.value)
           }
           className="w-30"
-        />
+        /> */}
 
-        <span className="mx-3">推流状态</span>
+        {/* <span className="mx-3">推流状态</span>
         <Input
           placeholder="Filter emails..."
           value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
@@ -242,12 +192,9 @@ export default function RTMPView() {
             table.getColumn("email")?.setFilterValue(event.target.value)
           }
           className="w-30"
-        />
+        /> */}
 
-        <Button className="mx-3">
-          <SquarePlus />
-          添加通道
-        </Button>
+        <AddForm />
       </div>
 
       <div className="rounded-md border">
@@ -301,10 +248,10 @@ export default function RTMPView() {
         </Table>
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
+        {/* <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
+        </div> */}
         <div className="space-x-2">
           <Button
             variant="outline"
