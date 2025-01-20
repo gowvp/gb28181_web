@@ -109,7 +109,7 @@ export function AddForm() {
             />
 
             <SheetFooter>
-              <Button loading={isPending} className="w-32" type="submit">
+              <Button isLoading={isPending} className="w-32" type="submit">
                 保 存
               </Button>
             </SheetFooter>

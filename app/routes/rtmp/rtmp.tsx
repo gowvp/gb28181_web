@@ -20,7 +20,7 @@ import {
 } from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
 import { Edit, SquarePlay } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { FindRTMPs } from "~/service/api/rtmp";
 import type { RTMPItem } from "~/service/model/rtmp";
 import { AddForm } from "./add";
@@ -28,107 +28,109 @@ import { toastError } from "~/components/util/toast";
 import { useState } from "react";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
-
-const columns: ColumnDef<RTMPItem>[] = [
-  {
-    accessorKey: "name",
-    header: "名称",
-    cell: ({ row }) => <div>{row.getValue("name")}</div>,
-  },
-  // {
-  //   accessorKey: "id",
-  //   header: "设备编号",
-  //   cell: ({ row }) => <div>{row.getValue("id")}</div>,
-  // },
-  {
-    accessorKey: "app",
-    header: "应用名",
-    cell: ({ row }) => <div>{row.getValue("app")}</div>,
-  },
-  {
-    accessorKey: "stream",
-    header: "流 ID",
-    cell: ({ row }) => <div>{row.getValue("stream")}</div>,
-  },
-  {
-    accessorKey: "status",
-    header: "推流状态",
-    cell: ({ row }) => <div>{row.getValue("status")}</div>,
-  },
-
-  // {
-  //   accessorKey: "factory",
-  //   header: "信令协议",
-  //   cell: () => <div>{"TCP"}</div>,
-  // },
-
-  {
-    accessorKey: "media_stream_id",
-    header: "流媒体",
-    cell: ({ row }) => {
-      let value: string = row.getValue("media_stream_id") ?? "";
-      if (value == "") {
-        value = "-";
-      }
-      return <div>{value}</div>;
-    },
-  },
-
-  {
-    accessorKey: "pushed_at",
-    header: "推流时间",
-    cell: ({ row }) => {
-      let value: string = row.getValue("pushed_at");
-      if (value.startsWith("197")) {
-        value = "-";
-      }
-      return <div className="lowercase">{value}</div>;
-    },
-  },
-
-  {
-    id: "actions",
-    // enableHiding: false,
-    header: "操作",
-    cell: () => {
-      // const FindRTMPsResponse = row.original;
-      return (
-        <div>
-          <Button
-            onClick={() =>
-              toastError({
-                title: "播放",
-                description: "此功能暂未实现",
-              })
-            }
-            variant="ghost"
-            size="sm"
-          >
-            <SquarePlay className="h-4 w-4" />
-            播放
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              toastError({
-                title: "编辑",
-                description: "此功能暂未实现",
-              })
-            }
-          >
-            <Edit className="h-4 w-4" />
-            编辑
-          </Button>
-          <XButtonDelete />
-        </div>
-      );
-    },
-  },
-];
+import { Play } from "~/service/api/channel";
+import { ErrorHandle } from "~/service/error";
 
 export default function RTMPView() {
+  const columns: ColumnDef<RTMPItem>[] = [
+    {
+      accessorKey: "name",
+      header: "名称",
+      cell: ({ row }) => <div>{row.getValue("name")}</div>,
+    },
+    // {
+    //   accessorKey: "id",
+    //   header: "设备编号",
+    //   cell: ({ row }) => <div>{row.getValue("id")}</div>,
+    // },
+    {
+      accessorKey: "app",
+      header: "应用名",
+      cell: ({ row }) => <div>{row.getValue("app")}</div>,
+    },
+    {
+      accessorKey: "stream",
+      header: "流 ID",
+      cell: ({ row }) => <div>{row.getValue("stream")}</div>,
+    },
+    {
+      accessorKey: "status",
+      header: "推流状态",
+      cell: ({ row }) => <div>{row.getValue("status")}</div>,
+    },
+
+    // {
+    //   accessorKey: "factory",
+    //   header: "信令协议",
+    //   cell: () => <div>{"TCP"}</div>,
+    // },
+
+    {
+      accessorKey: "media_stream_id",
+      header: "流媒体",
+      cell: ({ row }) => {
+        let value: string = row.getValue("media_stream_id") ?? "";
+        if (value == "") {
+          value = "-";
+        }
+        return <div>{value}</div>;
+      },
+    },
+
+    {
+      accessorKey: "pushed_at",
+      header: "推流时间",
+      cell: ({ row }) => {
+        let value: string = row.getValue("pushed_at");
+        if (value.startsWith("197")) {
+          value = "-";
+        }
+        return <div className="lowercase">{value}</div>;
+      },
+    },
+
+    {
+      id: "actions",
+      // enableHiding: false,
+      header: "操作",
+      cell: ({ row }) => {
+        // const FindRTMPsResponse = row.original;
+        return (
+          <div>
+            <Button
+              disabled={isPending}
+              isLoading={isPending && selectedPlayID == row.original.id}
+              onClick={() => {
+                setSelectedPlayID(row.original.id);
+                mutate(row.original.id);
+              }}
+              variant="ghost"
+              size="sm"
+            >
+              <SquarePlay className="h-4 w-4" />
+              播放
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                toastError({
+                  title: "编辑",
+                  description: "此功能暂未实现",
+                })
+              }
+            >
+              <Edit className="h-4 w-4" />
+              编辑
+            </Button>
+            <XButtonDelete />
+          </div>
+        );
+      },
+    },
+  ];
+
   const [filters, setFilters] = useState({
     page: 1,
     size: 10,
@@ -138,8 +140,18 @@ export default function RTMPView() {
   const { data } = useQuery({
     queryKey: ["rtmps", filters],
     queryFn: () => FindRTMPs(filters),
-    // refetchInterval: 8000,
+    refetchInterval: 8000,
   });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (id: string) => Play(id),
+    onSuccess(data) {
+      console.log("🚀 ~ onSuccess ~ data:", data);
+    },
+    onError: ErrorHandle,
+  });
+
+  const [selectedPlayID, setSelectedPlayID] = useState("");
 
   const debouncedFilters = useDebounce(setFilters, 500);
 
