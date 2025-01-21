@@ -1,0 +1,158 @@
+import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
+import Player, { type PlayerRef } from "~/components/player/player";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
+import { AspectRatio } from "~/components/ui/aspect-ratio";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import { copy2Clipboard } from "~/components/util/copy";
+import type { PlayResponse } from "~/service/model/channel";
+
+export type PlayBoxRef = {
+  play: (link: string, data: PlayResponse) => void;
+};
+
+function PlayBox({ ref }: { ref: React.RefObject<any> }) {
+  useEffect(() => {
+    console.log("🚀 ~ PlayBox ~ useEffect:", useEffect);
+
+    return () => {
+      console.log("🚀 ~ dispose~ useEffect:", useEffect);
+    };
+  }, []);
+
+  const [open, setOpen] = useState(false);
+  const playRef = useRef<PlayerRef>(null);
+
+  const [link, setLink] = useState("");
+
+  const [data, setData] = useState<PlayResponse | null>(null);
+  const [selected, setSelected] = useState(0);
+
+  const getStream = () => {
+    if (!data) {
+      return null;
+    }
+    if (data && data?.items.length <= selected) {
+      return null;
+    }
+    return data.items[selected];
+  };
+
+  useImperativeHandle(ref, () => ({
+    play(link: string, data: PlayResponse) {
+      setLink(link);
+      setData(data);
+      setOpen(true);
+    },
+  }));
+
+  // 关闭弹窗，并销毁播放器
+  const close = () => {
+    setOpen(false);
+    playRef.current?.destroy();
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogContent
+        onEscapeKeyDown={close}
+        asChild
+        className="min-w-[80%]    "
+      >
+        <div>
+          <AlertDialogHeader className="flex-none">
+            <div className="flex justify-between">
+              <AlertDialogTitle>播放</AlertDialogTitle>
+              <Button variant="outline" onClick={close}>
+                关闭
+              </Button>
+            </div>
+            <AlertDialogDescription className="flex-none"></AlertDialogDescription>
+          </AlertDialogHeader>
+          {/* 播放器设置一个最小宽高 */}
+          <div className="min-h-[10rem] min-w-[40rem]">
+            <AspectRatio ratio={16 / 9}>
+              <Player ref={playRef} link={link} />
+            </AspectRatio>
+          </div>
+          {/* 播放地址 */}
+          <div className="flex gap-2 items-center">
+            <Select
+              onValueChange={(v) => setSelected(Number(v))}
+              defaultValue={selected.toString()}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Theme" />
+              </SelectTrigger>
+              <SelectContent className="min-w-[4rem]">
+                {data?.items.map((item, i) => (
+                  <SelectItem key={i} value={i.toString()}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex gap-2 my-2">
+              {[
+                {
+                  name: "HTTP_FLV",
+                  addr: getStream()?.http_flv ?? "",
+                },
+                {
+                  name: "WS_FLV",
+                  addr: getStream()?.ws_flv ?? "",
+                },
+                {
+                  name: "RTMP",
+                  addr: getStream()?.rtmp ?? "",
+                },
+                {
+                  name: "RTSP",
+                  addr: getStream()?.rtsp ?? "",
+                },
+              ].map((item, i) => (
+                <Button
+                  variant="outline"
+                  key={i}
+                  className={item.addr == link ? "border-gray-800" : ""}
+                  onClick={() => {
+                    if (item.name == "RTMP" || item.name == "RTSP") {
+                      copy2Clipboard(item.addr, {
+                        title: "流地址已复制",
+                        description: item.addr,
+                      });
+                      return;
+                    }
+
+                    playRef.current?.play(item.addr);
+                    setLink(item.addr);
+                  }}
+                >
+                  {item.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <Input disabled value={link} />
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+export default PlayBox;

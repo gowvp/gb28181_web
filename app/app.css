@@ -11,6 +11,8 @@ body {
   }
 
   background-color: #f4f4f4;
+
+
 }
 
 @layer base {
@@ -76,4 +78,24 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+
+
+::-webkit-scrollbar {
+  width: 6px; /* 设置滚动条宽度 */
+  height: 6px; /* 设置滚动条高度 */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #ccc; /* 设置滚动条背景颜色 */
+  border-radius: 3px; /* 设置滚动条圆角 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #666; /* 设置滚动条背景颜色（悬停时） */
+}
+
+::-webkit-scrollbar-track {
+  background-color: #f0f0f0; /* 设置滚动条轨道背景颜色 */
 }

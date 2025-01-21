@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useImperativeHandle, useState } from "react";
 import { SquarePlus } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -24,35 +24,73 @@ import {
 } from "~/components/ui/form";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AddRTMP } from "~/service/api/rtmp";
+import { AddRTMP, EditRTMP, findRTMPsKey } from "~/service/api/rtmp";
 import { ErrorHandle } from "~/service/error";
 
 const formSchema = z.object({
   app: z.string().min(2).max(20),
   stream: z.string().min(2).max(20),
+  id: z.any(),
 });
 
-export function AddForm() {
+interface AddFormProps {
+  onSuccess?: () => void;
+  ref: React.RefObject<any>;
+}
+
+export interface EditFromImpl {
+  edit: (values: any) => void;
+}
+
+export function EditForm({ onSuccess, ref }: AddFormProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
+  useImperativeHandle(ref, () => ({
+    edit(values: any) {
+      form.reset({ ...values });
+      setOpen(true);
+    },
+  }));
+
+  const defaultValues = {
+    app: "live",
+    stream: "",
+    id: null,
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      app: "live",
-      stream: "",
-    },
+    defaultValues: defaultValues,
   });
 
+  useEffect(() => {
+    if (!open) {
+      console.log("🚀 ~ useEffect ~ open:", open);
+      setTimeout(() => {
+        form.reset(defaultValues);
+      }, 200);
+    }
+    return () => {};
+  }, [open]);
+
   const { mutate, isPending } = useMutation({
-    mutationFn: AddRTMP,
+    mutationFn: async (values: z.infer<typeof formSchema>) => {
+      if (values.id) {
+        await EditRTMP(values.id, values);
+      } else {
+        await AddRTMP(values);
+      }
+    },
     onSuccess() {
+      // 调用父组件传入的 onSuccess 回调
+      onSuccess?.();
+      // 刷新数据
       queryClient.invalidateQueries({
-        queryKey: ["rtmps"],
-        exact: false,
+        queryKey: [findRTMPsKey],
       });
+      // 关闭 sheet
       setOpen(false);
-      form.reset();
     },
     onError: ErrorHandle,
   });
@@ -80,6 +118,21 @@ export function AddForm() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="id"
+              disabled
+              render={({ field }) => (
+                <FormItem hidden={!field.value}>
+                  <FormLabel>ID</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="app"

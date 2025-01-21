@@ -48,4 +48,7 @@ export type RTMPItem = {
    * 更新时间
    */
   updated_at: string;
+
+  // 推流地址
+  push_addrs: string[];
 };

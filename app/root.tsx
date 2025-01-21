@@ -13,7 +13,9 @@ import type { Route } from "./+types/root";
 import stylesheet from "./app.css?url";
 import React from "react";
 import { z } from "zod";
-import { Toaster } from "./components/ui/toaster";
+import { Toaster } from "./components/ui/sonner";
+// import { Toaster } from "./components/ui/toaster";
+
 // 全局设置自定义的错误信息
 z.setErrorMap((issue, ctx) => {
   let message;
@@ -115,6 +117,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Scripts />
         </QueryClientProvider>
         <Toaster />
+        <script
+          src={`${import.meta.env.VITE_BASENAME}assets/js/jessibuca.js`}
+        ></script>
+
+        {/* <script
+          src={`${import.meta.env.VITE_BASENAME}assets/js/decoder.js`}
+        ></script> */}
       </body>
     </html>
   );

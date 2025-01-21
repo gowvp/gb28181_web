@@ -24,4 +24,7 @@ export type PlayItem = {
    * websocket flv 播放地址
    */
   ws_flv?: string;
+
+  // 标签
+  label: string;
 };
