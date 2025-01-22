@@ -50,9 +50,34 @@ export default function RTMPView() {
   // 删除功能
   const { mutate: delMutate, isPending: delIsPending } = useMutation({
     mutationFn: DelRTMP,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [findRTMPsKey],
+    onSuccess: (data) => {
+      queryClient.setQueryData([findRTMPsKey, filters], (old: any) => {
+        const newItems = old.data.items.filter(
+          (item: RTMPItem) => item.id !== data.data.id
+        );
+
+        // 如果当前页数据为空且不是第一页,回退一页
+        if (newItems.length === 0 && filters.page > 1) {
+          setTimeout(() => {
+            setFilters((prev) => ({ ...prev, page: prev.page - 1 }));
+          }, 370);
+        }
+        // 如果是第一页且数据为空,刷新当前页
+        else if (newItems.length === 0 && filters.page === 1) {
+          setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: [findRTMPsKey, filters],
+            });
+          }, 370);
+        }
+
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            items: newItems,
+          },
+        };
       });
     },
     onError: ErrorHandle,
