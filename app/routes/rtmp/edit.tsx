@@ -34,7 +34,8 @@ const formSchema = z.object({
 });
 
 interface AddFormProps {
-  onSuccess?: () => void;
+  onAddSuccess?: () => void; // 新增成功
+  onEditSuccess?: (data: any) => void; // 修改成功
   ref: React.RefObject<any>;
 }
 
@@ -42,7 +43,7 @@ export interface EditFromImpl {
   edit: (values: any) => void;
 }
 
-export function EditForm({ onSuccess, ref }: AddFormProps) {
+export function EditForm({ onAddSuccess, onEditSuccess, ref }: AddFormProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -77,19 +78,17 @@ export function EditForm({ onSuccess, ref }: AddFormProps) {
   const { mutate, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       if (values.id) {
-        await EditRTMP(values.id, values);
+        return await EditRTMP(values.id, values);
       } else {
-        await AddRTMP(values);
+        return await AddRTMP(values);
       }
     },
-    onSuccess() {
-      // 调用父组件传入的 onSuccess 回调
-      onSuccess?.();
-      // 刷新数据
-      queryClient.invalidateQueries({
-        queryKey: [findRTMPsKey],
-      });
-      // 关闭 sheet
+    onSuccess(data, variables) {
+      if (variables.id) {
+        onEditSuccess?.(data.data);
+      } else {
+        onAddSuccess?.();
+      }
       setOpen(false);
     },
     onError: ErrorHandle,

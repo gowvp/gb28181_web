@@ -286,9 +286,24 @@ export default function RTMPView() {
 
         <EditForm
           ref={editFromRef}
-          onSuccess={() => {
+          onAddSuccess={() => {
+            queryClient.invalidateQueries({
+              queryKey: [findRTMPsKey],
+            });
             // 新增成功后设置动画标记
             showAddAnimation.current = true;
+          }}
+          onEditSuccess={(data) => {
+            const value = data as RTMPItem;
+            queryClient.setQueryData([findRTMPsKey, filters], (old: any) => ({
+              ...old,
+              data: {
+                ...old.data,
+                items: old.data.items.map((item: RTMPItem) =>
+                  item.id === value.id ? value : item
+                ),
+              },
+            }));
           }}
         />
       </div>

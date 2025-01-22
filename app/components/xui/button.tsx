@@ -9,13 +9,13 @@ export function XButtonDelete({
   isLoading,
 }: {
   onConfirm: () => void;
-  isLoading: boolean;
+  isLoading?: boolean;
 }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          isLoading={isLoading}
+          isLoading={isLoading ?? false}
           variant="ghost"
           size="sm"
           className="text-destructive hover:text-destructive"
