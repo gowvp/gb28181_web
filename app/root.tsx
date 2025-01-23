@@ -14,6 +14,7 @@ import stylesheet from "./app.css?url";
 import React from "react";
 import { z } from "zod";
 import { Toaster } from "./components/ui/sonner";
+import { ConfigProvider } from "antd";
 // import { Toaster } from "./components/ui/toaster";
 
 // 全局设置自定义的错误信息
@@ -112,7 +113,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <QueryClientProvider client={queryClient}>
-          {children}
+          {/* antd 主题 */}
+          <ConfigProvider
+            theme={{
+              token: {
+                colorPrimary: "#000",
+              },
+            }}
+          >
+            {children}
+          </ConfigProvider>
+
           <ScrollRestoration />
           <Scripts />
         </QueryClientProvider>

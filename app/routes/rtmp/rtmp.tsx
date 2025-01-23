@@ -18,6 +18,7 @@ import { Badge } from "~/components/ui/badge";
 import { copy2Clipboard } from "~/components/util/copy";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
+import ToolTips from "~/components/xui/tips";
 
 export default function RTMPView() {
   // =============== 状态定义 ===============
@@ -131,6 +132,7 @@ export default function RTMPView() {
                 id: record.id,
                 app: record.app,
                 stream: record.stream,
+                is_auth_disabled: record.is_auth_disabled,
               })
             }
           >
@@ -138,27 +140,35 @@ export default function RTMPView() {
             编辑
           </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              const value = record.push_addrs[0];
-              copy2Clipboard(value, {
-                title: "推流地址已复制",
-                description: value,
-              });
-            }}
+          <ToolTips
+            disabled={!record.is_auth_disabled}
+            tips="橘色表示不安全的，推流不鉴权"
           >
-            <Copy className="h-4 w-4 mr-1" />
-            RTMP
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const value = record.push_addrs[0];
+                copy2Clipboard(value, {
+                  title: "推流地址已复制",
+                  description: value,
+                });
+              }}
+            >
+              <Copy
+                className="h-4 w-4 mr-1"
+                color={record.is_auth_disabled ? "orange" : "#000"}
+              />
+              RTMP
+            </Button>
+          </ToolTips>
 
           {/* todo: 删除 loading 状态 */}
           <XButtonDelete
             onConfirm={() => {
               tableRef.current?.delMutate(record.id);
             }}
-            isLoading={tableRef.current?.delIsPending}
+            // isLoading={tableRef.current?.delIsPending}
           />
         </div>
       ),

@@ -16,9 +16,9 @@ import { useMutation } from "@tanstack/react-query";
 import { ErrorHandle } from "~/service/error";
 
 export interface RTMPFormProps {
-  onAddSuccess?: () => void;
-  onEditSuccess?: (data: any) => void;
-  ref: React.RefObject<EditSheetImpl | null>;
+  onAddSuccess?: () => void; // 添加成功回调
+  onEditSuccess?: (data: any) => void; // 编辑成功回调
+  ref: React.RefObject<EditSheetImpl | null>; // 控制反转
 }
 
 interface EditSheetProps<T extends z.ZodType> {
@@ -43,18 +43,19 @@ interface EditSheetProps<T extends z.ZodType> {
 }
 
 export interface EditSheetImpl {
-  edit: (values: any) => void;
+  edit: (values: any) => void; // 编辑时传入表单的值，打开弹窗
 }
 
 export function EditSheet<T extends z.ZodType>({
-  title,
-  description,
-  schema,
-  defaultValues,
-  children,
-  trigger,
-  mutation,
-  onSuccess,
+  title, // 标题
+  description, // 描述
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  schema, // 表单验证
+  defaultValues, // 默认值
+  children, // 表单内容
+  trigger, // 触发器按钮
+  mutation, // api 请求
+  onSuccess, // 成功回调
   ref, // 控制反转
   form, // 表单
 }: EditSheetProps<T>) {
@@ -62,18 +63,25 @@ export function EditSheet<T extends z.ZodType>({
 
   useImperativeHandle(ref, () => ({
     edit(values: any) {
+      console.log("🚀 ~ edit ~ values:", values);
       form.reset(values);
       setOpen(true);
     },
   }));
 
   useEffect(() => {
-    if (!open) {
+    // 关闭且编辑的话，重置表单
+    // 添加的时候有两种方式防止页面误关闭
+    // 1. 允许关闭，下次打开保留数据(这里选择了这种方式)
+    // 2. 弹窗提示，是否丢弃数据并关闭
+
+    setTimeout(() => form.clearErrors(), 200);
+    if (!open && form.getValues().id) {
       setTimeout(() => {
         form.reset(defaultValues);
       }, 200);
     }
-  }, [open, defaultValues, form]);
+  }, [open]);
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async (values: z.infer<typeof schema> & { id?: string }) => {
@@ -84,12 +92,16 @@ export function EditSheet<T extends z.ZodType>({
       }
     },
     onSuccess(data, variables) {
+      // console.log("🚀 ~ onSuccess ~ data:", data);
       if (variables.id) {
         onSuccess?.edit?.(data.data);
       } else {
         onSuccess?.add?.();
       }
       setOpen(false);
+      setTimeout(() => {
+        form.reset(defaultValues);
+      }, 200);
     },
     onError: ErrorHandle,
   });

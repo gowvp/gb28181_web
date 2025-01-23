@@ -15,6 +15,9 @@ import {
   PaginationNext,
 } from "../ui/pagination";
 
+// TODO: 这个组件是配置 shadcn table 的分页组件
+// 未使用
+
 type PaginationBoxProps = {
   page: number;
   size: number;

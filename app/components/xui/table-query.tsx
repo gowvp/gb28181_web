@@ -32,7 +32,7 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
       fetchFn,
       deleteFn,
       columns,
-      defaultFilters = { page: 1, size: 10, key: "" },
+      defaultFilters = { page: 1, size: 10 },
     },
     ref
   ) {
@@ -94,15 +94,24 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
 
     // 编辑成功处理
     const handleEditSuccess = (updatedItem: any) => {
-      queryClient.setQueryData([queryKey, filters], (old: any) => ({
-        ...old,
-        data: {
-          ...old.data,
-          items: old.data.items.map((item: any) =>
-            item.id === updatedItem.id ? updatedItem : item
-          ),
-        },
-      }));
+      queryClient.setQueryData([queryKey, filters], (old: any) => {
+        if (!old?.data) {
+          console.log("🚀 ~ queryClient.setQueryData ~ old:", old);
+          queryClient.invalidateQueries({
+            queryKey: [queryKey],
+          });
+          return old;
+        }
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            items: old.data.items.map((item: any) =>
+              item.id === updatedItem.id ? updatedItem : item
+            ),
+          },
+        };
+      });
     };
 
     // 暴露内部方法

@@ -51,4 +51,9 @@ export type RTMPItem = {
 
   // 推流地址
   push_addrs: string[];
+
+  /**
+   * 推流鉴权
+   */
+  is_auth_disabled: boolean;
 };

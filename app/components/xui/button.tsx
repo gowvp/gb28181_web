@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { CircleAlert, Trash } from "lucide-react";
 import { PopoverClose } from "@radix-ui/react-popover";
 
+// XButtonDelete 删除按钮，提供二次确认功能
 export function XButtonDelete({
   onConfirm,
   isLoading,

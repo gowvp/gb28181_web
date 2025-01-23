@@ -2,6 +2,7 @@ import React from "react";
 import { CircleCheckBig, OctagonAlert } from "lucide-react";
 import { toast, type ExternalToast } from "sonner";
 
+// toastErrorMore 用于 api 统一错误处理
 export function toastErrorMore(
   message: string,
   details: string[] | null,
@@ -33,6 +34,7 @@ export function toastErrorMore(
   });
 }
 
+// toastError 错误提示
 export function toastError(message: string, props?: ExternalToast) {
   toast.error(message, {
     position: "top-right",
@@ -42,6 +44,7 @@ export function toastError(message: string, props?: ExternalToast) {
   });
 }
 
+// toastSuccess 操作成功提示
 export function toastSuccess(message: string, props?: ExternalToast) {
   toast.success(message, {
     position: "top-right",
