@@ -1,3 +1,4 @@
+import { Bug, Copy } from "lucide-react";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 import Player, { type PlayerRef } from "~/components/player/player";
 import {
@@ -18,6 +19,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { copy2Clipboard } from "~/components/util/copy";
+import ToolTips from "~/components/xui/tips";
 import type { PlayResponse } from "~/service/model/channel";
 
 export type PlayBoxRef = {
@@ -94,7 +96,7 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
               onValueChange={(v) => setSelected(Number(v))}
               defaultValue={selected.toString()}
             >
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[120px] h-8">
                 <SelectValue placeholder="Theme" />
               </SelectTrigger>
               <SelectContent className="min-w-[4rem]">
@@ -111,39 +113,58 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
                 {
                   name: "HTTP_FLV",
                   addr: getStream()?.http_flv ?? "",
+                  icon: "",
                 },
                 {
                   name: "WS_FLV",
                   addr: getStream()?.ws_flv ?? "",
+                  icon: "",
+                },
+                {
+                  name: "HLS",
+                  addr: getStream()?.hls ?? "",
+                  icon: <Bug />,
+                },
+                {
+                  name: "WebRTC",
+                  addr: getStream()?.webrtc ?? "",
+                  icon: <Copy />,
+                  copy: true,
                 },
                 {
                   name: "RTMP",
                   addr: getStream()?.rtmp ?? "",
+                  icon: <Copy />,
+                  copy: true,
                 },
                 {
                   name: "RTSP",
                   addr: getStream()?.rtsp ?? "",
+                  icon: <Copy />,
                 },
               ].map((item, i) => (
-                <Button
-                  variant="outline"
-                  key={i}
-                  className={item.addr == link ? "border-gray-800" : ""}
-                  onClick={() => {
-                    if (item.name == "RTMP" || item.name == "RTSP") {
-                      copy2Clipboard(item.addr, {
-                        title: "流地址已复制",
-                        description: item.addr,
-                      });
-                      return;
-                    }
+                <ToolTips tips={item.addr}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    key={i}
+                    className={item.addr == link ? "border-gray-800" : ""}
+                    onClick={() => {
+                      if (item.copy == true) {
+                        copy2Clipboard(item.addr, {
+                          title: "流地址已复制",
+                          description: item.addr,
+                        });
+                        return;
+                      }
 
-                    playRef.current?.play(item.addr);
-                    setLink(item.addr);
-                  }}
-                >
-                  {item.name}
-                </Button>
+                      playRef.current?.play(item.addr);
+                      setLink(item.addr);
+                    }}
+                  >
+                    {item.icon} {item.name}
+                  </Button>
+                </ToolTips>
               ))}
             </div>
           </div>
