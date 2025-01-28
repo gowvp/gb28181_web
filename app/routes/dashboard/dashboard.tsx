@@ -6,7 +6,7 @@ import { MemoryBox } from "./memory";
 import { DiskBox } from "./disk";
 import { LoadBox } from "./load";
 import { useQuery } from "@tanstack/react-query";
-import { FindStats } from "~/service/api/stat";
+import { FindStats } from "~/service/api/stat/stat";
 
 export default function DashboardView() {
   // 使用 react-query 固定间隔获取一次服务端状态信息

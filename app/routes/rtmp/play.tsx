@@ -20,7 +20,7 @@ import {
 } from "~/components/ui/select";
 import { copy2Clipboard } from "~/components/util/copy";
 import ToolTips from "~/components/xui/tips";
-import type { PlayResponse } from "~/service/model/channel";
+import type { PlayResponse } from "~/service/api/channel/channel.d";
 
 export type PlayBoxRef = {
   play: (link: string, data: PlayResponse) => void;

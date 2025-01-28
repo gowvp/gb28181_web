@@ -1,5 +1,5 @@
-import { DELETE, GET, POST, PUT } from "../http";
-import type { FindRTMPsResponse, RTMPItem } from "../model/rtmp";
+import { DELETE, GET, POST, PUT } from "../../http";
+import type { FindRTMPsResponse, RTMPItem } from "./rtmp.d";
 
 export const findRTMPsKey = "rtmps";
 // FindRTMPs 查询推流通道列表
