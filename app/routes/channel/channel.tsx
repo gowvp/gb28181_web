@@ -2,23 +2,22 @@ import * as React from "react";
 import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Copy, Edit, SquarePlay } from "lucide-react";
+import { Edit, SquarePlay } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { DelRTMP, FindRTMPs, findRTMPsKey } from "~/service/api/rtmp/rtmp";
-import type { RTMPItem } from "~/service/api/rtmp/rtmp.d";
 import { EditForm } from "./edit";
 import { useRef, useState } from "react";
 import useDebounce from "~/components/util/debounce";
-import { XButtonDelete } from "~/components/xui/button";
-import { Play } from "~/service/api/channel/channel";
+import {
+  FindChannels,
+  findChannelsKey,
+  Play,
+} from "~/service/api/channel/channel";
 import { ErrorHandle } from "~/service/error";
-import PlayBox, { type PlayBoxRef } from "../../components/xui/play";
-import { formatDate } from "~/components/util/date";
 import { Badge } from "~/components/ui/badge";
-import { copy2Clipboard } from "~/components/util/copy";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import ToolTips from "~/components/xui/tips";
+import type { ChannelItem } from "~/service/api/channel/channel.d";
+import PlayBox, { type PlayBoxRef } from "~/components/xui/play";
 
 export default function RTMPView() {
   // =============== 状态定义 ===============
@@ -27,7 +26,10 @@ export default function RTMPView() {
   // refs
   const editFromRef = useRef<EditSheetImpl>(null);
   const playRef = useRef<PlayBoxRef>(null);
-  const tableRef = useRef<TableQueryRef<RTMPItem>>(null);
+  const tableRef = useRef<TableQueryRef<ChannelItem>>(null);
+
+  const params = new URLSearchParams(window.location.search);
+  const device_id = params.get("device_id");
 
   // =============== 查询与操作 ===============
 
@@ -41,70 +43,87 @@ export default function RTMPView() {
   });
 
   // =============== 表格列定义 ===============
-  const columns: ColumnsType<RTMPItem> = [
+  const columns: ColumnsType<ChannelItem> = [
     {
       title: "名称",
       dataIndex: "name",
       key: "name",
     },
     {
-      title: "应用名",
-      dataIndex: "app",
-      key: "app",
+      title: "编号",
+      dataIndex: "channel_id",
+      key: "channel_id",
     },
     {
-      title: "流 ID",
-      dataIndex: "stream",
-      key: "stream",
+      title: "快照",
+      dataIndex: "snapshot",
+      key: "snapshot",
     },
     {
-      title: "推流状态",
-      dataIndex: "status",
-      key: "status",
-      render: (value: string) => {
-        let color = "";
-        let text = "";
-        if (value == "STOPPED") {
-          color = "bg-orange-300";
-          text = "NO";
-        } else if (value == "PUSHING") {
-          color = "bg-green-300";
-          text = "OK";
-        }
+      title: "厂家",
+      dataIndex: ["ext", "manufacturer"],
+      key: "ext.manufacturer",
+    },
 
-        return text ? (
-          <Badge variant="secondary" className={`${color} text-white`}>
-            {text}
-          </Badge>
-        ) : (
-          <span></span>
-        );
-      },
-    },
     {
-      title: "流媒体",
-      dataIndex: "media_server_id",
-      key: "media_server_id",
-      render: (value: string) => value || "-",
+      title: "云台类型",
+      dataIndex: "ptztype",
+      key: "ptztype",
     },
-    {
-      title: "推流时间",
-      dataIndex: "pushed_at",
-      key: "pushed_at",
-      render: (pushed_at: string, record: RTMPItem) => {
-        const color = pushed_at < record.stopped_at ? "text-gray-400" : "";
-        return <div className={color}>{formatDate(pushed_at)}</div>;
-      },
-    },
-    {
-      title: "停流时间",
-      dataIndex: "stopped_at",
-      key: "stopped_at",
-      render: (stopped_at: string, record: RTMPItem) => {
-        const color = record.pushed_at > stopped_at ? "text-gray-400" : "";
-        return <div className={color}>{formatDate(stopped_at)}</div>;
-      },
-    },
+
+    // {
+    //   title: "流 ID",
+    //   dataIndex: "stream",
+    //   key: "stream",
+    // },
+    // {
+    //   title: "推流状态",
+    //   dataIndex: "status",
+    //   key: "status",
+    //   render: (value: string) => {
+    //     let color = "";
+    //     let text = "";
+    //     if (value == "STOPPED") {
+    //       color = "bg-orange-300";
+    //       text = "NO";
+    //     } else if (value == "PUSHING") {
+    //       color = "bg-green-300";
+    //       text = "OK";
+    //     }
+
+    //     return text ? (
+    //       <Badge variant="secondary" className={`${color} text-white`}>
+    //         {text}
+    //       </Badge>
+    //     ) : (
+    //       <span></span>
+    //     );
+    //   },
+    // },
+    // {
+    //   title: "流媒体",
+    //   dataIndex: "media_server_id",
+    //   key: "media_server_id",
+    //   render: (value: string) => value || "-",
+    // },
+    // {
+    //   title: "推流时间",
+    //   dataIndex: "pushed_at",
+    //   key: "pushed_at",
+    //   render: (pushed_at: string, record: RTMPItem) => {
+    //     const color = pushed_at < record.stopped_at ? "text-gray-400" : "";
+    //     return <div className={color}>{formatDate(pushed_at)}</div>;
+    //   },
+    // },
+    // {
+    //   title: "停流时间",
+    //   dataIndex: "stopped_at",
+    //   key: "stopped_at",
+    //   render: (stopped_at: string, record: RTMPItem) => {
+    //     const color = record.pushed_at > stopped_at ? "text-gray-400" : "";
+    //     return <div className={color}>{formatDate(stopped_at)}</div>;
+    //   },
+    // },
     {
       title: "操作",
       key: "action",
@@ -124,7 +143,7 @@ export default function RTMPView() {
             播放
           </Button>
 
-          <Button
+          {/* <Button
             variant="ghost"
             size="sm"
             onClick={() =>
@@ -138,38 +157,7 @@ export default function RTMPView() {
           >
             <Edit className="h-4 w-4 mr-1" />
             编辑
-          </Button>
-
-          <ToolTips
-            disabled={!record.is_auth_disabled}
-            tips="橘色表示不安全的，推流不鉴权"
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const value = record.push_addrs[0];
-                copy2Clipboard(value, {
-                  title: "推流地址已复制",
-                  description: value,
-                });
-              }}
-            >
-              <Copy
-                className="h-4 w-4 mr-1"
-                color={record.is_auth_disabled ? "orange" : "#000"}
-              />
-              RTMP
-            </Button>
-          </ToolTips>
-
-          {/* todo: 删除 loading 状态 */}
-          <XButtonDelete
-            onConfirm={() => {
-              tableRef.current?.delMutate(record.id);
-            }}
-            // isLoading={tableRef.current?.delIsPending}
-          />
+          </Button> */}
         </div>
       ),
     },
@@ -186,7 +174,7 @@ export default function RTMPView() {
       <div className="flex justify-end items-center py-4">
         <span className="mr-3">搜索</span>
         <Input
-          placeholder="可输入应用名/流 ID 模糊搜索"
+          placeholder="可输入名称/国标ID/id 模糊搜索"
           onChange={(event) => debouncedFilters(event.target.value)}
           className="w-56"
         />
@@ -200,10 +188,10 @@ export default function RTMPView() {
 
       <TableQuery
         ref={tableRef}
-        queryKey={findRTMPsKey}
-        fetchFn={FindRTMPs}
-        deleteFn={DelRTMP}
+        queryKey={findChannelsKey}
+        fetchFn={FindChannels}
         columns={columns}
+        defaultFilters={{ page: 1, size: 10, device_id: device_id ?? "" }}
       />
 
       {/* 播放器 */}

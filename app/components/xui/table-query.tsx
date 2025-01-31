@@ -14,6 +14,7 @@ interface TableQueryProps<T> {
   defaultFilters?: {
     page: number;
     size: number;
+    [property: string]: any;
   };
 }
 

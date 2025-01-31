@@ -1,6 +1,6 @@
-import { Table as AntTable } from "antd";
-import type { TableProps } from "antd";
 import React from "react";
+import { Table } from "antd";
+import type { TableProps } from "antd";
 
 interface XTableProps<T> extends TableProps<T> {
   className?: string;
@@ -13,10 +13,12 @@ export function XTable<T extends object>({
   ...props
 }: XTableProps<T>) {
   return (
-    <AntTable<T>
+    <Table<T>
+      tableLayout="fixed"
       {...props}
       className={className}
-      //   size="middle"
+      scroll={{ x: "max-content" }}
+      // size="middle"
       pagination={{
         showSizeChanger: true,
         showQuickJumper: false,
@@ -24,6 +26,11 @@ export function XTable<T extends object>({
         showTotal: (total) => `共 ${total} 条`,
         ...props.pagination,
         pageSizeOptions: ["10", "20", "30", "50"],
+      }}
+      style={{
+        width: "100%",
+        overflowX: "auto",
+        ...props.style,
       }}
     />
   );

@@ -53,3 +53,13 @@ export function toastSuccess(message: string, props?: ExternalToast) {
     ...props,
   });
 }
+
+// toastWarn 警告提示
+export function toastWarn(message: string, props?: ExternalToast) {
+  toast.warning(message, {
+    position: "top-right",
+    // icon: <CircleExclamation color="yellow" size={22} />,
+    duration: 2000,
+    ...props,
+  });
+}

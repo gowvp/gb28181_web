@@ -1,325 +1,237 @@
 import * as React from "react";
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  type SortingState,
-  type VisibilityState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { Checkbox } from "~/components/ui/checkbox";
+import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import { Input } from "~/components/ui/input";
-import { ArrowUpDown, Edit, Info, SquarePlus, Trash } from "lucide-react";
+import { Edit, Folder, RefreshCcw } from "lucide-react";
+import { useRef } from "react";
+import useDebounce from "~/components/util/debounce";
+import { XButtonDelete } from "~/components/xui/button";
+import { formatDate } from "~/components/util/date";
+import type { EditSheetImpl } from "~/components/xui/edit-sheet";
+import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
+import { EditForm } from "./edit";
+import type { DeviceItem } from "~/service/api/device/device.d";
+import {
+  DelDevice,
+  FindDevices,
+  findDevicesKey,
+} from "~/service/api/device/device";
+import { toastWarn } from "~/components/xui/toast";
+import { Badge } from "~/components/ui/badge";
+import { useNavigate } from "react-router";
 
-const data: Payment[] = [
-  {
-    id: "m5gr84i9",
-    amount: 316,
-    name: "success",
-    email: "ken99@yahoo.com",
-  },
-  {
-    id: "3u1reuv4",
-    amount: 242,
-    name: "success",
-    email: "Abe45@gmail.com",
-  },
-  {
-    id: "derv1ws0",
-    amount: 837,
-    name: "processing",
-    email: "Monserrat44@gmail.com",
-  },
-  {
-    id: "5kma53ae",
-    amount: 874,
-    name: "success",
-    email: "Silas22@gmail.com",
-  },
-  {
-    id: "bhqecj4p",
-    amount: 721,
-    name: "failed",
-    email: "carmella@hotmail.com",
-  },
-];
+export default function DeviceView() {
+  const navigate = useNavigate();
+  // refs
+  const editFromRef = useRef<EditSheetImpl>(null);
+  const tableRef = useRef<TableQueryRef<DeviceItem>>(null);
 
-export type Payment = {
-  id: string;
-  amount: number;
-  name: string;
-  email: string;
-};
-
-const columns: ColumnDef<Payment>[] = [
-  {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+  // =============== 表格列定义 ===============
+  const columns: ColumnsType<DeviceItem> = [
+    {
+      title: "名称",
+      dataIndex: "name",
+      key: "name",
+      minWidth: 100,
+      render(value, record) {
+        let name = record.name;
+        // 用户未自定义名称，采用设备上报名称
+        if (name.length <= 0) {
+          name = record.ext.name;
         }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "name",
-    header: "名称",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("name")}</div>,
-  },
-  {
-    accessorKey: "id",
-    header: "设备编号",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "address",
-    header: "地址",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "厂家",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-
-  {
-    accessorKey: "factory",
-    header: "信令协议",
-    cell: () => <div className="capitalize">{"TCP"}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "通道数",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "状态",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-  {
-    accessorKey: "factory",
-    header: "最近心跳",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-
-  {
-    accessorKey: "factory",
-    header: "最近注册",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("id")}</div>,
-  },
-
-  {
-    accessorKey: "email",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Email
-          <ArrowUpDown />
-        </Button>
-      );
+        return <div>{name}</div>;
+      },
     },
-    cell: ({ row }) => <div className="lowercase">{row.getValue("email")}</div>,
-  },
+    {
+      title: "设备编号",
+      dataIndex: "device_id",
+      key: "device_id",
+      minWidth: 180,
+    },
+    {
+      title: "地址",
+      dataIndex: "address",
+      key: "address",
+      minWidth: 180,
+      render(value, record) {
+        return (
+          <span className="lowercase">{`${record.trasnport}://${record.address}`}</span>
+        );
+      },
+    },
+    {
+      title: "厂家",
+      dataIndex: "manufacturer",
+      key: "manufacturer",
+      render(value, record) {
+        return record.ext.manufacturer;
+      },
+      minWidth: 100,
+    },
+    {
+      title: "流传输模式",
+      dataIndex: "stream_mode",
+      key: "stream_mode",
+    },
+    {
+      title: "通道数",
+      dataIndex: "channels",
+      key: "channels",
+      minWidth: 80,
+    },
+    {
+      title: "状态",
+      dataIndex: "is_online",
+      align: "center",
+      key: "is_online",
+      render(value, record) {
+        return (
+          <Badge
+            variant="secondary"
+            className={`${
+              record.is_online ? "bg-green-300" : "bg-orange-300"
+            } text-white`}
+          >
+            {record.is_online ? "在线" : "离线"}
+          </Badge>
+        );
+      },
+      minWidth: 80,
+    },
+    {
+      title: "订阅",
+      minWidth: 80,
+    },
 
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: () => {
-      return (
-        <div>
-          <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
-            <Edit className="h-4 w-4" />
-            刷新
-          </Button>
+    {
+      title: "最近心跳",
+      dataIndex: "keepalive_at",
+      key: "keepalive_at",
+      render: (pushed_at: string) => {
+        return <div>{formatDate(pushed_at)}</div>;
+      },
+    },
 
-          <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
-            <Edit className="h-4 w-4" />
-            通道
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => console.log("edit")}>
-            <Edit className="h-4 w-4" />
-            编辑
-          </Button>
+    {
+      title: "最近注册",
+      dataIndex: "registered_at",
+      key: "registered_at",
+      render: (pushed_at: string) => {
+        return <div>{formatDate(pushed_at)}</div>;
+      },
+    },
+
+    {
+      title: "操作",
+      key: "action",
+      fixed: "right",
+      render: (_, record: DeviceItem) => (
+        <div className="flex gap-0">
           <Button
             variant="ghost"
             size="sm"
-            className="text-destructive hover:text-destructive"
-            onClick={() => console.log("delete")}
+            onClick={() => {
+              navigate(`/channels?device_id=${record.device_id}`);
+            }}
           >
-            <Trash className="h-4 w-4" />
-            删除
+            <Folder className="h-4 w-4 mr-1" />
+            通道
           </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              editFromRef.current?.edit({
+                id: record.id,
+                name: record.name,
+                device_id: record.device_id,
+                password: record.password,
+              })
+            }
+          >
+            <Edit className="h-4 w-4 mr-1" />
+            编辑
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              toastWarn("开发中...");
+            }}
+          >
+            <RefreshCcw className="h-4 w-4 mr-1" />
+            刷新
+          </Button>
+
+          {/* todo: 删除 loading 状态 */}
+          <XButtonDelete
+            onConfirm={() => {
+              tableRef.current?.delMutate(record.id);
+            }}
+            // isLoading={tableRef.current?.delIsPending}
+          />
         </div>
-      );
+      ),
     },
-  },
-];
+  ];
 
-export default function DeviceView() {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-
-  const table = useReactTable({
-    data,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  });
+  // 搜索防抖
+  const debouncedFilters = useDebounce((key: string) => {
+    tableRef.current?.setFilters((prev: any) => ({
+      ...prev,
+      page: 1,
+      key,
+    }));
+  }, 500);
 
   return (
     <div className="w-full bg-white p-4 rounded-lg">
+      {/* 搜索和添加区域 */}
       <div className="flex justify-end items-center py-4">
         <span className="mr-3">搜索</span>
         <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }
-          className="w-30"
+          placeholder="可输入设备编号/名称/ID模糊搜索"
+          onChange={(event) => debouncedFilters(event.target.value)}
+          className="w-60"
         />
 
-        <span className="mx-3">在线状态</span>
-        <Input
-          placeholder="Filter emails..."
-          value={(table.getColumn("email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("email")?.setFilterValue(event.target.value)
-          }
-          className="w-30"
+        <EditForm
+          ref={editFromRef}
+          onAddSuccess={() => tableRef.current?.handleAddSuccess()}
+          onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
         />
-
-        <Button className="mx-3">
-          <SquarePlus />
-          添加设备
-        </Button>
-        <Button>
-          <Info />
-          平台信息
-        </Button>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
-        </div>
-        <div className="space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <TableQuery
+        ref={tableRef}
+        queryKey={findDevicesKey}
+        fetchFn={FindDevices}
+        deleteFn={DelDevice}
+        columns={columns}
+      />
     </div>
   );
 }
+
+// function PushAddrsButton({
+//   children,
+//   items,
+// }: {
+//   children: React.ReactNode;
+//   items: string[];
+// }) {
+//   return (
+//     <Popover>
+//       <PopoverTrigger asChild>{children}</PopoverTrigger>
+//       <PopoverContent className="w-80">
+//         {items.map((item) => (
+//           <Button className="w-full" key={item}>
+//             {item}
+//           </Button>
+//         ))}
+//       </PopoverContent>
+//     </Popover>
+//   );
+// }

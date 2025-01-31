@@ -3,32 +3,30 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
 import { z } from "zod";
-import { AddRTMP, EditRTMP } from "~/service/api/rtmp/rtmp";
 import { EditSheet, type RTMPFormProps } from "~/components/xui/edit-sheet";
 import { SquarePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Radio } from "antd";
+import { AddDevice, EditDevice } from "~/service/api/device/device";
 
 const formSchema = z.object({
-  app: z.string().min(2).max(20),
-  stream: z.string().min(2).max(20),
+  device_id: z.string().min(18).max(20),
+  name: z.string(),
+  password: z.string(),
   id: z.any(),
-  is_auth_disabled: z.boolean(),
 });
 
 const defaultValues = {
+  device_id: "",
+  name: "",
+  password: "",
   id: null,
-  app: "live",
-  stream: "",
-  is_auth_disabled: false,
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
@@ -41,8 +39,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
     <EditSheet
       form={form}
       ref={ref}
-      title="推流信息"
-      description="在此输入推流信息，然后点击保存"
+      title="设备编辑"
+      description="可在此处添加国标设备，也可免添加由设备自动注册上线"
       schema={formSchema}
       defaultValues={defaultValues}
       onSuccess={{
@@ -50,13 +48,13 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
         edit: onEditSuccess,
       }}
       mutation={{
-        add: AddRTMP,
-        edit: EditRTMP,
+        add: AddDevice,
+        edit: EditDevice,
       }}
       trigger={
         <Button className="mx-3">
           <SquarePlus />
-          添加通道
+          添加设备
         </Button>
       }
     >
@@ -74,13 +72,12 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
           </FormItem>
         )}
       />
-
       <FormField
         control={form.control}
-        name="app"
+        name="device_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*应用名</FormLabel>
+            <FormLabel>*国标编码</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -91,10 +88,24 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
 
       <FormField
         control={form.control}
-        name="stream"
+        name="name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*流 ID</FormLabel>
+            <FormLabel>名称</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="password"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>密码</FormLabel>
             <FormControl>
               <Input placeholder="" {...field} />
             </FormControl>
@@ -103,7 +114,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
         )}
       />
 
-      <FormField
+      {/* <FormField
         control={form.control}
         name="is_auth_disabled"
         render={({ field }) => (
@@ -124,7 +135,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
             <FormMessage />
           </FormItem>
         )}
-      />
+      /> */}
     </EditSheet>
   );
 }
