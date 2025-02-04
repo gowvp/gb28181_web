@@ -13,7 +13,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "~/components/ui/chart";
-import type { Stat } from "~/service/model/stat";
+import type { Stat } from "~/service/api/stat/stat.d";
 
 const chartConfig = {
   use: {
