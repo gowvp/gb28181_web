@@ -53,14 +53,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
           disabled={loading}
+          // style={loading ? { pointerEvents: "none" } : undefined}
           ref={ref}
           {...props}
         >
           {props.children}
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
-              <Loader2 className="animate-spin" />
-            </div>
+            // <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-10">
+            <Loader2 className="animate-spin" />
+            // </div>
           )}
         </Comp>
       </div>

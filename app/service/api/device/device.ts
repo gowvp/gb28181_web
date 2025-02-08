@@ -22,3 +22,8 @@ export async function DelDevice(id: string) {
 export async function EditDevice(id: string, value: any) {
   return await PUT<DeviceItem>(`/devices/${id}`, value);
 }
+
+// RefreshCatalog 刷新通道
+export async function RefreshCatalog(id: string) {
+  return await POST(`/devices/${id}/catalog`);
+}

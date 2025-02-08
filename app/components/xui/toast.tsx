@@ -16,7 +16,7 @@ export function toastErrorMore(
     },
     duration: 2000,
     icon: <OctagonAlert color="red" size={22} />,
-    action: details && {
+    action: (details ?? []).length > 0 && {
       label: <div className="z-100">😲</div>,
       actionButtonStyle: {
         zIndex: 100,

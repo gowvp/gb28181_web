@@ -154,17 +154,6 @@ export default function DeviceView() {
             编辑
           </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              toastWarn("开发中...");
-            }}
-          >
-            <RefreshCcw className="h-4 w-4 mr-1" />
-            刷新
-          </Button>
-
           {/* todo: 删除 loading 状态 */}
           <XButtonDelete
             onConfirm={() => {
