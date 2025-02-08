@@ -15,4 +15,12 @@ export default [
     route("rtmps", "routes/rtmp/rtmp.tsx"),
     route("channels", "routes/channel/channel.tsx"),
   ]),
+
+  // 新布局
+  // layout("routes/home/home.tsx", [
+  //   route("home", "routes/dashboard/dashboard.tsx"),
+  //   route("devices", "routes/device/device.tsx"),
+  //   route("rtmps", "routes/rtmp/rtmp.tsx"),
+  //   route("channels", "routes/channel/channel.tsx"),
+  // ]),
 ] satisfies RouteConfig;
