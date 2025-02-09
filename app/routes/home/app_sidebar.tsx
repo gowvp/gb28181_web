@@ -4,16 +4,11 @@ import * as React from "react";
 import {
   AudioWaveform,
   Command,
-  Frame,
   GalleryVerticalEnd,
-  Map,
-  PieChart,
   Settings2,
   SquareTerminal,
   Cctv,
   Videotape,
-  Waypoints,
-  Tv,
   UserRoundCog,
   ChartNoAxesGantt,
   MonitorUp,
@@ -37,6 +32,7 @@ const data = {
   user: {
     name: "gowvp",
     email: "gowvp.golang.space:15123",
+    // TODO: add avatar
     avatar: "/avatars/shadcn.jpg",
   },
   teams: [
