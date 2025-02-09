@@ -69,11 +69,7 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogContent
-        onEscapeKeyDown={close}
-        asChild
-        className="min-w-[80%]    "
-      >
+      <AlertDialogContent onEscapeKeyDown={close} className="min-w-[80%]">
         <div>
           <AlertDialogHeader className="flex-none">
             <div className="flex justify-between">

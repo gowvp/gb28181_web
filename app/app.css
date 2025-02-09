@@ -138,3 +138,9 @@ body {
 ::-webkit-scrollbar-track {
   background-color: #f0f0f0; /* 设置滚动条轨道背景颜色 */
 }
+
+/* antd 表格滚动条 */
+*{
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
