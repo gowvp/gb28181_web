@@ -58,11 +58,6 @@ const data = {
   ],
   navMain: [
     {
-      title: "分屏监控",
-      url: "/home",
-      icon: Tv,
-    },
-    {
       title: "国标",
       url: "#",
       icon: Cctv,
@@ -82,35 +77,7 @@ const data = {
         },
       ],
     },
-    {
-      title: "推流列表",
-      url: "#",
-      icon: MonitorUp,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "拉流代理",
-      url: "/home",
-      icon: Waypoints,
-      // isActive: true,
-    },
+
     {
       title: "通道管理",
       url: "/home",
@@ -165,16 +132,31 @@ const data = {
       url: "/home",
       icon: SquareTerminal,
     },
+    // {
+    //   name: "分屏监控",
+    //   url: "#",
+    //   icon: PieChart,
+    // },
     {
-      name: "分屏监控",
-      url: "#",
-      icon: PieChart,
+      name: "国标设备",
+      url: "/devices",
+      icon: Cctv,
     },
     {
-      name: "Travel",
-      url: "#",
-      icon: Map,
+      name: "推流列表",
+      url: "rtmps",
+      icon: MonitorUp,
     },
+    // {
+    //   name: "拉流代理",
+    //   url: "#",
+    //   icon: Waypoints,
+    // },
+    // {
+    //   name: "Travel",
+    //   url: "#",
+    //   icon: Map,
+    // },
   ],
 };
 
@@ -185,10 +167,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        {/* 菜单 */}
-        <NavMain items={data.navMain} />
         {/* 快捷 */}
         <NavProjects projects={data.projects} />
+        {/* 菜单 */}
+        <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
         {/* 用户 */}

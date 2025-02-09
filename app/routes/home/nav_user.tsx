@@ -3,6 +3,8 @@ import {
   Bell,
   ChevronsUpDown,
   CreditCard,
+  Github,
+  GithubIcon,
   LogOut,
   Sparkles,
 } from "lucide-react";
@@ -75,21 +77,31 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Sparkles />
-                Upgrade to Pro
+              <DropdownMenuItem
+                onClick={() => window.open("https://github.com/gowvp/gb28181")}
+              >
+                {/* <Sparkles /> */}
+                <Github />
+                Github
               </DropdownMenuItem>
             </DropdownMenuGroup>
+
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                onClick={() => window.open(" https://gitee.com/gowvp/gb28181")}
+              >
+                <Sparkles />
+                Gitee
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
+
               <DropdownMenuItem>
                 <Bell />
                 Notifications

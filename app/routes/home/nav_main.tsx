@@ -32,7 +32,7 @@ export function NavMain({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>导航</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible

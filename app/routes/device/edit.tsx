@@ -14,12 +14,14 @@ import { SquarePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AddDevice, EditDevice } from "~/service/api/device/device";
+import { Radio } from "antd";
 
 const formSchema = z.object({
   device_id: z.string().min(18).max(20),
   name: z.string(),
   password: z.string(),
   id: z.any(),
+  stream_mode: z.number(),
 });
 
 const defaultValues = {
@@ -27,6 +29,7 @@ const defaultValues = {
   name: "",
   password: "",
   id: null,
+  stream_mode: 0,
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
@@ -114,6 +117,28 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
         )}
       />
 
+      <FormField
+        control={form.control}
+        name="stream_mode"
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>收流模式</FormLabel>
+            <FormControl>
+              <div>
+                <Radio.Group
+                  value={field.value.toString()}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                >
+                  <Radio.Button value="0">UDP</Radio.Button>
+                  <Radio.Button value="1">TCP Passive</Radio.Button>
+                  <Radio.Button value="2">TCP Active</Radio.Button>
+                </Radio.Group>
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
       {/* <FormField
         control={form.control}
         name="is_auth_disabled"

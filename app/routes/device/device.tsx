@@ -72,6 +72,13 @@ export default function DeviceView() {
       title: "流传输模式",
       dataIndex: "stream_mode",
       key: "stream_mode",
+      render(value, record) {
+        return record.stream_mode === 0
+          ? "UDP"
+          : record.stream_mode === 1
+          ? "TCP Passive"
+          : "TCP Active";
+      },
     },
     {
       title: "通道数",
@@ -147,6 +154,7 @@ export default function DeviceView() {
                 name: record.name,
                 device_id: record.device_id,
                 password: record.password,
+                stream_mode: record.stream_mode,
               })
             }
           >
@@ -203,24 +211,3 @@ export default function DeviceView() {
     </div>
   );
 }
-
-// function PushAddrsButton({
-//   children,
-//   items,
-// }: {
-//   children: React.ReactNode;
-//   items: string[];
-// }) {
-//   return (
-//     <Popover>
-//       <PopoverTrigger asChild>{children}</PopoverTrigger>
-//       <PopoverContent className="w-80">
-//         {items.map((item) => (
-//           <Button className="w-full" key={item}>
-//             {item}
-//           </Button>
-//         ))}
-//       </PopoverContent>
-//     </Popover>
-//   );
-// }

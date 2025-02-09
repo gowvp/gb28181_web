@@ -108,6 +108,7 @@ export default function RTMPView() {
     {
       title: "操作",
       key: "action",
+      fixed: "right",
       render: (_, record) => (
         <div className="flex gap-0">
           <Button

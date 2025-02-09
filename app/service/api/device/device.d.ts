@@ -18,7 +18,7 @@ export type DeviceItem = {
   password: string;
   port?: number;
   registered_at?: string;
-  stream_mode?: string;
+  stream_mode?: number;
   trasnport?: string;
   updated_at?: string;
   address?: string;

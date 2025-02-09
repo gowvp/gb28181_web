@@ -52,8 +52,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <div className="relative inline-block select-none">
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
-          disabled={loading}
-          // style={loading ? { pointerEvents: "none" } : undefined}
+          // disabled={loading}
           ref={ref}
           {...props}
         >

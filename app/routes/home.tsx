@@ -1,4 +1,3 @@
-import type { Route } from "./+types/home";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -11,6 +10,7 @@ import {
 import React from "react";
 import { cn } from "~/lib/utils";
 import { Link, Outlet } from "react-router";
+import type { Route } from "../+types/root";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-empty-pattern
 function meta({}: Route.MetaArgs) {

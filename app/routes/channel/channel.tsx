@@ -42,7 +42,10 @@ export default function RTMPView() {
     onSuccess(data) {
       playRef.current?.play(data.data.items[0].http_flv ?? "", data.data);
     },
-    onError: ErrorHandle,
+    onError: (error) => {
+      setSelectedPlayID("");
+      ErrorHandle(error);
+    },
   });
 
   // =============== 表格列定义 ===============
@@ -133,7 +136,7 @@ export default function RTMPView() {
       render: (_, record) => (
         <div className="flex gap-0">
           <Button
-            disabled={playIsPending}
+            // disabled={playIsPending}
             isLoading={playIsPending && selectedPlayID === record.id}
             onClick={() => {
               setSelectedPlayID(record.id);
@@ -176,6 +179,7 @@ export default function RTMPView() {
       mutationFn: RefreshCatalog,
       onSuccess: () => {
         toastSuccess("刷新成功");
+        tableRef.current?.setFilters((prev: any) => ({ ...prev, page: 1 }));
       },
       onError: ErrorHandle,
     });
@@ -209,11 +213,11 @@ export default function RTMPView() {
             className="w-56"
           />
 
-          <EditForm
+          {/* <EditForm
             ref={editFromRef}
             onAddSuccess={() => tableRef.current?.handleAddSuccess()}
             onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
-          />
+          /> */}
         </div>
       </div>
 
