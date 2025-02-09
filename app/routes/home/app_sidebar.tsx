@@ -61,7 +61,7 @@ const data = {
       items: [
         {
           title: "国标设备",
-          url: "/devices",
+          url: "devices",
         },
         {
           title: "国标级联",
@@ -125,7 +125,7 @@ const data = {
   projects: [
     {
       name: "控制台",
-      url: "/home",
+      url: "home",
       icon: SquareTerminal,
     },
     // {
@@ -135,7 +135,7 @@ const data = {
     // },
     {
       name: "国标设备",
-      url: "/devices",
+      url: "devices",
       icon: Cctv,
     },
     {
