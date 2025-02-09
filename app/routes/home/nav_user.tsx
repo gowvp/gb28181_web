@@ -1,10 +1,9 @@
+import React from "react";
 import {
   BadgeCheck,
   Bell,
   ChevronsUpDown,
-  CreditCard,
   Github,
-  GithubIcon,
   LogOut,
   Sparkles,
 } from "lucide-react";
