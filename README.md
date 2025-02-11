@@ -1,6 +1,15 @@
-# GoWVP GB/T28181 Pro Web
+<p align="center">
+    <img src="./docs/logo.png" alt="GoWVP Logo" width="550"/>
+</p>
 
-Go 语言实现的开源 GB28181 解决方案，基于GB28181-2022标准实现的网络视频平台，支持 rtmp/rtsp，客户端支持网页版本和安卓 App。
+<p align="center">
+    <a href="https://github.com/gowvp/gb28181/releases"><img src="https://img.shields.io/github/v/release/ixugo/goweb?include_prereleases" alt="Version"/></a>
+    <a href="https://github.com/ixugo/goweb/blob/master/LICENSE.txt"><img src="https://img.shields.io/dub/l/vibe-d.svg" alt="License"/></a>
+</p>
+
+# 开箱即用的 GB/T28181 协议视频平台
+
+go wvp 是 Go 语言实现的开源 GB28181 解决方案，基于GB28181-2022标准实现的网络视频平台，支持 rtmp/rtsp，客户端支持网页版本和安卓 App。支持rtsp/rtmp等视频流转发到国标平台，支持rtsp/rtmp等推流转发到国标平台。
 
 服务端实现 [gb28181](github.com/gowvp/gb28181)
 
@@ -8,6 +17,11 @@ Go 语言实现的开源 GB28181 解决方案，基于GB28181-2022标准实现�
 
 ![首页概览](./docs/home.webp)
 ![首页概览](./docs/play.webp)
+
+## 在线演示平台
++ [在线演示平台 :)](http://gowvp.golang.space:15123/)
+
+
 
 ## 技术栈
 

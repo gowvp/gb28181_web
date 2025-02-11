@@ -137,6 +137,7 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
                   name: "RTSP",
                   addr: getStream()?.rtsp ?? "",
                   icon: <Copy />,
+                  copy: true,
                 },
               ].map((item, i) => (
                 <ToolTips tips={item.addr}>

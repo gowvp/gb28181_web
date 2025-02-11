@@ -15,7 +15,7 @@ import type { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { ErrorHandle } from "~/service/error";
 
-export interface RTMPFormProps {
+export interface PFormProps {
   onAddSuccess?: () => void; // 添加成功回调
   onEditSuccess?: (data: any) => void; // 编辑成功回调
   ref: React.RefObject<EditSheetImpl | null>; // 控制反转

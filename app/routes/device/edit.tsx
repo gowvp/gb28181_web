@@ -9,7 +9,7 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { z } from "zod";
-import { EditSheet, type RTMPFormProps } from "~/components/xui/edit-sheet";
+import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
 import { SquarePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +32,7 @@ const defaultValues = {
   stream_mode: 0,
 };
 
-export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
+export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues,

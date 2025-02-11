@@ -11,6 +11,7 @@ import {
   ChartNoAxesGantt,
   MonitorUp,
   Podcast,
+  Waypoints,
 } from "lucide-react";
 
 import { NavMain } from "./nav_main";
@@ -61,10 +62,10 @@ const data = {
           title: "国标设备",
           url: "devices",
         },
-        {
-          title: "国标级联",
-          url: "#",
-        },
+        // {
+        //   title: "国标级联",
+        //   url: "#",
+        // },
         {
           title: "国标配置",
           url: "#",
@@ -122,7 +123,7 @@ const data = {
   ],
   projects: [
     {
-      name: "控制台",
+      name: "控制面板",
       url: "home",
       icon: SquareTerminal,
     },
@@ -141,11 +142,11 @@ const data = {
       url: "rtmps",
       icon: MonitorUp,
     },
-    // {
-    //   name: "拉流代理",
-    //   url: "#",
-    //   icon: Waypoints,
-    // },
+    {
+      name: "拉流代理",
+      url: "rtsps",
+      icon: Waypoints,
+    },
     // {
     //   name: "Travel",
     //   url: "#",

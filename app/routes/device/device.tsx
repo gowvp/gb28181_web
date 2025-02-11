@@ -19,6 +19,7 @@ import {
 import { toastWarn } from "~/components/xui/toast";
 import { Badge } from "~/components/ui/badge";
 import { useNavigate } from "react-router";
+import XHeader from "~/components/xui/header";
 
 export default function DeviceView() {
   const navigate = useNavigate();
@@ -184,30 +185,33 @@ export default function DeviceView() {
   }, 500);
 
   return (
-    <div className="w-full bg-white p-4 rounded-lg">
-      {/* 搜索和添加区域 */}
-      <div className="flex justify-end items-center py-4">
-        <span className="mr-3">搜索</span>
-        <Input
-          placeholder="可输入设备编号/名称/ID模糊搜索"
-          onChange={(event) => debouncedFilters(event.target.value)}
-          className="w-60"
-        />
+    <>
+      <XHeader items={[{ title: "国标设备", url: "devices" }]} />
+      <div className="w-full bg-white p-4 rounded-lg">
+        {/* 搜索和添加区域 */}
+        <div className="flex justify-end items-center py-4">
+          <span className="mr-3">搜索</span>
+          <Input
+            placeholder="可输入设备编号/名称/ID模糊搜索"
+            onChange={(event) => debouncedFilters(event.target.value)}
+            className="w-60"
+          />
 
-        <EditForm
-          ref={editFromRef}
-          onAddSuccess={() => tableRef.current?.handleAddSuccess()}
-          onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
+          <EditForm
+            ref={editFromRef}
+            onAddSuccess={() => tableRef.current?.handleAddSuccess()}
+            onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
+          />
+        </div>
+
+        <TableQuery
+          ref={tableRef}
+          queryKey={findDevicesKey}
+          fetchFn={FindDevices}
+          deleteFn={DelDevice}
+          columns={columns}
         />
       </div>
-
-      <TableQuery
-        ref={tableRef}
-        queryKey={findDevicesKey}
-        fetchFn={FindDevices}
-        deleteFn={DelDevice}
-        columns={columns}
-      />
-    </div>
+    </>
   );
 }

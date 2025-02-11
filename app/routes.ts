@@ -22,6 +22,7 @@ export default [
     route("home", "routes/dashboard/dashboard.tsx"),
     route("devices", "routes/device/device.tsx"),
     route("rtmps", "routes/rtmp/rtmp.tsx"),
+    route("rtsps", "routes/rtsp/rtsp.tsx"),
     route("channels", "routes/channel/channel.tsx"),
   ]),
 ] satisfies RouteConfig;

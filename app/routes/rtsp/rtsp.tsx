@@ -4,8 +4,6 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Copy, Edit, SquarePlay } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { DelRTMP, FindRTMPs, findRTMPsKey } from "~/service/api/rtmp/rtmp";
-import type { RTMPItem } from "~/service/api/rtmp/rtmp.d";
 import { EditForm } from "./edit";
 import { useRef, useState } from "react";
 import useDebounce from "~/components/util/debounce";
@@ -20,15 +18,17 @@ import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import ToolTips from "~/components/xui/tips";
 import XHeader from "~/components/xui/header";
+import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
+import type { RTSPItem } from "~/service/api/rtsp/rtsp.d";
 
-export default function RTMPView() {
+export default function RTSPView() {
   // =============== 状态定义 ===============
   const [selectedPlayID, setSelectedPlayID] = useState("");
 
   // refs
   const editFromRef = useRef<EditSheetImpl>(null);
   const playRef = useRef<PlayBoxRef>(null);
-  const tableRef = useRef<TableQueryRef<RTMPItem>>(null);
+  const tableRef = useRef<TableQueryRef<RTSPItem>>(null);
 
   // =============== 查询与操作 ===============
 
@@ -42,9 +42,9 @@ export default function RTMPView() {
   });
 
   // =============== 表格列定义 ===============
-  const columns: ColumnsType<RTMPItem> = [
+  const columns: ColumnsType<RTSPItem> = [
     {
-      title: "名称",
+      title: "备注",
       dataIndex: "name",
       key: "name",
     },
@@ -59,7 +59,7 @@ export default function RTMPView() {
       key: "stream",
     },
     {
-      title: "推流状态",
+      title: "拉流状态",
       dataIndex: "status",
       key: "status",
       render: (value: string) => {
@@ -89,23 +89,30 @@ export default function RTMPView() {
       render: (value: string) => value || "-",
     },
     {
-      title: "推流时间",
-      dataIndex: "pushed_at",
-      key: "pushed_at",
-      render: (pushed_at: string, record: RTMPItem) => {
-        const color = pushed_at < record.stopped_at ? "text-gray-400" : "";
-        return <div className={color}>{formatDate(pushed_at)}</div>;
+      title: "代理方式",
+      dataIndex: "transport",
+      key: "transport",
+      render: (value: number) => {
+        return value == 0 ? "UDP" : "TCP";
       },
     },
     {
-      title: "停流时间",
-      dataIndex: "stopped_at",
-      key: "stopped_at",
-      render: (stopped_at: string, record: RTMPItem) => {
-        const color = record.pushed_at > stopped_at ? "text-gray-400" : "";
-        return <div className={color}>{formatDate(stopped_at)}</div>;
+      title: "创建时间",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (created_at: string, record: RTSPItem) => {
+        return <div>{formatDate(created_at)}</div>;
       },
     },
+    // {
+    //   title: "停流时间",
+    //   dataIndex: "stopped_at",
+    //   key: "stopped_at",
+    //   render: (stopped_at: string, record: RTMPItem) => {
+    //     const color = record.pushed_at > stopped_at ? "text-gray-400" : "";
+    //     return <div className={color}>{formatDate(stopped_at)}</div>;
+    //   },
+    // },
     {
       title: "操作",
       key: "action",
@@ -134,36 +141,15 @@ export default function RTMPView() {
                 id: record.id,
                 app: record.app,
                 stream: record.stream,
-                is_auth_disabled: record.is_auth_disabled,
+                transport: record.transport,
+                enabled: record.enabled,
+                timeout_s: record.timeout_s,
               })
             }
           >
             <Edit className="h-4 w-4 mr-1" />
             编辑
           </Button>
-
-          <ToolTips
-            disabled={!record.is_auth_disabled}
-            tips="橘色表示不安全的，推流不鉴权"
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                const value = record.push_addrs[0];
-                copy2Clipboard(value, {
-                  title: "推流地址已复制",
-                  description: value,
-                });
-              }}
-            >
-              <Copy
-                className="h-4 w-4 mr-1"
-                color={record.is_auth_disabled ? "orange" : "#000"}
-              />
-              RTMP
-            </Button>
-          </ToolTips>
 
           {/* todo: 删除 loading 状态 */}
           <XButtonDelete
@@ -184,7 +170,7 @@ export default function RTMPView() {
 
   return (
     <>
-      <XHeader items={[{ title: "推流列表", url: "rtmps" }]} />
+      <XHeader items={[{ title: "拉流代理", url: "rtsps" }]} />
 
       <div className="w-full bg-white p-4 rounded-lg">
         {/* 搜索和添加区域 */}
@@ -205,9 +191,9 @@ export default function RTMPView() {
 
         <TableQuery
           ref={tableRef}
-          queryKey={findRTMPsKey}
-          fetchFn={FindRTMPs}
-          deleteFn={DelRTMP}
+          queryKey={findProxysKey}
+          fetchFn={FindProxys}
+          deleteFn={DelProxy}
           columns={columns}
         />
 

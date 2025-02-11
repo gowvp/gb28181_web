@@ -11,7 +11,7 @@ import {
 } from "~/components/ui/form";
 import { z } from "zod";
 import { AddRTMP, EditRTMP } from "~/service/api/rtmp/rtmp";
-import { EditSheet, type RTMPFormProps } from "~/components/xui/edit-sheet";
+import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
 import { SquarePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,7 +31,7 @@ const defaultValues = {
   is_auth_disabled: false,
 };
 
-export function EditForm({ onAddSuccess, onEditSuccess, ref }: RTMPFormProps) {
+export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues,

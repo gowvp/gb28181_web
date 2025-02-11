@@ -21,6 +21,7 @@ import PlayBox, { type PlayBoxRef } from "~/components/xui/play";
 import { toastSuccess, toastWarn } from "~/components/xui/toast";
 import { RefreshCatalog } from "~/service/api/device/device";
 import { cn } from "~/lib/utils";
+import XHeader from "~/components/xui/header";
 
 export default function RTMPView() {
   // =============== 状态定义 ===============
@@ -185,53 +186,58 @@ export default function RTMPView() {
     });
 
   return (
-    <div className="w-full bg-white p-4 rounded-lg">
-      <div className="flex justify-between items-center">
-        <Button
-          // variant="ghost"
-          size="sm"
-          onClick={() => {
-            if (device_id) refreshCatalogMutate(device_id);
-          }}
-          disabled={refreshCatalogIsPending}
-        >
-          <RefreshCcw
-            className={cn(
-              "h-4 w-4 mr-1",
-              refreshCatalogIsPending && "animate-spin"
-            )}
-          />
-          向设备同步通道
-        </Button>
+    <>
+      <XHeader
+        items={[{ title: "国标设备", url: "devices" }, { title: "通道列表" }]}
+      />
+      <div className="w-full bg-white p-4 rounded-lg">
+        <div className="flex justify-between items-center">
+          <Button
+            // variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (device_id) refreshCatalogMutate(device_id);
+            }}
+            disabled={refreshCatalogIsPending}
+          >
+            <RefreshCcw
+              className={cn(
+                "h-4 w-4 mr-1",
+                refreshCatalogIsPending && "animate-spin"
+              )}
+            />
+            向设备同步通道
+          </Button>
 
-        {/* 搜索和添加区域 */}
-        <div className="flex justify-end items-center py-4">
-          <span className="mr-3">搜索</span>
-          <Input
-            placeholder="可输入名称/国标ID/id 模糊搜索"
-            onChange={(event) => debouncedFilters(event.target.value)}
-            className="w-56"
-          />
+          {/* 搜索和添加区域 */}
+          <div className="flex justify-end items-center py-4">
+            <span className="mr-3">搜索</span>
+            <Input
+              placeholder="可输入名称/国标ID/id 模糊搜索"
+              onChange={(event) => debouncedFilters(event.target.value)}
+              className="w-56"
+            />
 
-          {/* <EditForm
+            {/* <EditForm
             ref={editFromRef}
             onAddSuccess={() => tableRef.current?.handleAddSuccess()}
             onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
           /> */}
+          </div>
         </div>
+
+        <TableQuery
+          ref={tableRef}
+          queryKey={findChannelsKey}
+          fetchFn={FindChannels}
+          columns={columns}
+          defaultFilters={{ page: 1, size: 10, device_id: device_id ?? "" }}
+        />
+
+        {/* 播放器 */}
+        <PlayBox ref={playRef} />
       </div>
-
-      <TableQuery
-        ref={tableRef}
-        queryKey={findChannelsKey}
-        fetchFn={FindChannels}
-        columns={columns}
-        defaultFilters={{ page: 1, size: 10, device_id: device_id ?? "" }}
-      />
-
-      {/* 播放器 */}
-      <PlayBox ref={playRef} />
-    </div>
+    </>
   );
 }
 

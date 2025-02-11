@@ -3,32 +3,35 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
 import { z } from "zod";
-import { AddRTMP, EditRTMP } from "~/service/api/rtmp/rtmp";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
 import { SquarePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Radio } from "antd";
+import { AddProxy, EditProxy } from "~/service/api/rtsp/rtsp";
 
 const formSchema = z.object({
   app: z.string().min(2).max(20),
   stream: z.string().min(2).max(20),
   id: z.any(),
-  is_auth_disabled: z.boolean(),
+  timeout_s: z.number().min(1).max(100),
+  enabled: z.boolean(),
+  transport: z.number().min(0).max(1),
 });
 
 const defaultValues = {
   id: null,
   app: "live",
   stream: "",
-  is_auth_disabled: false,
+  timeout_s: 10,
+  enabled: true,
+  transport: 1,
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
@@ -41,8 +44,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     <EditSheet
       form={form}
       ref={ref}
-      title="推流信息"
-      description="在此输入推流信息，然后点击保存"
+      title="拉流信息"
+      description="在此输入拉流信息，然后点击保存"
       schema={formSchema}
       defaultValues={defaultValues}
       onSuccess={{
@@ -50,8 +53,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         edit: onEditSuccess,
       }}
       mutation={{
-        add: AddRTMP,
-        edit: EditRTMP,
+        add: AddProxy,
+        edit: EditProxy,
       }}
       trigger={
         <Button className="mx-3">
@@ -102,14 +105,49 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           </FormItem>
         )}
       />
+      <FormField
+        control={form.control}
+        name="transport"
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>*拉流方式</FormLabel>
+
+            <FormControl>
+              <div>
+                <Radio.Group
+                  value={field.value.toString()}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                >
+                  <Radio.Button value="0">UDP</Radio.Button>
+                  <Radio.Button value="1">TCP</Radio.Button>
+                </Radio.Group>
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}
-        name="is_auth_disabled"
+        name="timeout_s"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>*拉流超时(秒)</FormLabel>
+            <FormControl>
+              <Input placeholder="" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="enabled"
         render={({ field }) => (
           <FormItem className="space-y-3">
-            <FormLabel>推流鉴权</FormLabel>
-            <FormDescription>建议开启，禁用推流鉴权是不安全的</FormDescription>
+            <FormLabel>是否启用</FormLabel>
             <FormControl>
               <div>
                 <Radio.Group
