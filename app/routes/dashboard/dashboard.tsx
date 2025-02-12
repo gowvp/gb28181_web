@@ -22,7 +22,7 @@ export default function DashboardView() {
 
   return (
     <>
-      <XHeader items={[{ title: "控制面板", url: "dashboard" }]} />
+      <XHeader items={[{ title: "控制面板", url: "home" }]} />
       <div className="flex flex-col h-full ml-1">
         <div className="flex flex-1">
           {[

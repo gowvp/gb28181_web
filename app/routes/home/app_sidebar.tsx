@@ -12,6 +12,8 @@ import {
   MonitorUp,
   Podcast,
   Waypoints,
+  Github,
+  Send,
 } from "lucide-react";
 
 import { NavMain } from "./nav_main";
@@ -25,6 +27,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "~/components/ui/sidebar";
+import { NavSecondary } from "./nav_secondary";
 
 // This is sample data.
 const data = {
@@ -153,6 +156,13 @@ const data = {
     //   icon: Map,
     // },
   ],
+  navSecondary: [
+    {
+      title: "Github",
+      url: "https://github.com/gowvp/gb28181",
+      icon: Github,
+    },
+  ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -166,6 +176,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavProjects projects={data.projects} />
         {/* 菜单 */}
         <NavMain items={data.navMain} />
+        {/* 开源项目，请保留仓库信息 */}
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         {/* 用户 */}

@@ -11,7 +11,9 @@
 
 go wvp 是 Go 语言实现的开源 GB28181 解决方案，基于GB28181-2022标准实现的网络视频平台，支持 rtmp/rtsp，客户端支持网页版本和安卓 App。支持rtsp/rtmp等视频流转发到国标平台，支持rtsp/rtmp等推流转发到国标平台。
 
-服务端实现 [gb28181](github.com/gowvp/gb28181)
+## Golang 服务端实现 [gb28181](github.com/gowvp/gb28181)
+
+当前项目是由 React 实现的 web 管理平台
 
 ## 页面缩略图
 
