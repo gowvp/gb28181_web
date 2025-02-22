@@ -23,15 +23,17 @@ const formSchema = z.object({
   timeout_s: z.number().min(1).max(100),
   enabled: z.boolean(),
   transport: z.number().min(0).max(1),
+  source_url: z.string().min(10),
 });
 
 const defaultValues = {
   id: null,
-  app: "live",
+  app: "pull",
   stream: "",
   timeout_s: 10,
   enabled: true,
-  transport: 1,
+  transport: 0,
+  source_url: "",
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
@@ -107,6 +109,19 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       />
       <FormField
         control={form.control}
+        name="source_url"
+        render={({ field }) => (
+          <FormItem className="space-y-3">
+            <FormLabel>*拉流地址</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
         name="transport"
         render={({ field }) => (
           <FormItem className="space-y-3">
@@ -118,8 +133,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
                   value={field.value.toString()}
                   onChange={(e) => field.onChange(Number(e.target.value))}
                 >
-                  <Radio.Button value="0">UDP</Radio.Button>
-                  <Radio.Button value="1">TCP</Radio.Button>
+                  <Radio.Button value="0">TCP</Radio.Button>
+                  <Radio.Button value="1">UDP</Radio.Button>
                 </Radio.Group>
               </div>
             </FormControl>
@@ -135,7 +150,12 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           <FormItem>
             <FormLabel>*拉流超时(秒)</FormLabel>
             <FormControl>
-              <Input placeholder="" {...field} />
+              <Input
+                type="number"
+                placeholder=""
+                {...field}
+                onChange={(e) => field.onChange(Number(e.target.value))}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -154,8 +174,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
                   value={field.value.toString()}
                   onChange={(e) => field.onChange(e.target.value == "true")}
                 >
-                  <Radio.Button value="false">开启</Radio.Button>
-                  <Radio.Button value="true">禁用</Radio.Button>
+                  <Radio.Button value="true">开启</Radio.Button>
+                  <Radio.Button value="false">禁用</Radio.Button>
                 </Radio.Group>
               </div>
             </FormControl>

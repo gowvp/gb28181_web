@@ -44,6 +44,7 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
     const { data, isLoading } = useQuery({
       queryKey: [queryKey, filters],
       queryFn: () => fetchFn(filters),
+      refetchInterval: 5000,
     });
 
     // 删除功能

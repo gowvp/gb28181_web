@@ -26,7 +26,7 @@ const formSchema = z.object({
 
 const defaultValues = {
   id: null,
-  app: "live",
+  app: "push",
   stream: "",
   is_auth_disabled: false,
 };

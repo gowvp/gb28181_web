@@ -71,7 +71,7 @@ const data = {
         // },
         {
           title: "国标配置",
-          url: "#",
+          url: "gb/sip",
         },
       ],
     },

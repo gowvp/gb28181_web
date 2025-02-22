@@ -93,7 +93,7 @@ export default function RTSPView() {
       dataIndex: "transport",
       key: "transport",
       render: (value: number) => {
-        return value == 0 ? "UDP" : "TCP";
+        return value == 0 ? "TCP" : "UDP";
       },
     },
     {
@@ -144,6 +144,7 @@ export default function RTSPView() {
                 transport: record.transport,
                 enabled: record.enabled,
                 timeout_s: record.timeout_s,
+                source_url: record.source_url,
               })
             }
           >
