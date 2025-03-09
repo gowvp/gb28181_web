@@ -2,28 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+
 import type { ChannelItem } from "~/service/api/channel/channel.d";
-// import type { ChannelItem } from "~/service/api/channel/channel";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import { Pagination } from "antd";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "~/components/ui/drawer";
+
 import ChannelDetailView from "./detail";
 import { Filter } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
@@ -32,7 +15,7 @@ import { cn } from "~/lib/utils";
 export default function ChannelsView() {
   const [filters, setFilters] = useState({
     page: 1,
-    size: 10,
+    size: 20,
     is_online: "all",
   });
   // 查询数据
@@ -102,31 +85,38 @@ export default function ChannelsView() {
       </div>
 
       <div className="flex flex-wrap gap-4">
-        {[...(data?.data.items ?? []), ...Array(4).fill({ id: "none" })].map(
-          (item, index) => {
-            if (item.id === "none") {
-              return <ChannelCardItem2 key={index} />;
-            }
-            return (
-              <div
-                onClick={() => {
-                  detailRef.current.open(item);
-                }}
-                key={item.id}
-              >
-                <ChannelCardItem item={item} />
-              </div>
-            );
+        {[
+          ...(data?.data.items ?? []),
+          ...Array(Math.max(0, 6 - (data?.data.items.length ?? 0))).fill({
+            id: "none",
+          }),
+        ].map((item, index) => {
+          if (item.id === "none") {
+            return <ChannelCardItem2 key={index} />;
           }
-        )}
+          return (
+            <div
+              onClick={() => {
+                detailRef.current.open(item);
+              }}
+              key={item.id}
+            >
+              <ChannelCardItem item={item} />
+            </div>
+          );
+        })}
       </div>
 
-      <div className="absolute bottom-2 right-10">
+      <div className="fixed bottom-2 right-10">
         <Pagination
           showSizeChanger
-          // onShowSizeChange={}
-          defaultCurrent={1}
+          pageSizeOptions={[20, 40, 60, 100]}
+          current={filters.page}
+          pageSize={filters.size}
           total={data?.data.total}
+          onChange={(page, pageSize) => {
+            setFilters({ ...filters, page, size: pageSize });
+          }}
         />
       </div>
 
