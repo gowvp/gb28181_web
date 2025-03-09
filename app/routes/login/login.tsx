@@ -38,7 +38,7 @@ export default function LoginView() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={() => navigate("/home")}>登 录</Button>
+          <Button onClick={() => navigate("/nchannels")}>登 录</Button>
         </CardFooter>
       </Card>
       {/* </TabsContent> */}

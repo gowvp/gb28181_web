@@ -184,7 +184,7 @@ export default function RTMPView() {
 
   return (
     <>
-      <XHeader items={[{ title: "推流列表", url: "rtmps" }]} />
+      {/* <XHeader items={[{ title: "推流列表", url: "rtmps" }]} /> */}
 
       <div className="w-full bg-white p-4 rounded-lg">
         {/* 搜索和添加区域 */}

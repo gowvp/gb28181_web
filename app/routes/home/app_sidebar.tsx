@@ -14,6 +14,7 @@ import {
   Waypoints,
   Github,
   Send,
+  Airplay,
 } from "lucide-react";
 
 import { NavMain } from "./nav_main";
@@ -54,92 +55,90 @@ const data = {
       plan: "Onvif",
     },
   ],
-  navMain: [
-    {
-      title: "国标",
-      url: "#",
-      icon: Cctv,
-      isActive: true,
-      items: [
-        {
-          title: "国标设备",
-          url: "devices",
-        },
-        // {
-        //   title: "国标级联",
-        //   url: "#",
-        // },
-        {
-          title: "国标配置",
-          url: "gb/sip",
-        },
-      ],
-    },
+  // navMain: [
+  //   {
+  //     title: "国标",
+  //     url: "#",
+  //     icon: Cctv,
+  //     isActive: true,
+  //     items: [
+  //       {
+  //         title: "国标设备",
+  //         url: "devices",
+  //       },
+  //       // {
+  //       //   title: "国标级联",
+  //       //   url: "#",
+  //       // },
+  //       {
+  //         title: "国标配置",
+  //         url: "gb/sip",
+  //       },
+  //     ],
+  //   },
 
-    {
-      title: "通道管理",
-      url: "/home",
-      icon: ChartNoAxesGantt,
-      // isActive: true,
-    },
-    {
-      title: "云存录像",
-      url: "/home",
-      icon: Videotape,
-      // isActive: true,
-    },
-    {
-      title: "节点管理",
-      url: "/home",
-      icon: Podcast,
-      // isActive: true,
-    },
-    {
-      title: "用户管理",
-      url: "/home",
-      icon: UserRoundCog,
-      // isActive: true,
-    },
-    {
-      title: "系统设置",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
+  //   {
+  //     title: "通道管理",
+  //     url: "/home",
+  //     icon: ChartNoAxesGantt,
+  //     // isActive: true,
+  //   },
+  //   {
+  //     title: "云存录像",
+  //     url: "/home",
+  //     icon: Videotape,
+  //     // isActive: true,
+  //   },
+  //   {
+  //     title: "节点管理",
+  //     url: "/home",
+  //     icon: Podcast,
+  //     // isActive: true,
+  //   },
+  //   {
+  //     title: "用户管理",
+  //     url: "/home",
+  //     icon: UserRoundCog,
+  //     // isActive: true,
+  //   },
+  //   {
+  //     title: "系统设置",
+  //     url: "#",
+  //     icon: Settings2,
+  //     items: [
+  //       {
+  //         title: "General",
+  //         url: "#",
+  //       },
+  //       {
+  //         title: "Team",
+  //         url: "#",
+  //       },
+  //       {
+  //         title: "Billing",
+  //         url: "#",
+  //       },
+  //       {
+  //         title: "Limits",
+  //         url: "#",
+  //       },
+  //     ],
+  //   },
+  // ],
   projects: [
-    {
-      name: "控制面板",
-      url: "home",
-      icon: SquareTerminal,
-    },
     // {
     //   name: "分屏监控",
     //   url: "#",
     //   icon: PieChart,
+
     // },
+
     {
-      name: "国标设备",
-      url: "devices",
+      name: "国标通道",
+      url: "nchannels",
       icon: Cctv,
     },
+
     {
       name: "推流列表",
       url: "rtmps",
@@ -149,6 +148,11 @@ const data = {
       name: "拉流代理",
       url: "rtsps",
       icon: Waypoints,
+    },
+    {
+      name: "监控指标",
+      url: "home",
+      icon: SquareTerminal,
     },
     // {
     //   name: "Travel",
@@ -172,10 +176,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        {/* 快捷 */}
-        <NavProjects projects={data.projects} />
         {/* 菜单 */}
-        <NavMain items={data.navMain} />
+        <NavMain items={data.projects} />
+        {/* 快捷 */}
+        {/* <NavProjects projects={data.projects} /> */}
         {/* 开源项目，请保留仓库信息 */}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>

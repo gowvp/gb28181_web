@@ -9,6 +9,7 @@ import {
   Breadcrumb,
 } from "../ui/breadcrumb";
 import { Separator } from "../ui/separator";
+import { Link } from "react-router";
 
 export default function XHeader({
   items = [],
@@ -28,9 +29,10 @@ export default function XHeader({
                   {(item.url?.length ?? 0) == 0 ? (
                     <BreadcrumbPage>{item.title}</BreadcrumbPage>
                   ) : (
-                    <BreadcrumbLink href={item.url}>
-                      {item.title}
-                    </BreadcrumbLink>
+                    <Link to={item.url ?? ""}>{item.title}</Link>
+                    // <BreadcrumbLink href={item.url}>
+
+                    // </BreadcrumbLink>
                   )}
                 </BreadcrumbItem>
                 {index < items.length - 1 && (

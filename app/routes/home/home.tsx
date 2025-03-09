@@ -24,10 +24,9 @@ function meta({}: Route.MetaArgs) {
     { name: "description", content: "GOWVP" },
   ];
 }
-
 export default function Page() {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
         <div className="flex-1 overflow-auto">

@@ -24,6 +24,7 @@ export default [
     route("rtmps", "routes/rtmp/rtmp.tsx"),
     route("rtsps", "routes/rtsp/rtsp.tsx"),
     route("channels", "routes/channel/channel.tsx"),
+    route("nchannels", "routes/channels/channels.tsx"),
     route("gb/sip", "routes/device/config/config.tsx"),
   ]),
 ] satisfies RouteConfig;

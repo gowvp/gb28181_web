@@ -49,6 +49,7 @@ export type FindChannelsResponse = {
 export type ChannelItem = {
   channel_id: string;
   device_id: string;
+  did: string;
   ext: Ext;
   id: string;
   is_online: boolean;

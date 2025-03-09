@@ -70,7 +70,7 @@ export default function config() {
     <>
       <XHeader
         items={[
-          { title: "国标设备", url: "/devices" },
+          { title: "监控列表", url: "/nchannels" },
           { title: "国标配置", url: "/gb/sip" },
         ]}
       />
@@ -131,7 +131,7 @@ export default function config() {
               control={form.control}
               name="password"
               render={({ field }) => (
-                <FormItem hidden={!field.value}>
+                <FormItem>
                   <FormLabel>密码</FormLabel>
                   <FormControl>
                     <Input {...field} />

@@ -140,7 +140,7 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
                   copy: true,
                 },
               ].map((item, i) => (
-                <ToolTips tips={item.addr}>
+                <ToolTips tips={item.addr} key={i}>
                   <Button
                     size="sm"
                     variant="outline"

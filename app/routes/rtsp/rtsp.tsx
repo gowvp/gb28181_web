@@ -171,7 +171,7 @@ export default function RTSPView() {
 
   return (
     <>
-      <XHeader items={[{ title: "拉流代理", url: "rtsps" }]} />
+      {/* <XHeader items={[{ title: "拉流代理", url: "rtsps" }]} /> */}
 
       <div className="w-full bg-white p-4 rounded-lg">
         {/* 搜索和添加区域 */}

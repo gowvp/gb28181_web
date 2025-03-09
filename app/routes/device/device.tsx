@@ -186,12 +186,17 @@ export default function DeviceView() {
 
   return (
     <>
-      <XHeader items={[{ title: "国标设备", url: "devices" }]} />
       <div className="w-full bg-white p-4 rounded-lg">
         <div className="flex justify-between items-center">
-          <Link to="/gb/sip">
-            <Button variant="outline">接入信息</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/gb/sip">
+              <Button variant="outline">接入信息</Button>
+            </Link>
+
+            <Link to="/nchannels">
+              <Button variant="outline">新版界面</Button>
+            </Link>
+          </div>
 
           {/* 搜索和添加区域 */}
           <div className="flex justify-end items-center py-4">

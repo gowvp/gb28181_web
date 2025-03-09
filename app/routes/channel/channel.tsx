@@ -187,9 +187,9 @@ export default function RTMPView() {
 
   return (
     <>
-      <XHeader
+      {/* <XHeader
         items={[{ title: "国标设备", url: "devices" }, { title: "通道列表" }]}
-      />
+      /> */}
       <div className="w-full bg-white p-4 rounded-lg">
         <div className="flex justify-between items-center">
           <Button

@@ -15,6 +15,7 @@ import React from "react";
 import { z } from "zod";
 import { Toaster } from "./components/ui/sonner";
 import { ConfigProvider } from "antd";
+import { DrawerCSSProvider } from "./components/xui/drawer";
 // import { Toaster } from "./components/ui/toaster";
 
 // 全局设置自定义的错误信息
@@ -121,7 +122,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               },
             }}
           >
-            {children}
+            <DrawerCSSProvider>{children}</DrawerCSSProvider>
           </ConfigProvider>
 
           <ScrollRestoration />
