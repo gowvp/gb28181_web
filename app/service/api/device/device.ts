@@ -4,7 +4,7 @@ import type {
   DeviceItem,
   FindDevicesResponse,
   GetDeviceResponse,
-} from "./device.d";
+} from "./state";
 
 export const findDevicesKey = "findDevices";
 // FindDevices 查询设备列表

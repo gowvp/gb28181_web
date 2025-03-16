@@ -19,7 +19,7 @@ import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import ToolTips from "~/components/xui/tips";
 import XHeader from "~/components/xui/header";
 import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
-import type { RTSPItem } from "~/service/api/rtsp/rtsp.d";
+import type { RTSPItem } from "~/service/api/rtsp/state";
 
 export default function RTSPView() {
   // =============== 状态定义 ===============

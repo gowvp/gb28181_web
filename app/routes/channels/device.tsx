@@ -5,7 +5,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "~/components/ui/drawer";
-import type { GetDeviceResponse } from "~/service/api/device/device.d";
+import type { GetDeviceResponse } from "~/service/api/device/state";
 import { GetDevice, getDeviceKey } from "~/service/api/device/device";
 import { ErrorHandle } from "~/service/error";
 import { Badge } from "~/components/ui/badge";
@@ -47,9 +47,9 @@ export default function DeviceDetailView({
         console.error("设备ID为空");
         return;
       }
-      console.log("🚀 ~ showDetail ~ deviceID:", deviceID);
+      // console.log("🚀 ~ showDetail ~ deviceID:", deviceID);
       setDid(deviceID);
-      setTimeout(() => refetch(), 0);
+      setTimeout(() => refetch(), 100);
     },
   }));
 
@@ -104,7 +104,7 @@ export default function DeviceDetailView({
           </DrawerHeader>
         </TabsContent>
         <TabsContent value="channels">
-          <div className="px-4">
+          <div className="px-4 space-y-2">
             {channels?.data.items.map((item) => (
               <ChannelCardItem key={item.id} item={item} />
             ))}

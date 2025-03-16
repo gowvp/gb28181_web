@@ -3,7 +3,7 @@ import React, { useRef, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
 
-import type { ChannelItem } from "~/service/api/channel/channel.d";
+import type { ChannelItem } from "~/service/api/channel/state";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import { Pagination } from "antd";
 

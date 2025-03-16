@@ -20,7 +20,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "~/components/ui/chart";
-import type { Disk } from "~/service/api/stat/stat.d";
+import type { Disk } from "~/service/api/stat/state";
 
 const chartConfig = {
   used: {

@@ -23,7 +23,7 @@ import { ErrorHandle } from "~/service/error";
 import type { PlayBoxRef } from "~/components/xui/play";
 import { GetDevice, getDeviceKey } from "~/service/api/device/device";
 import DeviceDetailView from "./device";
-import type { ChannelItem } from "~/service/api/channel/channel.d";
+import type { ChannelItem } from "~/service/api/channel/state";
 import {
   Select,
   SelectContent,

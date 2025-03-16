@@ -1,5 +1,5 @@
 import { GET, POST, PUT } from "~/service/http";
-import type { GetConfigInfoResponse } from "./config.d";
+import type { GetConfigInfoResponse } from "./state";
 
 export const getConfigInfoKey = "getConfigInfo";
 export async function GetConfigInfo() {

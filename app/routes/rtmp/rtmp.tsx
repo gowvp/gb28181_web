@@ -5,7 +5,7 @@ import { Input } from "~/components/ui/input";
 import { Copy, Edit, SquarePlay } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { DelRTMP, FindRTMPs, findRTMPsKey } from "~/service/api/rtmp/rtmp";
-import type { RTMPItem } from "~/service/api/rtmp/rtmp.d";
+import type { RTMPItem } from "~/service/api/rtmp/state";
 import { EditForm } from "./edit";
 import { useRef, useState } from "react";
 import useDebounce from "~/components/util/debounce";

@@ -13,7 +13,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "~/components/ui/chart";
-import type { NetStat } from "~/service/api/stat/stat.d";
+import type { NetStat } from "~/service/api/stat/state";
 
 const chartConfig = {
   up: {

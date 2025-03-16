@@ -1,6 +1,6 @@
 import { DELETE, GET, POST, PUT } from "../../http";
 // import type { FindRTMPsResponse, RTMPItem } from "./rtmp.d";
-import type { FindProxysResponse, RTSPItem } from "./rtsp.d";
+import type { FindProxysResponse, RTSPItem } from "./state";
 
 export const findProxysKey = "rtsps";
 // FindProxys 查询推流通道列表

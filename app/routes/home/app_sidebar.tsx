@@ -15,6 +15,7 @@ import {
   Github,
   Send,
   Airplay,
+  Network,
 } from "lucide-react";
 
 import { NavMain } from "./nav_main";
@@ -36,7 +37,7 @@ const data = {
     name: "gowvp",
     email: "gowvp.golang.space:15123",
     // TODO: add avatar
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "/assets/imgs/bg.webp",
   },
   teams: [
     {
@@ -148,6 +149,11 @@ const data = {
       name: "拉流代理",
       url: "rtsps",
       icon: Waypoints,
+    },
+    {
+      name: "网络配置",
+      url: "medias",
+      icon: Network,
     },
     {
       name: "监控指标",

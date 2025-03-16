@@ -10,7 +10,7 @@ import { formatDate } from "~/components/util/date";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import { EditForm } from "./edit";
-import type { DeviceItem } from "~/service/api/device/device.d";
+import type { DeviceItem } from "~/service/api/device/state";
 import {
   DelDevice,
   FindDevices,

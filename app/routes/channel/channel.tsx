@@ -16,7 +16,7 @@ import { ErrorHandle } from "~/service/error";
 import { Badge } from "~/components/ui/badge";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import type { ChannelItem } from "~/service/api/channel/channel.d";
+import type { ChannelItem } from "~/service/api/channel/state";
 import PlayBox, { type PlayBoxRef } from "~/components/xui/play";
 import { toastSuccess, toastWarn } from "~/components/xui/toast";
 import { RefreshCatalog } from "~/service/api/device/device";
