@@ -26,5 +26,10 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+
+    ssr: {
+      // 外部化会导致问题的依赖项
+      noExternal: ["react-resizable-panels"],
+    },
   };
 });

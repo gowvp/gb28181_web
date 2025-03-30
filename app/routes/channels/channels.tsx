@@ -4,11 +4,15 @@ import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
 
 import type { ChannelItem } from "~/service/api/channel/state";
-import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
+import {
+  FindChannels,
+  findChannelsKey,
+  RefreshSnapshot,
+} from "~/service/api/channel/channel";
 import { Pagination } from "antd";
 
 import ChannelDetailView from "./detail";
-import { Filter } from "lucide-react";
+import { Filter, RefreshCw } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { cn } from "~/lib/utils";
 
@@ -126,14 +130,53 @@ export default function ChannelsView() {
 }
 
 export function ChannelCardItem({ item }: { item: ChannelItem | any }) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+
+  const { data: url, refetch } = useQuery({
+    queryKey: ["snapshot", item.id],
+    queryFn: () => RefreshSnapshot(item.id, item.url, 300),
+    enabled: item.is_online,
+    retry: 1,
+  });
+
+  // 更新 snapshotUrl
+  React.useEffect(() => {
+    if (url?.data?.link) {
+      setSnapshotUrl(url.data.link);
+    }
+  }, [url]);
+
+  // const handleRefresh = async () => {
+  //   if (isLoading) return;
+  //   setIsLoading(true);
+  //   try {
+  //     await RefreshSnapshot(item.id, "", 10);
+  //     await refetch(); // 刷新后重新获取快照
+  //   } catch (error) {
+  //     console.error("刷新快照失败:", error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
   return (
     <div className="h-auto w-full max-w-[300px] max-h-[300px]">
       <div className="border rounded-2xl overflow-hidden hover:shadow-md transition-shadow duration-300">
-        <div className="aspect-video bg-slate-100 flex items-center justify-center relative">
+        <div
+          className="aspect-video bg-slate-100 flex items-center justify-center relative"
+          // onMouseEnter={() => setIsHovered(true)}
+          // onMouseLeave={() => setIsHovered(false)}
+        >
           <img
-            src={"./assets/imgs/bg.webp"}
+            src={snapshotUrl || "./assets/imgs/bg.webp"}
             alt="直播预览"
             className="aspect-[4/3] object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = "./assets/imgs/bg.webp";
+            }}
           />
           {/* 是否在播放 */}
           <div className="absolute top-2 left-2 flex flex-row gap-2">
@@ -158,7 +201,27 @@ export function ChannelCardItem({ item }: { item: ChannelItem | any }) {
             </div>
           </div>
 
-          {/* 是否在线 */}
+          {/* 刷新按钮 */}
+          {isHovered && item.is_online && (
+            <div className="absolute top-2 right-2">
+              <Button
+                variant="secondary"
+                size="icon"
+                className="bg-black/50 backdrop-blur-sm hover:bg-black/70"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // handleRefresh();
+                }}
+                disabled={isLoading}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 text-white ${
+                    isLoading ? "animate-spin" : ""
+                  }`}
+                />
+              </Button>
+            </div>
+          )}
         </div>
         <div className="px-4 py-2">
           <h4 className="font-medium text-base truncate">{item.name}</h4>

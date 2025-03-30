@@ -95,6 +95,18 @@ vite 配置代理
 **drawer 背景动画**
 需要使用 DrawerCSSProvider 包裹父组件，动画才生效
 
+**react-resizable-panels**
+导入 shadcn-ui 的 resizable ，需要额外执行
+`yarn add react-resizable-panels`
+
+vite.config.ts 需要增加以下配置，否则模块加载会出问题
+
+```ts
+ ssr: {
+      // 外部化会导致问题的依赖项
+      noExternal: ["react-resizable-panels"],
+    },
+```
 
 ### 部署
 

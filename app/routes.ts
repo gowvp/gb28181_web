@@ -27,5 +27,6 @@ export default [
     route("nchannels", "routes/channels/channels.tsx"),
     route("gb/sip", "routes/device/config/config.tsx"),
     route("medias", "routes/media/media.tsx"),
+    route("wall", "routes/wall/wall.tsx"),
   ]),
 ] satisfies RouteConfig;

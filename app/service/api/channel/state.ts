@@ -63,3 +63,7 @@ export type Ext = {
   model: string;
   name: string;
 };
+
+export type RefreshSnapshotResponse = {
+  link: string;
+};

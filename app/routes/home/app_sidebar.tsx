@@ -139,7 +139,11 @@ const data = {
       url: "nchannels",
       icon: Cctv,
     },
-
+    {
+      name: "分屏监控",
+      url: "wall",
+      icon: SquareTerminal,
+    },
     {
       name: "推流列表",
       url: "rtmps",
@@ -160,6 +164,7 @@ const data = {
       url: "home",
       icon: SquareTerminal,
     },
+
     // {
     //   name: "Travel",
     //   url: "#",
