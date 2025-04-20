@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   type Node,
   type NodeProps,
@@ -10,6 +10,10 @@ import {
 import { BaseNode } from "~/components/base-node";
 import { LabeledHandle } from "~/components/labeled-handle";
 import { NodeHeader, NodeHeaderTitle } from "~/components/node-header";
+import { Settings } from "lucide-react";
+import { EditForm } from "./media/edit";
+import { findMediaServersKey } from "~/service/api/media/media";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type SumNode = Node<{
   value: number;
@@ -17,6 +21,7 @@ export type SumNode = Node<{
   rtsp: number;
   rtp: string;
   http: string;
+  item: any;
 }>;
 
 export function ZLMNode({ id, data }: NodeProps<SumNode>) {
@@ -34,15 +39,43 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
       getHandleConnections({ nodeId: id, id: "z", type: "target" }),
       state.nodeLookup
     ),
-
   }));
 
   useEffect(() => {
     updateNodeData(id, { value: x + y });
   }, [x, y]);
 
+  const editRef = useRef<any>(null);
+  const queryClient = useQueryClient();
+
   return (
     <BaseNode className="w-52">
+      <div className="absolute top-1 left-1">
+        <div className="relative">
+          <div
+            className={`absolute w-2 h-2 rounded-full ${
+              data.item?.status ? "bg-green-500" : "bg-red-500"
+            } animate-ping`}
+          ></div>
+          <div
+            className={`w-2 h-2 rounded-full ${
+              data.item?.status ? "bg-green-500" : "bg-red-500"
+            }`}
+          ></div>
+        </div>
+      </div>
+      <div className="absolute top-1 right-1">
+        <div className="relative">
+          <button
+            onClick={() => {
+              editRef.current?.edit(data.item);
+            }}
+            className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
       <img
         src={"./assets/imgs/zlm.webp"}
         alt="直播预览"
@@ -78,6 +111,15 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
 
         {/* <LabeledHandle title="out" type="source" position={Position.Right} /> */}
       </footer>
+
+      <EditForm
+        ref={editRef}
+        onEditSuccess={() => {
+          queryClient.invalidateQueries({
+            queryKey: [findMediaServersKey],
+          });
+        }}
+      />
     </BaseNode>
   );
 }

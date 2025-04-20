@@ -169,6 +169,7 @@ export default function DesktopView() {
                 rtsp: item.ports?.rtsp,
                 rtp: item.sdp_ip + ":" + item.rtpport_range + "(UDP/TCP)",
                 http: item.ip + ":" + item.ports?.http,
+                item: item,
               },
             };
           }
