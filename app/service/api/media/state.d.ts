@@ -18,7 +18,7 @@ export type MediaServer = {
   record_path?: string;
   rtpenable?: boolean;
   rtpport_range?: string;
-  sdpip?: string;
+  sdp_ip?: string;
   secret?: string;
   send_rtpport_range?: string;
   status?: boolean;

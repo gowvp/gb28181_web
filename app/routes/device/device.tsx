@@ -2,8 +2,8 @@ import * as React from "react";
 import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Edit, Folder, RefreshCcw } from "lucide-react";
-import { useRef } from "react";
+import { Edit, Filter, Folder, RefreshCcw } from "lucide-react";
+import { useRef, useState } from "react";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
 import { formatDate } from "~/components/util/date";
@@ -20,6 +20,8 @@ import { toastWarn } from "~/components/xui/toast";
 import { Badge } from "~/components/ui/badge";
 import { Link, useNavigate } from "react-router";
 import XHeader from "~/components/xui/header";
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
+import { cn } from "~/lib/utils";
 
 export default function DeviceView() {
   const navigate = useNavigate();
@@ -184,17 +186,18 @@ export default function DeviceView() {
     }));
   }, 500);
 
+  const [isShowFilter, setIsShowFilter] = useState(true);
+
   return (
     <>
       <div className="w-full bg-white p-4 rounded-lg">
         <div className="flex justify-between items-center">
           <div className="flex gap-2">
+            <Link to="/nchannels">
+              <Button variant="outline">客户端</Button>
+            </Link>
             <Link to="/gb/sip">
               <Button variant="outline">接入信息</Button>
-            </Link>
-
-            <Link to="/nchannels">
-              <Button variant="outline">新版界面</Button>
             </Link>
           </div>
 
@@ -216,6 +219,44 @@ export default function DeviceView() {
             />
           </div>
         </div>
+
+        {/* <div
+          className={cn(
+            "mb-4 flex justify-start transition-all duration-300 overflow-hidden",
+            isShowFilter ? "max-h-[300px]" : "max-h-0"
+          )}
+        >
+          <ToggleGroup
+            type="single"
+            // value={filters.is_online}
+            onValueChange={(value) => {
+              tableRef.current?.setFilters((prev: any) => ({
+                ...prev,
+                page: 1,
+                is_online: value,
+              }));
+            }}
+          >
+            <ToggleGroupItem
+              value="all"
+              className="text-[#555] data-[state=on]:text-[#555]"
+            >
+              全部状态
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="true"
+              className="text-[#555] data-[state=on]:text-[#555]"
+            >
+              在线
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="false"
+              className="text-[#555] data-[state=on]:text-[#555]"
+            >
+              离线
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </div> */}
 
         <TableQuery
           ref={tableRef}

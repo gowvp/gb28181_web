@@ -16,6 +16,7 @@ import {
   Send,
   Airplay,
   Network,
+  Home,
 } from "lucide-react";
 
 import { NavMain } from "./nav_main";
@@ -135,14 +136,15 @@ const data = {
     // },
 
     {
+      name: "快捷桌面",
+      url: "desktop",
+      icon: Home,
+    },
+
+    {
       name: "国标通道",
       url: "nchannels",
       icon: Cctv,
-    },
-    {
-      name: "分屏监控",
-      url: "wall",
-      icon: SquareTerminal,
     },
     {
       name: "推流列表",
@@ -154,11 +156,7 @@ const data = {
       url: "rtsps",
       icon: Waypoints,
     },
-    {
-      name: "网络配置",
-      url: "medias",
-      icon: Network,
-    },
+
     {
       name: "监控指标",
       url: "home",

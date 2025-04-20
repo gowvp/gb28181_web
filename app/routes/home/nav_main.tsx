@@ -43,11 +43,11 @@ export function NavMain({
           //   defaultOpen={item.isActive}
           //   className="group/collapsible"
           // >
-          <SidebarMenuItem key={item.name}>
+          <SidebarMenuItem key={item.name} className="my-1">
             {/* <CollapsibleTrigger asChild> */}
             <Link to={item.url}>
               <SidebarMenuButton tooltip={item.name}>
-                {item.icon && <item.icon />}
+                {item.icon && <item.icon className="w-6 h-6" />}
                 <span>{item.name}</span>
               </SidebarMenuButton>
             </Link>

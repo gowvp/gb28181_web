@@ -19,6 +19,7 @@ export default [
 
   // 新布局
   layout("routes/home/home.tsx", [
+    route("desktop", "routes/desktop/desktop.tsx"),
     route("home", "routes/dashboard/dashboard.tsx"),
     route("devices", "routes/device/device.tsx"),
     route("rtmps", "routes/rtmp/rtmp.tsx"),
@@ -26,7 +27,6 @@ export default [
     route("channels", "routes/channel/channel.tsx"),
     route("nchannels", "routes/channels/channels.tsx"),
     route("gb/sip", "routes/device/config/config.tsx"),
-    route("medias", "routes/media/media.tsx"),
     route("wall", "routes/wall/wall.tsx"),
   ]),
 ] satisfies RouteConfig;

@@ -31,70 +31,24 @@ export default function ChannelsView() {
 
   const detailRef = useRef<any>(null);
 
-  const [isShowFilter, setIsShowFilter] = useState(true);
-
   return (
     <div className="w-full bg-white p-4 rounded-lg">
-      <div className="mb-4 flex flex-row gap-2">
-        <Button onClick={() => setIsShowFilter(!isShowFilter)}>
-          <Filter
-            className={`transition-transform duration-300 ${
-              isShowFilter ? "rotate-180" : "rotate-0"
-            }`}
-          />
-          筛选
-        </Button>
+      <div className="text-2xl mb-4 font-mono">Hi</div>
 
+      <div className="mb-4 flex flex-row gap-2">
+        <Link to="/devices">
+          <Button variant="outline">管理端</Button>
+        </Link>
         <Link to="/gb/sip">
           <Button variant="outline">接入信息</Button>
         </Link>
-
-        <Link to="/devices">
-          <Button variant="outline">旧版界面</Button>
-        </Link>
-      </div>
-
-      <div
-        className={cn(
-          "mb-4 flex justify-start transition-all duration-300 overflow-hidden",
-          isShowFilter ? "max-h-[300px]" : "max-h-0"
-        )}
-      >
-        <ToggleGroup
-          type="single"
-          value={filters.is_online}
-          onValueChange={(value) => {
-            setFilters({ ...filters, is_online: value });
-          }}
-        >
-          <ToggleGroupItem
-            value="all"
-            className="text-[#555] data-[state=on]:text-[#555]"
-          >
-            全部状态
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="true"
-            className="text-[#555] data-[state=on]:text-[#555]"
-          >
-            在线
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="false"
-            className="text-[#555] data-[state=on]:text-[#555]"
-          >
-            离线
-          </ToggleGroupItem>
-        </ToggleGroup>
       </div>
 
       <div className="flex flex-wrap gap-4">
-        {[
-          ...(data?.data.items ?? []),
-          ...Array(Math.max(0, 6 - (data?.data.items.length ?? 0))).fill({
-            id: "none",
-          }),
-        ].map((item, index) => {
+        {(data?.data.items?.length === 0
+          ? Array(2).fill({ id: "none" })
+          : data?.data.items ?? []
+        ).map((item, index) => {
           if (item.id === "none") {
             return <ChannelCardItem2 key={index} />;
           }

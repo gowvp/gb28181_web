@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NVR 监控平台</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background-color: #000000;
+        color: #ffffff;
+        min-height: 100vh;
+        position: relative;
+      }
+
+      .header {
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .header h1 {
+        font-size: 24px;
+        font-weight: 500;
+      }
+
+      .main-content {
+        display: flex;
+        gap: 20px;
+        padding: 0 20px;
+      }
+
+      /* 超级面板样式 */
+      .super-panel {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(28, 28, 30, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        padding: 8px;
+        display: flex;
+        gap: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        z-index: 1000;
+      }
+
+      .panel-item {
+        padding: 8px 16px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #ffffff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .panel-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .panel-item.active {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .panel-item-icon {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .panel-item-text {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .panel-divider {
+        width: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 4px 0;
+      }
+
+      /* 摄像头网格 */
+      .camera-section {
+        flex: 1;
+      }
+
+      .camera-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 16px;
+        padding: 20px;
+      }
+
+      .camera-card {
+        background: #1c1c1e;
+        border-radius: 16px;
+        overflow: hidden;
+        transition: transform 0.2s;
+      }
+
+      .camera-card:hover {
+        transform: scale(1.02);
+      }
+
+      .camera-preview {
+        position: relative;
+        aspect-ratio: 16/9;
+        background: #000;
+        overflow: hidden;
+      }
+
+      .camera-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .camera-status {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .status-badge {
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(8px);
+        padding: 6px 10px;
+        border-radius: 20px;
+        color: #ffffff;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+
+      .status-dot.online {
+        background: #30d158;
+        box-shadow: 0 0 8px rgba(48, 209, 88, 0.5);
+      }
+
+      .status-dot.offline {
+        background: #ff453a;
+        box-shadow: 0 0 8px rgba(255, 69, 58, 0.5);
+      }
+
+      .timestamp {
+        position: absolute;
+        bottom: 12px;
+        left: 12px;
+        color: #ffffff;
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 6px 10px;
+        border-radius: 20px;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .camera-info {
+        padding: 16px;
+      }
+
+      .camera-name {
+        font-weight: 500;
+        color: #ffffff;
+        margin-bottom: 4px;
+      }
+
+      .camera-id {
+        font-size: 12px;
+        color: #98989d;
+      }
+
+      /* 网络配置部分 */
+      .network-section {
+        width: 300px;
+        background: #1c1c1e;
+        border-radius: 16px;
+        padding: 20px;
+      }
+
+      .network-section h2 {
+        font-size: 18px;
+        margin-bottom: 20px;
+        color: #ffffff;
+      }
+
+      .network-item {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+      }
+
+      .network-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .network-item-title {
+        font-size: 14px;
+        color: #98989d;
+      }
+
+      .network-item-value {
+        font-size: 16px;
+        color: #ffffff;
+        font-weight: 500;
+      }
+
+      .network-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+      }
+
+      .network-status.good {
+        color: #30d158;
+      }
+
+      .network-status.warning {
+        color: #ffd60a;
+      }
+
+      .network-status.error {
+        color: #ff453a;
+      }
+
+      /* 快速操作面板 */
+      .quick-panel {
+        position: fixed;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%);
+        background: rgba(28, 28, 30, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 16px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .quick-action {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .quick-action:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>NVR 监控平台</h1>
+    </div>
+
+    <div class="main-content">
+      <div class="camera-section">
+        <div class="camera-grid">
+          <!-- 摄像头卡片 1 -->
+          <div class="camera-card">
+            <div class="camera-preview">
+              <img
+                src="https://via.placeholder.com/640x360"
+                alt="Camera Preview"
+              />
+              <div class="camera-status">
+                <div class="status-badge">
+                  <span class="status-dot online"></span>
+                  Live
+                </div>
+                <div class="status-badge">
+                  <span class="status-dot online"></span>
+                  在线
+                </div>
+              </div>
+              <div class="timestamp">2024-02-05 12:30:00</div>
+            </div>
+            <div class="camera-info">
+              <div class="camera-name">前门摄像头</div>
+              <div class="camera-id">ID: CAM_001</div>
+            </div>
+          </div>
+
+          <!-- 摄像头卡片 2 -->
+          <div class="camera-card">
+            <div class="camera-preview">
+              <img
+                src="https://via.placeholder.com/640x360"
+                alt="Camera Preview"
+              />
+              <div class="camera-status">
+                <div class="status-badge">
+                  <span class="status-dot offline"></span>
+                  离线
+                </div>
+              </div>
+              <div class="timestamp">2024-02-05 12:28:00</div>
+            </div>
+            <div class="camera-info">
+              <div class="camera-name">后院摄像头</div>
+              <div class="camera-id">ID: CAM_002</div>
+            </div>
+          </div>
+
+          <!-- 可以继续添加更多摄像头卡片 -->
+        </div>
+      </div>
+
+      <!-- 网络配置部分 -->
+      <div class="network-section">
+        <h2>网络状态</h2>
+        <div class="network-item">
+          <div class="network-item-header">
+            <span class="network-item-title">主网络</span>
+            <div class="network-status good">正常</div>
+          </div>
+          <div class="network-item-value">192.168.1.100</div>
+        </div>
+
+        <div class="network-item">
+          <div class="network-item-header">
+            <span class="network-item-title">带宽使用</span>
+            <div class="network-status warning">注意</div>
+          </div>
+          <div class="network-item-value">75.8 Mbps</div>
+        </div>
+
+        <div class="network-item">
+          <div class="network-item-header">
+            <span class="network-item-title">在线设备</span>
+          </div>
+          <div class="network-item-value">8 / 12</div>
+        </div>
+
+        <div class="network-item">
+          <div class="network-item-header">
+            <span class="network-item-title">系统延迟</span>
+            <div class="network-status good">良好</div>
+          </div>
+          <div class="network-item-value">23ms</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 超级面板 -->
+    <div class="super-panel">
+      <div class="panel-item active">
+        <div class="panel-item-icon">📹</div>
+        <div class="panel-item-text">全部摄像头</div>
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel-item">
+        <div class="panel-item-icon">🔴</div>
+        <div class="panel-item-text">录制</div>
+      </div>
+      <div class="panel-item">
+        <div class="panel-item-icon">📸</div>
+        <div class="panel-item-text">截图</div>
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel-item">
+        <div class="panel-item-icon">⚙️</div>
+        <div class="panel-item-text">网络设置</div>
+      </div>
+      <div class="panel-item">
+        <div class="panel-item-icon">📊</div>
+        <div class="panel-item-text">系统状态</div>
+      </div>
+    </div>
+
+    <!-- 快速操作面板 -->
+    <div class="quick-panel">
+      <div class="quick-action">📹</div>
+      <div class="quick-action">🔄</div>
+      <div class="quick-action">⚡️</div>
+      <div class="quick-action">⚙️</div>
+    </div>
+  </body>
+</html>
