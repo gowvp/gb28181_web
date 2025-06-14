@@ -19,7 +19,7 @@ const headers = {
 };
 
 export const service = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
   timeout: 60000,
   headers: headers,
   responseType: "json",

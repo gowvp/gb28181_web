@@ -1,15 +1,22 @@
-import { DELETE, GET, POST, PUT } from "~/service/http";
+import { DELETE, GET, POST, PUT } from "~/service/config/http";
 
 import type {
   DeviceItem,
   FindDevicesResponse,
   GetDeviceResponse,
+  FindDevicesChannelsResponse,
 } from "./state";
 
 export const findDevicesKey = "findDevices";
 // FindDevices 查询设备列表
 export async function FindDevices(query: object) {
   return await GET<FindDevicesResponse>(`/devices`, query);
+}
+
+export const findDevicesChannelsKey = "findDevicesChannels";
+// FindDevicesChannels 查询通道树
+export async function FindDevicesChannels() {
+  return await GET<FindDevicesChannelsResponse>(`/devices/channels`);
 }
 
 export const getDeviceKey = "getDevice";

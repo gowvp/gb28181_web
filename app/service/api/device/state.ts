@@ -3,6 +3,49 @@ export type FindDevicesResponse = {
   total: number;
 };
 
+// 查询通道树的响应类型
+export type FindDevicesChannelsResponse = {
+  items: DeviceWithChannelsItem[];
+  total: number;
+};
+
+// 设备及其通道的类型定义
+export type DeviceWithChannelsItem = {
+  id: string;
+  device_id: string;
+  name: string;
+  trasnport: string;
+  stream_mode: number;
+  ip: string;
+  port: number;
+  is_online: boolean;
+  registered_at: string;
+  keepalive_at: string;
+  keepalives: number;
+  expires: number;
+  channels: number;
+  created_at: string;
+  updated_at: string;
+  password: string;
+  address: string;
+  ext: Ext;
+  children: ChannelItem[];
+};
+
+// 通道项类型定义
+export type ChannelItem = {
+  id: string;
+  did: string;
+  device_id: string;
+  channel_id: string;
+  name: string;
+  ptztype: number;
+  is_online: boolean;
+  ext: Ext;
+  created_at: string;
+  updated_at: string;
+};
+
 export type DeviceItem = {
   channels: number;
   created_at: string;

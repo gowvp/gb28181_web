@@ -21,7 +21,7 @@ import {
   FindMediaServers,
   findMediaServersKey,
 } from "~/service/api/media/media";
-import { ErrorHandle } from "~/service/error";
+import { ErrorHandle } from "~/service/config/error";
 
 const nodeTypes = {
   ipc: NumNode,

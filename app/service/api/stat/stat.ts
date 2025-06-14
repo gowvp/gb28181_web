@@ -1,4 +1,4 @@
-import { GET } from "../../http";
+import { GET } from "../../config/http";
 import type { FindStatResponse } from "./state";
 
 export async function FindStats() {

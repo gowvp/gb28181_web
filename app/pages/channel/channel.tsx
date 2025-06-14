@@ -12,7 +12,7 @@ import {
   findChannelsKey,
   Play,
 } from "~/service/api/channel/channel";
-import { ErrorHandle } from "~/service/error";
+import { ErrorHandle } from "~/service/config/error";
 import { Badge } from "~/components/ui/badge";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";

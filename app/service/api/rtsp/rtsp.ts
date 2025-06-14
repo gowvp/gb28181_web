@@ -1,4 +1,4 @@
-import { DELETE, GET, POST, PUT } from "../../http";
+import { DELETE, GET, POST, PUT } from "../../config/http";
 // import type { FindRTMPsResponse, RTMPItem } from "./rtmp.d";
 import type { FindProxysResponse, RTSPItem } from "./state";
 

@@ -13,7 +13,7 @@ import {
 import { Form } from "~/components/ui/form";
 import type { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
-import { ErrorHandle } from "~/service/error";
+import { ErrorHandle } from "~/service/config/error";
 
 export interface PFormProps {
   onAddSuccess?: () => void; // 添加成功回调

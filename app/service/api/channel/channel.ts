@@ -1,4 +1,4 @@
-import { GET, POST } from "~/service/http";
+import { GET, POST } from "~/service/config/http";
 import type {
   FindChannelsResponse,
   PlayResponse,

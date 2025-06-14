@@ -1,18 +1,14 @@
-import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "~/components/ui/drawer";
-import type { GetDeviceResponse } from "~/service/api/device/state";
 import { GetDevice, getDeviceKey } from "~/service/api/device/device";
-import { ErrorHandle } from "~/service/error";
 import { Badge } from "~/components/ui/badge";
-import { Button, Radio } from "antd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
-import { Card } from "~/components/ui/card";
 import { ChannelCardItem } from "./channels";
 
 export default function DeviceDetailView({
@@ -28,15 +24,14 @@ export default function DeviceDetailView({
     enabled: !!did,
   });
 
-  const [filters, setFilters] = useState({ page: 1, size: 200 });
+  const [filters] = useState({ page: 1, size: 200 });
   // 查询数据
   const {
     data: channels,
-    isLoading,
     refetch: refetchChannels,
   } = useQuery({
-    queryKey: [findChannelsKey, { ...filters, did: did }],
-    queryFn: () => FindChannels({ ...filters, did: did }),
+    queryKey: [findChannelsKey, { ...filters, device_id: did }],
+    queryFn: () => FindChannels({ ...filters, device_id: did }),
     refetchInterval: 10000,
     enabled: false,
   });
@@ -105,8 +100,26 @@ export default function DeviceDetailView({
         </TabsContent>
         <TabsContent value="channels">
           <div className="px-4 space-y-2">
-            {channels?.data.items.map((item) => (
-              <ChannelCardItem key={item.id} item={item} />
+            {channels?.data.items?.map((item) => (
+              <ChannelCardItem
+                key={item.id}
+                channel={{
+                  id: item.id,
+                  did: item.did,
+                  device_id: item.device_id,
+                  channel_id: item.channel_id,
+                  name: item.name,
+                  ptztype: item.ptztype,
+                  is_online: item.is_online,
+                  ext: item.ext,
+                  created_at: "",
+                  updated_at: "",
+                }}
+                onClick={() => {
+                  // 处理通道点击事件
+                  console.log("点击通道:", item.name);
+                }}
+              />
             ))}
           </div>
         </TabsContent>

@@ -1,4 +1,4 @@
-import { GET, PUT } from "~/service/http";
+import { GET, PUT } from "~/service/config/http";
 
 import type { FindMediaServersResponse, MediaServer } from "./state.d";
 

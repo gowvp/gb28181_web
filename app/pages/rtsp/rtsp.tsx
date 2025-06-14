@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
 import { Play } from "~/service/api/channel/channel";
-import { ErrorHandle } from "~/service/error";
+import { ErrorHandle } from "~/service/config/error";
 import PlayBox, { type PlayBoxRef } from "../../components/xui/play";
 import { formatDate } from "~/components/util/date";
 import { Badge } from "~/components/ui/badge";

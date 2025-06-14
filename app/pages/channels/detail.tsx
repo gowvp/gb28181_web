@@ -1,29 +1,19 @@
 import * as React from "react";
-import { Bug, Copy, Minus, Plus } from "lucide-react";
-import { Bar, BarChart, ResponsiveContainer } from "recharts";
+import { Bug, Copy } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
 } from "~/components/ui/drawer";
-import { CardHeader } from "~/components/ui/card";
 import { AspectRatio } from "~/components/ui/aspect-ratio";
 import Player, { type PlayerRef } from "~/components/player/player";
 import { useRef, useState } from "react";
 import { Play } from "~/service/api/channel/channel";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ErrorHandle } from "~/service/error";
-import type { PlayBoxRef } from "~/components/xui/play";
-import { GetDevice, getDeviceKey } from "~/service/api/device/device";
+import { useMutation } from "@tanstack/react-query";
+import { ErrorHandle } from "~/service/config/error";
 import DeviceDetailView from "./device";
-import type { ChannelItem } from "~/service/api/channel/state";
+import type { ChannelItem } from "~/service/api/device/state";
 import {
   Select,
   SelectContent,
@@ -35,10 +25,6 @@ import { copy2Clipboard } from "~/components/util/copy";
 import ToolTips from "~/components/xui/tips";
 import { Input } from "~/components/ui/input";
 
-type ChannelDetailViewRef = {
-  open: (channel: ChannelItem) => void;
-};
-
 export default function ChannelDetailView({
   ref,
 }: {
@@ -49,7 +35,6 @@ export default function ChannelDetailView({
   // 播放功能
   const {
     mutate: playMutate,
-    isPending: playIsPending,
     data: playData,
   } = useMutation({
     mutationFn: Play,

@@ -27,7 +27,7 @@ import {
   SetConfigSIP,
 } from "~/service/api/config/config";
 import { Input } from "~/components/ui/input";
-import { ErrorHandle } from "~/service/error";
+import { ErrorHandle } from "~/service/config/error";
 import { toastSuccess } from "~/components/xui/toast";
 const formSchema = z.object({
   domain: z.string(),

@@ -3,7 +3,7 @@ import { useState, useImperativeHandle, forwardRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { XTable } from "./table";
 import type { ColumnsType } from "antd/es/table";
-import { ErrorHandle } from "~/service/error";
+import { ErrorHandle } from "~/service/config/error";
 
 interface TableQueryProps<T> {
   queryKey: string; // 查询key

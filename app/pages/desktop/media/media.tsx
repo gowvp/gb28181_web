@@ -6,7 +6,7 @@ import {
   findMediaServersKey,
 } from "~/service/api/media/media";
 import type { MediaServer } from "~/service/api/media/state";
-import { ErrorHandle } from "~/service/error";
+import { ErrorHandle } from "~/service/config/error";
 import { EditForm } from "./edit";
 import type { PFormProps } from "~/components/xui/edit-sheet";
 import { Settings } from "lucide-react";
