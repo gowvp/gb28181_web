@@ -15,10 +15,10 @@ export type PlayerRef = {
 
 interface PlayerProps {
   ref: React.RefObject<PlayerRef | null>;
-  link: string; // 播放的流地址
+  // link: string; // 播放的流地址
 }
 
-function Player({ ref, link }: PlayerProps) {
+function Player({ ref }: PlayerProps) {
   useImperativeHandle(ref, () => ({
     play,
     destroy,
@@ -62,9 +62,9 @@ function Player({ ref, link }: PlayerProps) {
     p.current = new window.Jessibuca(cfg);
 
     // 如果传入了播放链接，在加载播放器以后就可以播放了
-    if (link) {
-      play(link);
-    }
+    // if (link) {
+    //   play(link);
+    // }
     return () => {
       console.log("🚀 ~ Jessibuca-player ~ dispose");
     };

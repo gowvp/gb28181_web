@@ -53,6 +53,14 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
     return data.items[selected];
   };
 
+  useEffect(() => {
+    console.log("🚀 ~ useEffect ~ play link:", link)
+    playRef.current?.play(link);
+    return () => {
+    }
+  }, [link])
+
+
   useImperativeHandle(ref, () => ({
     play(link: string, data: PlayResponse) {
       setLink(link);
@@ -83,7 +91,7 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
           {/* 播放器设置一个最小宽高 */}
           <div className="min-h-[10rem] min-w-[40rem]">
             <AspectRatio ratio={16 / 9}>
-              <Player ref={playRef} link={link} />
+              <Player ref={playRef}/>
             </AspectRatio>
           </div>
           {/* 播放地址 */}
