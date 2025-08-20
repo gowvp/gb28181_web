@@ -88,7 +88,12 @@ export default function config() {
                 <FormItem>
                   <FormLabel>*国标 ID</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <div className="relative">
+                      <Input {...field} className="pr-12" />
+                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground">
+                        {String(field.value || "").length}
+                      </span>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
