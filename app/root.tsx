@@ -14,7 +14,7 @@ import stylesheet from "./app.css?url";
 import React from "react";
 import { z } from "zod";
 import { Toaster } from "./components/ui/sonner";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App as AntdApp } from "antd";
 import { DrawerCSSProvider } from "./components/xui/drawer";
 // import { Toaster } from "./components/ui/toaster";
 
@@ -122,7 +122,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               },
             }}
           >
-            <DrawerCSSProvider>{children}</DrawerCSSProvider>
+            <AntdApp>
+              <DrawerCSSProvider>{children}</DrawerCSSProvider>
+            </AntdApp>
           </ConfigProvider>
 
           <ScrollRestoration />
