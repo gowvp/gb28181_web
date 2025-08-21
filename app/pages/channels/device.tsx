@@ -30,8 +30,8 @@ export default function DeviceDetailView({
     data: channels,
     refetch: refetchChannels,
   } = useQuery({
-    queryKey: [findChannelsKey, { ...filters, device_id: did }],
-    queryFn: () => FindChannels({ ...filters, device_id: did }),
+    queryKey: [findChannelsKey, { ...filters, did: did }],
+    queryFn: () => FindChannels({ ...filters, did: did }),
     refetchInterval: 10000,
     enabled: false,
   });
@@ -94,6 +94,10 @@ export default function DeviceDetailView({
               <Badge variant="secondary">模型:{device?.data.ext.model}</Badge>
               <Badge variant="secondary">
                 固件:{device?.data.ext.firmware}
+              </Badge>
+
+              <Badge variant="secondary">
+                创建:{device?.data.created_at}
               </Badge>
             </div>
           </DrawerHeader>

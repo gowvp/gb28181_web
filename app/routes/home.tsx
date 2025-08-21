@@ -209,7 +209,7 @@ export default function Home() {
           </NavigationMenuList>
         </NavigationMenu>
       </div>
-      <div className="flex-1 m-2 ">
+      <div className="flex-1 m-2  ">
         <Outlet />
       </div>
     </div>

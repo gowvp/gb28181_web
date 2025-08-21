@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   BadgeCheck,
   Bell,
@@ -24,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { useNavigate } from "react-router";
 
 export function NavUser({
   user,
@@ -35,6 +36,8 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   return (
     <SidebarMenu>
@@ -95,7 +98,7 @@ export function NavUser({
             </DropdownMenuGroup>
 
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
+            {/* <DropdownMenuGroup>
               <DropdownMenuItem>
                 <BadgeCheck />
                 Account
@@ -105,10 +108,23 @@ export function NavUser({
                 <Bell />
                 Notifications
               </DropdownMenuItem>
-            </DropdownMenuGroup>
+            </DropdownMenuGroup> */}
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut />
+            <DropdownMenuItem
+              onClick={async () => {
+                setIsLoggingOut(true);
+                setTimeout(() => {
+                  localStorage.removeItem("token");
+                  navigate("/");
+                  setIsLoggingOut(false);
+                }, 400);
+              }}
+            >
+              <LogOut
+                className={`transition-transform duration-400 ${
+                  isLoggingOut ? "animate-spin" : ""
+                }`}
+              />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

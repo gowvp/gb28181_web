@@ -3,24 +3,15 @@ import {
   AudioWaveform,
   Command,
   GalleryVerticalEnd,
-  Settings2,
   SquareTerminal,
   Cctv,
-  Videotape,
-  UserRoundCog,
-  ChartNoAxesGantt,
   MonitorUp,
-  Podcast,
   Waypoints,
   Github,
-  Send,
-  Airplay,
-  Network,
   Home,
 } from "lucide-react";
 
 import { NavMain } from "./nav_main";
-import { NavProjects } from "./nav_projects";
 import { NavUser } from "./nav_user";
 import { TeamSwitcher } from "./team_switcher";
 import {
@@ -36,7 +27,7 @@ import { NavSecondary } from "./nav_secondary";
 const data = {
   user: {
     name: "gowvp",
-    email: "gowvp.golang.space:15123",
+    email: "GB/T28181-2022",
     // TODO: add avatar
     avatar: "/assets/imgs/bg.webp",
   },
@@ -52,9 +43,9 @@ const data = {
       plan: "GB/T28181 - 2022",
     },
     {
-      name: "Onvif",
+      name: "Onvif - 待开发",
       logo: Command,
-      plan: "Onvif",
+      plan: "待开发",
     },
   ],
   // navMain: [
@@ -181,10 +172,10 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="bg-white">
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="bg-white">
         {/* 菜单 */}
         <NavMain items={data.projects} />
         {/* 快捷 */}
@@ -192,7 +183,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* 开源项目，请保留仓库信息 */}
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="bg-white">
         {/* 用户 */}
         <NavUser user={data.user} />
       </SidebarFooter>

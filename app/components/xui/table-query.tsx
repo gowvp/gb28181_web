@@ -45,6 +45,10 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
       queryKey: [queryKey, filters],
       queryFn: () => fetchFn(filters),
       refetchInterval: 5000,
+      throwOnError: (err) => {
+        ErrorHandle(err);
+        return true;
+      }
     });
 
     // 删除功能

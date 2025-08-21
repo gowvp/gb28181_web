@@ -35,6 +35,10 @@ export function ErrorHandle(error: any) {
   console.log("🚀 ~ ErrorHandle ~ data:", data);
 
   // const key = Date.now().toString();
+  if (err.response.status == 401) {
+    window.location.href = "/";
+  }
+
   if (err.response.status >= 400) {
     toastErrorMore("发生错误", data.details, {
       description: data.msg ?? codeMessage[err.response.status],

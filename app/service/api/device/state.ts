@@ -41,6 +41,7 @@ export type ChannelItem = {
   name: string;
   ptztype: number;
   is_online: boolean;
+  is_playing: boolean;  // 是否播放中
   ext: Ext;
   created_at: string;
   updated_at: string;
