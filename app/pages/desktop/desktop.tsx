@@ -87,7 +87,7 @@ const ZLMNode = ({ data }: { data: any }) => {
         {/* 图片 */}
         <div className="flex justify-center mb-4">
           <img
-            src={"/assets/imgs/zlm.webp"}
+            src={"./assets/imgs/zlm.webp"}
             alt="ZLM"
             className="w-16 h-16 object-contain"
           />
@@ -178,7 +178,7 @@ const GoWVPNode = () => {
         {/* 图片 */}
         <div className="flex justify-center mb-4">
           <img
-            src={"/assets/imgs/logo.png"}
+            src={"./assets/imgs/logo.png"}
             alt="GoWVP"
             className="w-16 h-16 object-contain"
           />
@@ -251,7 +251,7 @@ const ClientNode = () => {
         {/* 图片 */}
         <div className="flex justify-center mb-4">
           <img
-            src={"/assets/imgs/chrome.png"}
+            src={"./assets/imgs/chrome.png"}
             alt="Client"
             className="w-10 h-10 object-contain"
           />
@@ -428,12 +428,27 @@ export default function DesktopView() {
   }, [data]);
 
   return (
-    <div className="h-screen w-screen p-4">
+    <div className="h-screen w-screen pr-64">
+      <style>
+        {`
+          /* 隐藏 React Flow attribution */
+          .react-flow__attribution {
+            display: none !important;
+          }
+
+        `}
+      </style>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         fitView
+        fitViewOptions={{
+          padding: 0.15,
+          includeHiddenNodes: false,
+          minZoom: 0.5,
+          maxZoom: 1.4,
+        }}
         attributionPosition="bottom-left"
         nodesDraggable={false}
         nodesConnectable={false}
