@@ -81,8 +81,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     <EditSheet
       form={form}
       ref={ref}
-      title="推流信息"
-      description="在此输入推流信息，然后点击保存"
+      title="流媒体配置"
+      description="在此输入流媒体配置，然后点击保存"
       schema={formSchema}
       defaultValues={defaultValues}
       onSuccess={{
@@ -122,6 +122,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>*IP</FormLabel>
+            <FormDescription>ZLM 的地址，用于被 gowvp 访问</FormDescription>
             <FormControl>
               <Input {...field} />
             </FormControl>

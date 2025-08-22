@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
-import { Link } from "react-router";
-import { Button } from "~/components/ui/button";
+import { Link, useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Cctv, Monitor } from "lucide-react";
 
@@ -17,6 +16,8 @@ import { RefreshSnapshot } from "~/service/api/channel/channel";
 
 import ChannelDetailView from "./detail";
 import { cn } from "~/lib/utils";
+import { Button, Radio } from "antd";
+import type { CheckboxGroupProps } from "antd/es/checkbox";
 
 export default function ChannelsView() {
   // 查询通道树数据
@@ -28,16 +29,31 @@ export default function ChannelsView() {
 
   const detailRef = useRef<any>(null);
 
+  const navigate = useNavigate();
+
+  const options: CheckboxGroupProps<string>["options"] = [
+    { label: "客户端", value: "/nchannels" },
+    { label: "管理端", value: "/devices" },
+  ];
+
   return (
     <div className="min-h-screen bg-transparent p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto ">
         {/* 导航按钮 */}
         <div className="mb-6 flex flex-row gap-2">
-          <Link to="/devices">
-            <Button variant="outline">管理端</Button>
-          </Link>
+          <Radio.Group
+            value="/nchannels"
+            options={options}
+            onChange={(e) => {
+              navigate(e.target.value);
+            }}
+            block
+            optionType="button"
+            buttonStyle="solid"
+          />
+
           <Link to="/gb/sip">
-            <Button variant="outline">接入信息</Button>
+            <Button>接入信息</Button>
           </Link>
         </div>
 
@@ -197,12 +213,12 @@ function DeviceCard({
 
   return (
     <Card className="w-full bg-gray-50 border-solid border border-gray-200 rounded-2xl ">
-      <CardHeader className="pb-4">
+      <CardHeader className="p-2 px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Cctv
               className={cn(
-                "h-6 w-6 ",
+                "h-6 w-6",
                 device.is_online ? "text-gray-600" : "text-red-500"
               )}
             />

@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
+import { Button as AntButton } from "antd";
 import { Input } from "~/components/ui/input";
 import { Edit, Filter, Folder, RefreshCcw } from "lucide-react";
 import { useRef, useState } from "react";
@@ -22,6 +23,8 @@ import { Link, useNavigate } from "react-router";
 import XHeader from "~/components/xui/header";
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
 import { cn } from "~/lib/utils";
+import { Radio } from "antd";
+import type { CheckboxGroupProps } from "antd/es/checkbox";
 
 export default function DeviceView() {
   const navigate = useNavigate();
@@ -188,35 +191,50 @@ export default function DeviceView() {
 
   const [isShowFilter, setIsShowFilter] = useState(true);
 
+  const options: CheckboxGroupProps<string>["options"] = [
+    { label: "客户端", value: "/nchannels" },
+    { label: "管理端", value: "/devices" },
+  ];
+
   return (
     <>
-      <div className="w-full bg-white p-4 rounded-lg">
-        <div className="flex justify-between items-center">
-          <div className="flex gap-2">
-            <Link to="/nchannels">
-              <Button variant="outline">客户端</Button>
-            </Link>
-            <Link to="/gb/sip">
-              <Button variant="outline">接入信息</Button>
-            </Link>
-          </div>
+      <div className="min-h-screen bg-transparent p-6">
+        <div className="mx-auto flex flex-row  items-center mb-6 ">
+          <div className="flex gap-2 justify-between w-full">
+            <div className="flex flex-row gap-2">
+              <Radio.Group
+                value="/devices"
+                options={options}
+                onChange={(e) => {
+                  navigate(e.target.value);
+                }}
+                block
+                optionType="button"
+                buttonStyle="solid"
+              />
 
-          {/* 搜索和添加区域 */}
-          <div className="flex justify-end items-center py-4">
-            <span className="mr-3">搜索</span>
-            <Input
-              placeholder="可输入设备编号/名称/ID模糊搜索"
-              onChange={(event) => debouncedFilters(event.target.value)}
-              className="w-60"
-            />
+              <Link to="/gb/sip">
+                <AntButton>接入信息</AntButton>
+              </Link>
+            </div>
 
-            <EditForm
-              ref={editFromRef}
-              onAddSuccess={() => tableRef.current?.handleAddSuccess()}
-              onEditSuccess={(data) =>
-                tableRef.current?.handleEditSuccess(data)
-              }
-            />
+            {/* 搜索和添加区域 */}
+            <div className="flex items-center">
+              <span className="mr-3">搜索</span>
+              <Input
+                placeholder="可输入设备编号/名称/ID模糊搜索"
+                onChange={(event) => debouncedFilters(event.target.value)}
+                className="w-60"
+              />
+
+              <EditForm
+                ref={editFromRef}
+                onAddSuccess={() => tableRef.current?.handleAddSuccess()}
+                onEditSuccess={(data) =>
+                  tableRef.current?.handleEditSuccess(data)
+                }
+              />
+            </div>
           </div>
         </div>
 

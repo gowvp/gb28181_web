@@ -51,6 +51,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <div className="relative inline-block select-none">
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
+          style={{
+            height: "32px",
+          }}
           // disabled={loading}
           ref={ref}
           {...props}

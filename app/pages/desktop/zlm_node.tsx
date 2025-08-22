@@ -9,7 +9,7 @@ import {
 
 import { BaseNode } from "~/components/base-node";
 import { LabeledHandle } from "~/components/labeled-handle";
-import { NodeHeader, NodeHeaderTitle } from "~/components/node-header";
+
 import { Settings } from "lucide-react";
 import { EditForm } from "./media/edit";
 import { findMediaServersKey } from "~/service/api/media/media";
@@ -115,9 +115,12 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
       <EditForm
         ref={editRef}
         onEditSuccess={() => {
-          queryClient.invalidateQueries({
-            queryKey: [findMediaServersKey],
-          });
+          // 延迟370毫秒后执行查询失效
+          setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: [findMediaServersKey],
+            });
+          }, 370);
         }}
       />
     </BaseNode>

@@ -16,6 +16,8 @@ import { z } from "zod";
 import { Toaster } from "./components/ui/sonner";
 import { ConfigProvider, App as AntdApp } from "antd";
 import { DrawerCSSProvider } from "./components/xui/drawer";
+
+import "@ant-design/v5-patch-for-react-19";
 // import { Toaster } from "./components/ui/toaster";
 
 // 全局设置自定义的错误信息
