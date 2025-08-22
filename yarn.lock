@@ -2551,7 +2551,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/d3-interpolate@npm:*, @types/d3-interpolate@npm:^3.0.1":
+"@types/d3-interpolate@npm:*, @types/d3-interpolate@npm:^3.0.1, @types/d3-interpolate@npm:^3.0.4":
   version: 3.0.4
   resolution: "@types/d3-interpolate@npm:3.0.4"
   dependencies:
@@ -2778,32 +2778,34 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@xyflow/react@npm:^12.6.0":
-  version: 12.6.0
-  resolution: "@xyflow/react@npm:12.6.0"
+"@xyflow/react@npm:^12.8.4":
+  version: 12.8.4
+  resolution: "@xyflow/react@npm:12.8.4"
   dependencies:
-    "@xyflow/system": "npm:0.0.57"
+    "@xyflow/system": "npm:0.0.68"
     classcat: "npm:^5.0.3"
     zustand: "npm:^4.4.0"
   peerDependencies:
     react: ">=17"
     react-dom: ">=17"
-  checksum: 10c0/bf45c0536c781b70157e35800438b0176bab81d3bf2315605e2841bb0654694c8ecd3401e0b5806b53e323f40bc4f312f759f3688491ae44c0c8923f42d424cb
+  checksum: 10c0/8918d58a42c2629b141de3b2a5d89eb804fad8afbdf742126b9d905bae75fdae3f165d175e0185b305b39ad106bcf2ba85054a76e7d673aa34ee4242e6236817
   languageName: node
   linkType: hard
 
-"@xyflow/system@npm:0.0.57":
-  version: 0.0.57
-  resolution: "@xyflow/system@npm:0.0.57"
+"@xyflow/system@npm:0.0.68":
+  version: 0.0.68
+  resolution: "@xyflow/system@npm:0.0.68"
   dependencies:
     "@types/d3-drag": "npm:^3.0.7"
+    "@types/d3-interpolate": "npm:^3.0.4"
     "@types/d3-selection": "npm:^3.0.10"
     "@types/d3-transition": "npm:^3.0.8"
     "@types/d3-zoom": "npm:^3.0.8"
     d3-drag: "npm:^3.0.0"
+    d3-interpolate: "npm:^3.0.1"
     d3-selection: "npm:^3.0.0"
     d3-zoom: "npm:^3.0.0"
-  checksum: 10c0/0c9b05ff8cb87ffa06474990038cbf65704f10347028878f91fa5504c75573a9df38b3aa3490747fb9246ce94983ffcc7997b3cb1c2f55967825ef2963c6d7fe
+  checksum: 10c0/4df1bdcc93fbcc74abc155981d86aa9741eb4278089552d1809e0fd3763b45280bfb62c30e0fa0a5d34a9b3b98ee019fabf0c526f705f5a796c7c2e45d46db96
   languageName: node
   linkType: hard
 
@@ -4773,7 +4775,7 @@ __metadata:
     "@types/node": "npm:^20"
     "@types/react": "npm:^19.0.7"
     "@types/react-dom": "npm:^19.0.3"
-    "@xyflow/react": "npm:^12.6.0"
+    "@xyflow/react": "npm:^12.8.4"
     antd: "npm:^5.23.2"
     autoprefixer: "npm:^10.4.20"
     axios: "npm:^1.7.9"
