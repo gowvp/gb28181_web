@@ -98,7 +98,7 @@ function ChannelCard({
 
   const { data: url } = useQuery({
     queryKey: ["snapshot", channel.id],
-    queryFn: () => RefreshSnapshot(channel.id, "", 86400),
+    queryFn: () => RefreshSnapshot(channel.id, "", 2592000),
     enabled: channel.is_online,
     retry: 1,
     // refetchInterval: 120000,
