@@ -98,10 +98,10 @@ function ChannelCard({
 
   const { data: url } = useQuery({
     queryKey: ["snapshot", channel.id],
-    queryFn: () => RefreshSnapshot(channel.id, "", 300),
+    queryFn: () => RefreshSnapshot(channel.id, "", 86400),
     enabled: channel.is_online,
     retry: 1,
-    refetchInterval: 30000, // 30秒刷新一次快照
+    // refetchInterval: 120000,
   });
 
   // 更新 snapshotUrl

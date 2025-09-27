@@ -11,6 +11,7 @@ import {
   FindChannels,
   findChannelsKey,
   Play,
+  RefreshSnapshot,
 } from "~/service/api/channel/channel";
 import { ErrorHandle } from "~/service/config/error";
 import { Badge } from "~/components/ui/badge";
@@ -21,7 +22,6 @@ import PlayBox, { type PlayBoxRef } from "~/components/xui/play";
 import { toastSuccess, toastWarn } from "~/components/xui/toast";
 import { RefreshCatalog } from "~/service/api/device/device";
 import { cn } from "~/lib/utils";
-import XHeader from "~/components/xui/header";
 
 export default function RTMPView() {
   // =============== 状态定义 ===============
