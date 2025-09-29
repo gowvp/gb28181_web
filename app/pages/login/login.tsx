@@ -3,11 +3,15 @@ import { useNavigate } from "react-router";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { Form, Input, message } from "antd";
-import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from "@ant-design/icons";
+import {
+  UserOutlined,
+  LockOutlined,
+  EyeInvisibleOutlined,
+  EyeTwoTone,
+} from "@ant-design/icons";
 import type { FormProps } from "antd";
 import { login } from "~/service/api/user/user";
 import { ErrorHandle } from "~/service/config/error";
-
 
 type FieldType = {
   username?: string;
@@ -26,10 +30,17 @@ function ForgotPasswordDialog() {
       >
         忘记密码？
       </button>
-      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ display: open ? 'flex' : 'none' }}>
+      <div
+        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        style={{ display: open ? "flex" : "none" }}
+      >
         <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-white/20">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">忘记密码</h3>
-          <p className="text-sm text-gray-600 mb-4">请在部署目录找到配置文件<br />检查 password 参数的值</p>
+          <p className="text-sm text-gray-600 mb-4">
+            请在部署目录找到配置文件
+            <br />
+            检查 password 参数的值
+          </p>
           <Button
             onClick={() => setOpen(false)}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
@@ -64,8 +75,10 @@ export default function LoginView() {
       navigate("/desktop");
     } catch (error) {
       ErrorHandle(error);
-      console.log("🚀 ~ onFinish ~ error:", error)
-      message.error(error instanceof Error ? error.message : "登录失败，请重试");
+      console.log("🚀 ~ onFinish ~ error:", error);
+      message.error(
+        error instanceof Error ? error.message : "登录失败，请重试"
+      );
     } finally {
       setLoading(false);
     }
@@ -88,7 +101,9 @@ export default function LoginView() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div> */}
-            <h1 className="text-2xl font-semibold text-gray-900 mb-1">欢迎回来</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-1">
+              欢迎回来
+            </h1>
             <p className="text-gray-500 text-sm">开箱即用的监控平台</p>
           </div>
 
@@ -125,7 +140,9 @@ export default function LoginView() {
                   size="large"
                   autoComplete="new-password"
                   className="h-12 rounded-xl border-gray-200 hover:border-blue-400 focus:border-blue-500"
-                  iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+                  iconRender={(visible) =>
+                    visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                  }
                 />
               </Form.Item>
 
@@ -133,7 +150,7 @@ export default function LoginView() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-72 h-10 bg-gradient-to-r from-black via-zinc-800 to-zinc-900 hover:from-zinc-900 hover:to-black disabled:from-zinc-700 disabled:to-zinc-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl disabled:shadow-none transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 border-0"
+                  className="w-72 min-h-11 via-zinc-800 to-zinc-900 hover:from-zinc-900 hover:to-black disabled:from-zinc-700 disabled:to-zinc-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl disabled:shadow-none transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 border-0"
                 >
                   {loading ? "登录中..." : "登 录"}
                 </Button>

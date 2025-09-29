@@ -1,14 +1,6 @@
 import React from "react";
 import { Button } from "~/components/ui/button";
-import XHeader from "~/components/xui/header";
 import { z } from "zod";
-import {
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "~/components/ui/sheet";
 import {
   Form,
   FormControl,
@@ -68,18 +60,18 @@ export default function config() {
 
   return (
     <>
-      <XHeader
+      {/* <XHeader
         items={[
           { title: "监控列表", url: "/nchannels" },
           { title: "国标配置", url: "/gb/sip" },
         ]}
-      />
+      /> */}
 
-      <div className="p-10 w-[500px]">
+      <div className="w-[380px] px-6 pt-6 m-auto">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit((values: any) => mutateAsync(values))}
-            className="space-y-4"
+            className="space-y-4 w-full"
           >
             <FormField
               control={form.control}
@@ -146,7 +138,11 @@ export default function config() {
               )}
             />
 
-            <Button isLoading={isPending} className="w-48 mt-10" type="submit">
+            <Button
+              isLoading={isPending}
+              className="w-full sm:w-48 mt-10 rounded-2xl min-h-9"
+              type="submit"
+            >
               保存配置
             </Button>
           </form>

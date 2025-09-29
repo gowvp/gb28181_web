@@ -9,7 +9,7 @@ const navigationData = {
   user: {
     name: "gowvp",
     email: "GB/T28181",
-    avatar: "/assets/imgs/bg.webp",
+    avatar: "./assets/imgs/bg.webp",
   },
   projects: [
     {
@@ -60,7 +60,11 @@ export default function Page() {
               "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)",
           }}
         >
-          <Outlet />
+          {/* 子页面容器 - 80%宽度居中，小屏幕全宽 */}
+          {/* <div className="w-full max-w-none sm:w-4/5 sm:mx-auto px-4 sm:px-6 lg:px-4"> */}
+          <div className="w-full max-w-none px-1 lg:px-16">
+            <Outlet />
+          </div>
         </div>
       </div>
     </div>

@@ -48,7 +48,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <div className="relative inline-block select-none">
+      <div className="relative inline-block select-none w-full">
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
           style={{

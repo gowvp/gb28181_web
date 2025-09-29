@@ -147,19 +147,20 @@ function TopNavUser({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-2 px-3 py-2 h-auto data-[state=open]:bg-accent"
+          className="flex items-center gap-2 px-2 sm:px-3 py-2 h-auto data-[state=open]:bg-accent select-none"
         >
           <Avatar className="h-8 w-8 rounded-lg">
             <AvatarImage src={user.avatar} alt={user.name} />
             <AvatarFallback className="rounded-lg">CN</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col items-start text-sm leading-tight">
+          {/* 用户信息 - 小屏幕隐藏 */}
+          <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
             <span className="truncate font-semibold">{user.name}</span>
             <span className="truncate text-xs text-muted-foreground">
               {user.email}
             </span>
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4" />
+          <ChevronsUpDown className="ml-2 h-4 w-4 hidden sm:block" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
