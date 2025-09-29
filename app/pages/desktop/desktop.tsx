@@ -428,7 +428,7 @@ export default function DesktopView() {
   }, [data]);
 
   return (
-    <div className="h-screen w-screen pr-64">
+    <div className="h-screen w-screen pb-24 ">
       <style>
         {`
           /* 隐藏 React Flow attribution */
@@ -444,10 +444,10 @@ export default function DesktopView() {
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{
-          padding: 0.15,
+          padding: 0.2,
           includeHiddenNodes: false,
-          minZoom: 0.5,
-          maxZoom: 1.4,
+          minZoom: 1,
+          maxZoom: 1.2,
         }}
         attributionPosition="bottom-left"
         nodesDraggable={false}

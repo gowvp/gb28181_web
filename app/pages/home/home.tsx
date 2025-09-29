@@ -1,9 +1,39 @@
 import React from "react";
 import { Outlet } from "react-router";
-import { AppSidebar } from "./app_sidebar";
-import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar";
-import { useSidebarState } from "~/hooks/use-sidebar-state";
+import { TopNavigation } from "./top_navigation";
+import { Cctv, MonitorUp, Waypoints, Home } from "lucide-react";
 import type { Route } from "./+types/home";
+
+// 菜单数据（从app_sidebar.tsx复制）
+const navigationData = {
+  user: {
+    name: "gowvp",
+    email: "GB/T28181",
+    avatar: "/assets/imgs/bg.webp",
+  },
+  projects: [
+    {
+      name: "快捷桌面",
+      url: "desktop",
+      icon: Home,
+    },
+    {
+      name: "国标通道",
+      url: "nchannels",
+      icon: Cctv,
+    },
+    {
+      name: "推流列表",
+      url: "rtmps",
+      icon: MonitorUp,
+    },
+    {
+      name: "拉流代理",
+      url: "rtsps",
+      icon: Waypoints,
+    },
+  ],
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-empty-pattern
 function meta({}: Route.MetaArgs) {
@@ -13,42 +43,26 @@ function meta({}: Route.MetaArgs) {
   ];
 }
 export default function Page() {
-  const { isOpen, onStateChange } = useSidebarState();
-
   return (
-    <SidebarProvider
-      open={isOpen}
-      onOpenChange={onStateChange}
-      style={
-        {
-          "--sidebar-width": "14rem",
-          "--sidebar-width-icon": "3rem",
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar />
-      <SidebarInset className="flex flex-col min-h-screen overflow-hidden">
-        <div className="flex-1 overflow-auto">
-          <div
-            className="min-w-0 h-full"
-            style={{
-              background:
-                "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)",
-            }}
-          >
-            <Outlet />
-          </div>
-        </div>
+    <div className="flex flex-col min-h-screen">
+      {/* 顶部导航菜单 */}
+      <TopNavigation
+        items={navigationData.projects}
+        user={navigationData.user}
+      />
 
-        {/* <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="aspect-video rounded-xl bg-muted/50" />
-            <div className="aspect-video rounded-xl bg-muted/50" />
-            <div className="aspect-video rounded-xl bg-muted/50" />
-          </div>
-          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-        </div> */}
-      </SidebarInset>
-    </SidebarProvider>
+      {/* 主内容区域 */}
+      <div className="flex-1 overflow-auto">
+        <div
+          className="min-w-0 h-full"
+          style={{
+            background:
+              "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)",
+          }}
+        >
+          <Outlet />
+        </div>
+      </div>
+    </div>
   );
 }

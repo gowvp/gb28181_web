@@ -27,7 +27,7 @@ import { NavSecondary } from "./nav_secondary";
 const data = {
   user: {
     name: "gowvp",
-    email: "GB/T28181-2022",
+    email: "GB/T28181",
     // TODO: add avatar
     avatar: "/assets/imgs/bg.webp",
   },
