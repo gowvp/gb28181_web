@@ -1,6 +1,7 @@
 import React, { useEffect, useImperativeHandle, useRef } from "react";
 import type Jessibuca from "./jessibuca";
 import { toastError } from "../xui/toast";
+import logger from "~/lib/logger";
 
 declare global {
   interface Window {
@@ -15,7 +16,7 @@ export type PlayerRef = {
 
 interface PlayerProps {
   ref: React.RefObject<PlayerRef | null>;
-  // link: string; // 播放的流地址
+  link?: string; // 播放的流地址
 }
 
 function Player({ ref }: PlayerProps) {
@@ -26,14 +27,16 @@ function Player({ ref }: PlayerProps) {
 
   const divRef = useRef<HTMLDivElement>(null);
   const p = useRef<Jessibuca>(null);
+  // 记录待播放的链接（用于播放器加载完成后自动播放）
+  const pendingPlayRef = useRef<string | null>(null);
 
   useEffect(() => {
-    console.log("🚀 ~Jessibuca-player useEffect ~ init jessibuca", useEffect);
+    logger.info("Jessibuca-player useEffect ~ init jessibuca");
 
     // 播放器已经初始化，无需再次执行
     if (p.current) {
-      console.log(
-        "🚀 ~Jessibuca-player useEffect ~ exist, hasload:",
+      logger.info(
+        "Jessibuca-player useEffect ~ exist, hasload:",
         p.current.hasLoaded()
       );
       return;
@@ -61,40 +64,89 @@ function Player({ ref }: PlayerProps) {
     };
     p.current = new window.Jessibuca(cfg);
 
-    // 如果传入了播放链接，在加载播放器以后就可以播放了
-    // if (link) {
-    //   play(link);
-    // }
+    // 监听播放器初始化完成事件
+    // 使用轮询检测播放器是否加载完成（Jessibuca没有提供ready事件）
+    const checkLoaded = () => {
+      if (p.current && p.current.hasLoaded()) {
+        logger.info("Jessibuca-player ~ 播放器加载完成");
+
+        // 如果有待播放的链接，立即播放
+        if (pendingPlayRef.current) {
+          logger.info(
+            "Jessibuca-player ~ 执行待播放链接:",
+            pendingPlayRef.current
+          );
+          const link = pendingPlayRef.current;
+          pendingPlayRef.current = null;
+          playInternal(link);
+        }
+      } else {
+        // 继续轮询，每100ms检查一次
+        setTimeout(checkLoaded, 100);
+      }
+    };
+
+    // 启动加载检测
+    checkLoaded();
+
     return () => {
-      console.log("🚀 ~ Jessibuca-player ~ dispose");
+      logger.info("Jessibuca-player ~ dispose");
     };
   }, []);
 
-  const play = (link: string) => {
-    console.log("🚀 Jessibuca-player ~ play ~ link:", link);
+  // 内部播放方法（不检查加载状态）
+  const playInternal = (link: string) => {
     if (!p.current) {
-      console.log("🚀 Jessibuca-player ~ play ~ 播放器未初始化:");
-      toastError("播放器未初始化");
-      return;
-    }
-    if (!p.current.hasLoaded()) {
-      console.log("🚀 Jessibuca-player ~ play ~ 播放器未加载完成:");
-      toastError("播放器未加载完成");
+      logger.error("Jessibuca-player ~ playInternal ~ 播放器未初始化");
       return;
     }
 
     p.current
       .play(link)
       .then(() => {
-        console.log("🚀 Jessibuca-player ~ play ~ success");
+        logger.info("Jessibuca-player ~ play ~ success");
       })
-      .catch((e) => {
+      .catch((e: Error) => {
         toastError("播放失败", { description: e.message });
       });
   };
 
+  const play = (link: string) => {
+    logger.info("Jessibuca-player ~ play ~ link:", link);
+
+    if (!p.current) {
+      logger.error("Jessibuca-player ~ play ~ 播放器未初始化");
+      toastError("播放器未初始化");
+      return;
+    }
+
+    // 如果播放器已加载完成，直接播放
+    if (p.current.hasLoaded()) {
+      playInternal(link);
+    } else {
+      // 如果未加载完成，记录待播放链接，等待加载完成后自动播放
+      logger.info(
+        "Jessibuca-player ~ play ~ 播放器正在加载中，将在加载完成后自动播放"
+      );
+      pendingPlayRef.current = link;
+
+      // 设置超时检测（5秒后如果还未加载完成则提示错误）
+      setTimeout(() => {
+        if (pendingPlayRef.current === link) {
+          logger.error("Jessibuca-player ~ play ~ 播放器加载超时");
+          pendingPlayRef.current = null;
+          toastError("播放器加载超时，请刷新页面重试");
+        }
+      }, 5000);
+    }
+  };
+
   const destroy = () => {
-    console.log("🚀 Jessibuca-player ~ play destroy");
+    logger.info("Jessibuca-player ~ destroy");
+
+    // 清除待播放链接
+    pendingPlayRef.current = null;
+
     if (p.current) {
       p.current.destroy();
       p.current = null;

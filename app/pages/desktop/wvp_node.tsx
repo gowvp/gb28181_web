@@ -9,8 +9,6 @@ import {
 
 import { BaseNode } from "~/components/base-node";
 import { LabeledHandle } from "~/components/labeled-handle";
-import { NodeHeader, NodeHeaderTitle } from "~/components/node-header";
-import { Settings } from "lucide-react";
 
 export type SumNode = Node<{
   value: number;

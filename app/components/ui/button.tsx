@@ -39,16 +39,27 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isLoading?: boolean;
+  isFull?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { className, variant, size, asChild = false, isLoading: loading, ...props },
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      isLoading: loading,
+      isFull = false,
+      ...props
+    },
     ref
   ) => {
     const Comp = asChild ? Slot : "button";
     return (
-      <div className="relative inline-block select-none w-full">
+      <div
+        className={cn("relative inline-block select-none", isFull && "w-full")}
+      >
         <Comp
           className={cn(buttonVariants({ variant, size, className }))}
           style={{

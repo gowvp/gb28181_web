@@ -2,10 +2,7 @@ import * as React from "react";
 import { Bug, Copy } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
-import {
-  Drawer,
-  DrawerContent,
-} from "~/components/ui/drawer";
+import { Drawer, DrawerContent } from "~/components/ui/drawer";
 import { AspectRatio } from "~/components/ui/aspect-ratio";
 import Player, { type PlayerRef } from "~/components/player/player";
 import { useRef, useState } from "react";
@@ -33,10 +30,7 @@ export default function ChannelDetailView({
   const deviceDetailRef = useRef<any>(null);
 
   // 播放功能
-  const {
-    mutate: playMutate,
-    data: playData,
-  } = useMutation({
+  const { mutate: playMutate, data: playData } = useMutation({
     mutationFn: Play,
     onSuccess(data) {
       setLink(data.data.items[0].http_flv ?? "");
@@ -91,20 +85,20 @@ export default function ChannelDetailView({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[95vh]">
-        <div className="flex flex-row h-full">
-          <DeviceDetailView ref={deviceDetailRef} />
-
-          <div className="flex-1 bg-gray-100 p-2">
+      <DrawerContent className="h-[85vh] sm:h-[95vh]">
+        <div className="flex flex-col sm:flex-row h-full overflow-hidden">
+          {/* 播放器内容 */}
+          <div className="flex-1 bg-gray-100 p-2 overflow-y-auto">
             {/* 播放器设置一个最小宽高 */}
-            <div className="min-h-[10rem] min-w-[40rem]">
+            <div className="w-full lg:min-w-[40rem]">
               <AspectRatio ratio={16 / 9}>
                 <Player ref={playRef} link={link} />
               </AspectRatio>
             </div>
 
             {/* 播放地址 */}
-            <div className="flex gap-2 items-center">
+            <Input className="bg-white w-full my-2" disabled value={link} />
+            <div className="flex  gap-2 items-start my-2">
               <Select
                 onValueChange={(v) => setSelected(Number(v))}
                 defaultValue={selected.toString()}
@@ -121,7 +115,7 @@ export default function ChannelDetailView({
                 </SelectContent>
               </Select>
 
-              <div className="flex gap-2 my-2">
+              <div className="flex flex-wrap gap-2">
                 {[
                   {
                     name: "HTTP_FLV",
@@ -182,8 +176,11 @@ export default function ChannelDetailView({
                 ))}
               </div>
             </div>
+          </div>
 
-            <Input className="bg-white" disabled value={link} />
+          {/* 设备详情/介绍 - 小屏幕时隐藏 */}
+          <div className="hidden sm:block">
+            <DeviceDetailView ref={deviceDetailRef} />
           </div>
         </div>
 

@@ -142,6 +142,7 @@ export default function config() {
               isLoading={isPending}
               className="w-full sm:w-48 mt-10 rounded-2xl min-h-9"
               type="submit"
+              isFull
             >
               保存配置
             </Button>
