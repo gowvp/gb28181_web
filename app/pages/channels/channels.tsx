@@ -245,7 +245,7 @@ function DeviceCard({
                   }}
                 >
                   {" "}
-                  {displayChannels.length}
+                  {device.channels}
                 </span>
               </span>
 
