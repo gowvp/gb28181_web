@@ -15,8 +15,17 @@ export async function FindDevices(query: object) {
 
 export const findDevicesChannelsKey = "findDevicesChannels";
 // FindDevicesChannels 查询通道树
-export async function FindDevicesChannels() {
-  return await GET<FindDevicesChannelsResponse>(`/devices/channels`);
+export async function FindDevicesChannels({
+  page,
+  size,
+}: {
+  page: number;
+  size: number;
+}) {
+  return await GET<FindDevicesChannelsResponse>(`/devices/channels`, {
+    page,
+    size,
+  });
 }
 
 export const getDeviceKey = "getDevice";

@@ -23,7 +23,7 @@ export default function ChannelsView() {
   // 查询通道树数据
   const { data, isLoading } = useQuery({
     queryKey: [findDevicesChannelsKey],
-    queryFn: () => FindDevicesChannels(),
+    queryFn: () => FindDevicesChannels({ page: 1, size: 30 }),
     refetchInterval: 10000,
   });
 
@@ -207,9 +207,10 @@ function DeviceCard({
   device: DeviceWithChannelsItem;
   onChannelClick: (channel: ChannelItem) => void;
 }) {
+  const maxChannels = 4;
   const displayChannels = device.children || [];
-  const hasMoreChannels = displayChannels.length > 6; // 显示最多6个通道
-  const visibleChannels = displayChannels.slice(0, 6);
+  const hasMoreChannels = displayChannels.length > maxChannels; // 显示最多6个通道
+  const visibleChannels = displayChannels.slice(0, maxChannels);
 
   return (
     <Card className="w-full bg-gray-50 border-solid border border-gray-200 rounded-2xl ">
@@ -225,12 +226,42 @@ function DeviceCard({
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900">
                 {device.ext.name || device.name || "未命名设备"}
-              </CardTitle>
+              </CardTitle>{" "}
+              {device.ext.manufacturer}
               <p className="text-gray-500 text-xs">
                 设备ID: {device.device_id}
               </p>
             </div>
           </div>
+
+          {hasMoreChannels && (
+            <div className=" mt-4 text-center">
+              <span style={{ marginRight: "1rem" }}>
+                总通道数:
+                <span
+                  style={{
+                    fontWeight: "bold",
+                    fontSize: "1.1rem",
+                  }}
+                >
+                  {" "}
+                  {displayChannels.length}
+                </span>
+              </span>
+
+              <Link to={`/channels?device_id=${device.device_id}`}>
+                <Button
+                  variant="outlined"
+                  size="middle"
+                  style={{
+                    boxShadow: "none",
+                  }}
+                >
+                  查看更多
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -246,15 +277,6 @@ function DeviceCard({
                 </div>
               ))}
             </div>
-            {hasMoreChannels && (
-              <div className="mt-4 text-center">
-                <Link to={`/channels?device_id=${device.id}`}>
-                  <Button variant="outline" size="sm">
-                    查看更多 ({displayChannels.length - 6} 个通道)
-                  </Button>
-                </Link>
-              </div>
-            )}
           </>
         ) : (
           <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-200 rounded-lg">

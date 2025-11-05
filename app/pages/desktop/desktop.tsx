@@ -18,6 +18,7 @@ import {
 import { ErrorHandle } from "~/service/config/error";
 import { Cctv, Settings } from "lucide-react";
 import { EditForm } from "./media/edit";
+import { Tooltip } from "antd";
 
 // 简单的节点组件
 const SimpleNode = ({ data }: { data: any }) => {
@@ -74,14 +75,27 @@ const ZLMNode = ({ data }: { data: any }) => {
 
         {/* 设置按钮 - 右上角 */}
         <div className="absolute top-1 right-1">
-          <button
-            onClick={() => {
-              editRef.current?.edit(data.item);
-            }}
-            className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
+          <Tooltip
+            title={
+              <div>
+                <p className="font-bold">播放黑屏?</p>
+                <p>1. 查看「国标收流默认地址」 此地址是否能被监控设备访问到</p>
+                <p>
+                  2. zlm 能否访问到 gowvp?? docker 合并版本填写 127.0.0.1
+                  即可，分离部署则要明确的 IP 地址
+                </p>
+              </div>
+            }
           >
-            <Settings className="w-5 h-5" />
-          </button>
+            <button
+              onClick={() => {
+                editRef.current?.edit(data.item);
+              }}
+              className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </Tooltip>
         </div>
 
         {/* 图片 */}

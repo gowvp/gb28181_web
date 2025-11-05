@@ -26,10 +26,7 @@ export default function DeviceDetailView({
 
   const [filters] = useState({ page: 1, size: 200 });
   // 查询数据
-  const {
-    data: channels,
-    refetch: refetchChannels,
-  } = useQuery({
+  const { data: channels, refetch: refetchChannels } = useQuery({
     queryKey: [findChannelsKey, { ...filters, did: did }],
     queryFn: () => FindChannels({ ...filters, did: did }),
     refetchInterval: 10000,
@@ -96,9 +93,7 @@ export default function DeviceDetailView({
                 固件:{device?.data.ext.firmware}
               </Badge>
 
-              <Badge variant="secondary">
-                创建:{device?.data.created_at}
-              </Badge>
+              <Badge variant="secondary">创建:{device?.data.created_at}</Badge>
             </div>
           </DrawerHeader>
         </TabsContent>
@@ -118,6 +113,7 @@ export default function DeviceDetailView({
                   ext: item.ext,
                   created_at: "",
                   updated_at: "",
+                  is_playing: false,
                 }}
                 onClick={() => {
                   // 处理通道点击事件

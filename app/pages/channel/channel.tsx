@@ -2,52 +2,29 @@ import * as React from "react";
 import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Edit, RefreshCcw, SquarePlay } from "lucide-react";
+import { RefreshCcw, SquarePlay } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
-import { EditForm } from "./edit";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import useDebounce from "~/components/util/debounce";
-import {
-  FindChannels,
-  findChannelsKey,
-  Play,
-  RefreshSnapshot,
-} from "~/service/api/channel/channel";
+import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import { ErrorHandle } from "~/service/config/error";
-import { Badge } from "~/components/ui/badge";
-import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import type { ChannelItem } from "~/service/api/channel/state";
-import PlayBox, { type PlayBoxRef } from "~/components/xui/play";
-import { toastSuccess, toastWarn } from "~/components/xui/toast";
+import { toastSuccess } from "~/components/xui/toast";
 import { RefreshCatalog } from "~/service/api/device/device";
 import { cn } from "~/lib/utils";
+import ChannelDetailView from "~/pages/channels/detail";
 
-export default function RTMPView() {
+export default function ChannelsView() {
   // =============== 状态定义 ===============
-  const [selectedPlayID, setSelectedPlayID] = useState("");
 
   // refs
-  const editFromRef = useRef<EditSheetImpl>(null);
-  const playRef = useRef<PlayBoxRef>(null);
+  // const editFromRef = useRef<EditSheetImpl>(null);
+  const detailRef = useRef<any>(null);
   const tableRef = useRef<TableQueryRef<ChannelItem>>(null);
 
   const params = new URLSearchParams(window.location.search);
   const device_id = params.get("device_id");
-
-  // =============== 查询与操作 ===============
-
-  // 播放功能
-  const { mutate: playMutate, isPending: playIsPending } = useMutation({
-    mutationFn: Play,
-    onSuccess(data) {
-      playRef.current?.play(data.data.items[0].http_flv ?? "", data.data);
-    },
-    onError: (error) => {
-      setSelectedPlayID("");
-      ErrorHandle(error);
-    },
-  });
 
   // =============== 表格列定义 ===============
   const columns: ColumnsType<ChannelItem> = [
@@ -137,11 +114,21 @@ export default function RTMPView() {
       render: (_, record) => (
         <div className="flex gap-0">
           <Button
-            // disabled={playIsPending}
-            isLoading={playIsPending && selectedPlayID === record.id}
             onClick={() => {
-              setSelectedPlayID(record.id);
-              playMutate(record.id);
+              // 将 channel/state 的 ChannelItem 转换为 device/state 的 ChannelItem 格式
+              detailRef.current?.open({
+                id: record.id,
+                did: record.did,
+                device_id: record.device_id,
+                channel_id: record.channel_id,
+                name: record.name,
+                ptztype: record.ptztype,
+                is_online: record.is_online,
+                is_playing: false,
+                ext: record.ext,
+                created_at: "",
+                updated_at: "",
+              });
             }}
             variant="ghost"
             size="sm"
@@ -213,7 +200,7 @@ export default function RTMPView() {
           <div className="flex justify-end items-center py-4">
             <span className="mr-3">搜索</span>
             <Input
-              placeholder="可输入名称/国标ID/id 模糊搜索"
+              placeholder="可输入名称/国标ID/ID 模糊搜索"
               onChange={(event) => debouncedFilters(event.target.value)}
               className="w-56"
             />
@@ -235,7 +222,7 @@ export default function RTMPView() {
         />
 
         {/* 播放器 */}
-        <PlayBox ref={playRef} />
+        <ChannelDetailView ref={detailRef} />
       </div>
     </>
   );
