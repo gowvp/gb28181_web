@@ -103,19 +103,19 @@ export default function DeviceView() {
               record.is_online ? "bg-green-300" : "bg-orange-300"
             } text-white`}
           >
-            {record.is_online ? "在线" : "离线"}
+            {record.is_online ? t("common:online") : t("common:offline")}
           </Badge>
         );
       },
       minWidth: 80,
     },
     {
-      title: "订阅",
+      title: t("common:subscribe"),
       minWidth: 80,
     },
 
     {
-      title: "最近心跳",
+      title: t("common:recent_heartbeat"),
       dataIndex: "keepalive_at",
       key: "keepalive_at",
       render: (pushed_at: string) => {
@@ -124,7 +124,7 @@ export default function DeviceView() {
     },
 
     {
-      title: "最近注册",
+      title: t("common:recent_register"),
       dataIndex: "registered_at",
       key: "registered_at",
       render: (pushed_at: string) => {
@@ -133,7 +133,7 @@ export default function DeviceView() {
     },
 
     {
-      title: "操作",
+      title: t("common:operation"),
       key: "action",
       fixed: "right",
       render: (_, record: DeviceItem) => (
@@ -146,7 +146,7 @@ export default function DeviceView() {
             }}
           >
             <Folder className="h-4 w-4 mr-1" />
-            通道
+            {t("common:channel")}
           </Button>
 
           <Button
@@ -163,7 +163,7 @@ export default function DeviceView() {
             }
           >
             <Edit className="h-4 w-4 mr-1" />
-            编辑
+            {t("common:edit")}
           </Button>
 
           {/* todo: 删除 loading 状态 */}
@@ -190,8 +190,8 @@ export default function DeviceView() {
   // const [isShowFilter, setIsShowFilter] = useState(true);
 
   const options: CheckboxGroupProps<string>["options"] = [
-    { label: "客户端", value: "/nchannels" },
-    { label: "管理端", value: "/devices" },
+    { label: t("common:client_side"), value: "/nchannels" },
+    { label: t("common:management_side"), value: "/devices" },
   ];
 
   return (
@@ -212,15 +212,15 @@ export default function DeviceView() {
               />
 
               <Link to="/gb/sip">
-                <AntButton>接入信息</AntButton>
+                <AntButton>{t("common:access_info")}</AntButton>
               </Link>
             </div>
 
             {/* 搜索和添加区域 */}
             <div className="flex items-center">
-              <span className="mr-3">搜索</span>
+              <span className="mr-3">{t("common:search")}</span>
               <Input
-                placeholder="可输入设备编号/名称/ID模糊搜索"
+                placeholder={t("common:search_device_placeholder")}
                 onChange={(event) => debouncedFilters(event.target.value)}
                 className="w-60"
               />

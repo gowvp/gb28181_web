@@ -1,49 +1,14 @@
 import React from "react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "~/components/ui/form";
-import { z } from "zod";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
 import { SquarePlus } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Radio } from "antd";
+import { Form, Input, Radio, InputNumber } from "antd";
 import { AddProxy, EditProxy } from "~/service/api/rtsp/rtsp";
 import { useTranslation } from "react-i18next";
 
-const formSchema = z.object({
-  // app: z.string().min(2).max(20),
-  // stream: z.string().min(2).max(20),
-  id: z.any(),
-  timeout_s: z.number().min(1).max(100),
-  enabled: z.boolean(),
-  transport: z.number().min(0).max(1),
-  source_url: z.string().min(10),
-});
-
-const defaultValues = {
-  id: null,
-  app: "pull",
-  stream: "",
-  timeout_s: 10,
-  enabled: true,
-  transport: 0,
-  source_url: "",
-};
-
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
-  });
+  const [form] = Form.useForm();
 
   return (
     <EditSheet
@@ -51,8 +16,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       ref={ref}
       title={t("pull_info")}
       description={t("pull_info_desc")}
-      schema={formSchema}
-      defaultValues={defaultValues}
       onSuccess={{
         add: onAddSuccess,
         edit: onEditSuccess,
@@ -68,126 +31,64 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         </Button>
       }
     >
-      <FormField
-        control={form.control}
-        name="id"
-        disabled
-        render={({ field }) => (
-          <FormItem hidden={!field.value}>
-            <FormLabel>*{t("id")}</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <Form.Item name="id" hidden>
+        <Input />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item name="app" hidden initialValue="pull">
+        <Input />
+      </Form.Item>
+
+      <Form.Item name="stream" hidden initialValue="">
+        <Input />
+      </Form.Item>
+
+      <Form.Item
+        label={t("source_url")}
         name="source_url"
-        render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>*{t("source_url")}</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        rules={[
+          { required: true, message: t("input_required") },
+          { min: 10, message: t("source_url_min_length") },
+        ]}
+      >
+        <Input placeholder="rtsp://..." />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("pull_method")}
         name="transport"
-        render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>*{t("pull_method")}</FormLabel>
+        initialValue={0}
+        rules={[{ required: true }]}
+      >
+        <Radio.Group size="middle">
+          <Radio.Button value={0}>TCP</Radio.Button>
+          <Radio.Button value={1}>UDP</Radio.Button>
+        </Radio.Group>
+      </Form.Item>
 
-            <FormControl>
-              <div>
-                <Radio.Group
-                  value={field.value.toString()}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                >
-                  <Radio.Button value="0">TCP</Radio.Button>
-                  <Radio.Button value="1">UDP</Radio.Button>
-                </Radio.Group>
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* <FormField
-        control={form.control}
-        name="app"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*应用名</FormLabel>
-            <FormControl>
-              <Input disabled {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      /> */}
-
-      {/* <FormField
-        control={form.control}
-        name="stream"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>流 ID</FormLabel>
-            <FormControl>
-              <Input disabled placeholder="" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      /> */}
-
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("timeout_s")}
         name="timeout_s"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*{t("timeout_s")}</FormLabel>
-            <FormControl>
-              <Input
-                type="number"
-                placeholder=""
-                {...field}
-                onChange={(e) => field.onChange(Number(e.target.value))}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        initialValue={10}
+        rules={[
+          { required: true, message: t("input_required") },
+          { type: "number", min: 1, max: 100, message: t("timeout_range") },
+        ]}
+      >
+        <InputNumber
+          min={1}
+          max={100}
+          style={{ width: "100%" }}
+          placeholder={t("input_timeout")}
+        />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
-        name="enabled"
-        render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>{t("enabled")}</FormLabel>
-            <FormControl>
-              <div>
-                <Radio.Group
-                  value={field.value.toString()}
-                  onChange={(e) => field.onChange(e.target.value == "true")}
-                >
-                  <Radio.Button value="true">{t("enable")}</Radio.Button>
-                  <Radio.Button value="false">{t("disable")}</Radio.Button>
-                </Radio.Group>
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <Form.Item label={t("enabled")} name="enabled" initialValue={true}>
+        <Radio.Group size="middle">
+          <Radio.Button value={true}>{t("enable")}</Radio.Button>
+          <Radio.Button value={false}>{t("disable")}</Radio.Button>
+        </Radio.Group>
+      </Form.Item>
     </EditSheet>
   );
 }

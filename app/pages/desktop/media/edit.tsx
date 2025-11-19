@@ -1,81 +1,13 @@
 import React from "react";
-import { Input } from "~/components/ui/input";
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "~/components/ui/form";
-import { z } from "zod";
 import { AddRTMP } from "~/service/api/rtmp/rtmp";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, Input } from "antd";
 import { EditMediaServer } from "~/service/api/media/media";
 import { useTranslation } from "react-i18next";
 
-// export type Request = {
-//   /**
-//    * gowvp 联系 zlm 的内网地址
-//    */
-//   ip: string;
-//   /**
-//    * zlm 的相关端口
-//    */
-//   ports: Ports;
-//   /**
-//    * 国标收流默认地址
-//    */
-//   sdp_ip: string;
-//   /**
-//    * zlm 的 api 秘钥
-//    */
-//   secret: string;
-//   [property: string]: any;
-// }
-
-// /**
-// * zlm 的相关端口
-// */
-// export type Ports = {
-//   flv: number;
-//   http: number;
-//   rtmp: number;
-//   rtsp: number;
-//   [property: string]: any;
-// }
-
-const formSchema = z.object({
-  id: z.any(),
-  ip: z.string().min(2).max(20),
-  sdp_ip: z.string().min(2).max(20),
-  secret: z.string().min(2).max(50),
-  hook_ip: z.string().min(2).max(20),
-  // ports: z.object({
-  //   flv: z.number(),
-  //   http: z.number(),
-  //   rtmp: z.number(),
-  //   rtsp: z.number(),
-  // }),
-});
-
-const defaultValues = {
-  id: null,
-  ip: "",
-  sdp_ip: "",
-  hook_ip: "",
-  secret: "",
-};
-
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
-  });
+  const [form] = Form.useForm();
 
   return (
     <EditSheet
@@ -83,8 +15,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       ref={ref}
       title={t("media_config")}
       description={t("media_config_desc")}
-      schema={formSchema}
-      defaultValues={defaultValues}
       onSuccess={{
         add: onAddSuccess,
         edit: onEditSuccess,
@@ -93,87 +23,58 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         add: AddRTMP,
         edit: EditMediaServer,
       }}
-      trigger={
-        <></>
-        //   <Button className="mx-3">
-        //     <SquarePlus />
-        //     {t("add_channel")}
-        //   </Button>
-      }
+      trigger={<></>}
     >
-      <FormField
-        control={form.control}
-        name="id"
-        disabled
-        render={({ field }) => (
-          <FormItem hidden={!field.value}>
-            <FormLabel>*{t("id")}</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <Form.Item name="id" hidden>
+        <Input />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("ip")}
         name="ip"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*{t("ip")}</FormLabel>
-            <FormDescription>{t("ip_desc")}</FormDescription>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        rules={[
+          { required: true, message: t("input_required") },
+          { min: 2, max: 20, message: t("ip_length") },
+        ]}
+        tooltip={t("ip_desc")}
+      >
+        <Input placeholder={t("input_ip_placeholder")} />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("gb_receive_address")}
         name="sdp_ip"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*{t("gb_receive_address")}</FormLabel>
-            <FormControl>
-              <Input placeholder="" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        rules={[
+          { required: true, message: t("input_required") },
+          { min: 2, max: 20, message: t("address_length") },
+        ]}
+      >
+        <Input placeholder={t("input_gb_address")} />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("hook_ip")}
         name="hook_ip"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*{t("hook_ip")}</FormLabel>
-            <FormDescription>{t("hook_ip_desc")}</FormDescription>
-            <FormControl>
-              <Input placeholder="" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        rules={[
+          { required: true, message: t("input_required") },
+          { min: 2, max: 20, message: t("ip_length") },
+        ]}
+        tooltip={t("hook_ip_desc")}
+      >
+        <Input placeholder={t("input_hook_ip")} />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("zlm_secret")}
         name="secret"
-        render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>{t("zlm_secret")}</FormLabel>
-            <FormDescription>{t("zlm_secret_desc")}</FormDescription>
-            <FormControl>
-              <Input placeholder="" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        rules={[
+          { required: true, message: t("input_required") },
+          { min: 2, max: 50, message: t("secret_length") },
+        ]}
+        tooltip={t("zlm_secret_desc")}
+      >
+        <Input placeholder={t("input_api_secret")} />
+      </Form.Item>
     </EditSheet>
   );
 }

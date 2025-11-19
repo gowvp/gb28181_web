@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Cctv, Monitor } from "lucide-react";
+import { Cctv, Monitor, Wifi } from "lucide-react";
 
 import type {
   DeviceWithChannelsItem,
@@ -15,6 +15,7 @@ import {
 import { RefreshSnapshot } from "~/service/api/channel/channel";
 
 import ChannelDetailView from "./detail";
+import DeviceDiscover from "./device_discover";
 import { cn } from "~/lib/utils";
 import { Button, Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
@@ -31,6 +32,7 @@ export default function ChannelsView() {
   });
 
   const detailRef = useRef<any>(null);
+  const discoverRef = useRef<any>(null);
 
   const navigate = useNavigate();
 
@@ -58,6 +60,14 @@ export default function ChannelsView() {
           <Link to="/gb/sip">
             <Button>{t("access_info")}</Button>
           </Link>
+
+          {/* 设备发现按钮 */}
+          <Button
+            icon={<Wifi className="w-4 h-4" />}
+            onClick={() => discoverRef.current?.open()}
+          >
+            {t("device_discover")}
+          </Button>
         </div>
 
         {/* Device Cards */}
@@ -84,6 +94,7 @@ export default function ChannelsView() {
         )}
 
         <ChannelDetailView ref={detailRef} />
+        <DeviceDiscover ref={discoverRef} />
       </div>
     </div>
   );
@@ -146,16 +157,18 @@ function ChannelCard({
             </span>
           </div>
 
-          <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center">
-            <span
-              className={`w-2 h-2 rounded-full mr-1 ${
-                channel.is_playing ? "bg-green-500" : "bg-slate-100"
-              }`}
-            ></span>
-            <span className="text-xs">
-              {channel.is_playing ? t("live") : t("idle")}
-            </span>
-          </div>
+          {channel.is_online && (
+            <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center">
+              <span
+                className={`w-2 h-2 rounded-full mr-1 ${
+                  channel.is_playing ? "bg-green-500" : "bg-slate-100"
+                }`}
+              ></span>
+              <span className="text-xs">
+                {channel.is_playing ? t("live") : t("idle")}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 悬浮播放按钮 */}

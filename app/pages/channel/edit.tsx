@@ -1,44 +1,14 @@
 import React from "react";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "~/components/ui/form";
-import { z } from "zod";
 import { AddRTMP, EditRTMP } from "~/service/api/rtmp/rtmp";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
 import { SquarePlus } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Radio } from "antd";
+import { Form, Input, Radio } from "antd";
 import { useTranslation } from "react-i18next";
-
-const formSchema = z.object({
-  app: z.string().min(2).max(20),
-  stream: z.string().min(2).max(20),
-  id: z.any(),
-  is_auth_disabled: z.boolean(),
-});
-
-const defaultValues = {
-  id: null,
-  app: "push",
-  stream: "",
-  is_auth_disabled: false,
-};
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
-  });
+  const [form] = Form.useForm();
 
   return (
     <EditSheet
@@ -46,8 +16,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       ref={ref}
       title={t("push_info")}
       description={t("push_info_desc")}
-      schema={formSchema}
-      defaultValues={defaultValues}
       onSuccess={{
         add: onAddSuccess,
         edit: onEditSuccess,
@@ -63,71 +31,44 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         </Button>
       }
     >
-      <FormField
-        control={form.control}
-        name="id"
-        disabled
-        render={({ field }) => (
-          <FormItem hidden={!field.value}>
-            <FormLabel>*{t("id")}</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <Form.Item name="id" hidden>
+        <Input />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("app")}
         name="app"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*{t("app")}</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        initialValue="push"
+        rules={[
+          { required: true, message: t("input_required") },
+          { min: 2, max: 20, message: t("app_name_length") },
+        ]}
+      >
+        <Input placeholder={t("input_app_name")} />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("stream")}
         name="stream"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*{t("stream")}</FormLabel>
-            <FormControl>
-              <Input placeholder="" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        rules={[
+          { required: true, message: t("input_required") },
+          { min: 2, max: 20, message: t("stream_id_length") },
+        ]}
+      >
+        <Input placeholder={t("input_stream_id")} />
+      </Form.Item>
 
-      <FormField
-        control={form.control}
+      <Form.Item
+        label={t("push_auth")}
         name="is_auth_disabled"
-        render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel>{t("push_auth")}</FormLabel>
-            <FormDescription>{t("push_auth_tip")}</FormDescription>
-            <FormControl>
-              <div>
-                <Radio.Group
-                  value={field.value.toString()}
-                  onChange={(e) => field.onChange(e.target.value == "true")}
-                >
-                  <Radio.Button value="false">{t("enable")}</Radio.Button>
-                  <Radio.Button value="true">{t("disable")}</Radio.Button>
-                </Radio.Group>
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+        initialValue={false}
+        tooltip={t("push_auth_tip")}
+      >
+        <Radio.Group size="middle">
+          <Radio.Button value={false}>{t("enable")}</Radio.Button>
+          <Radio.Button value={true}>{t("disable")}</Radio.Button>
+        </Radio.Group>
+      </Form.Item>
     </EditSheet>
   );
 }

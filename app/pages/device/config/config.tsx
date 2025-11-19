@@ -1,47 +1,19 @@
 import React from "react";
-import { Button } from "~/components/ui/button";
-import { z } from "zod";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "~/components/ui/form";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "antd";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   GetConfigInfo,
   getConfigInfoKey,
   SetConfigSIP,
 } from "~/service/api/config/config";
-import { Input } from "~/components/ui/input";
+import { Form, Input, InputNumber } from "antd";
 import { ErrorHandle } from "~/service/config/error";
 import { toastSuccess } from "~/components/xui/toast";
 import { useTranslation } from "react-i18next";
 
-const formSchema = z.object({
-  domain: z.string(),
-  id: z.string().min(18).max(20),
-  password: z.any(),
-  port: z.number().min(1).max(65535),
-});
-
 export default function config() {
   const { t } = useTranslation("common");
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      domain: "",
-      id: "",
-      password: "",
-      port: 0,
-    },
-  });
+  const [form] = Form.useForm();
 
   const { data } = useQuery({
     queryKey: [getConfigInfoKey],
@@ -50,9 +22,9 @@ export default function config() {
 
   React.useEffect(() => {
     if (data?.data.sip) {
-      form.reset(data.data.sip);
+      form.setFieldsValue(data.data.sip);
     }
-  }, [data]);
+  }, [data, form]);
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (values: any) => SetConfigSIP(values),
@@ -62,95 +34,75 @@ export default function config() {
     },
   });
 
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      await mutateAsync(values);
+    } catch (error) {
+      console.log("表单验证失败:", error);
+    }
+  };
+
   return (
-    <>
-      {/* <XHeader
-        items={[
-          { title: "监控列表", url: "/nchannels" },
-          { title: "国标配置", url: "/gb/sip" },
-        ]}
-      /> */}
+    <div className="w-[380px] px-6 pt-6 m-auto">
+      <Form form={form} layout="vertical" size="large">
+        <Form.Item
+          label={t("gb_id")}
+          name="id"
+          rules={[
+            { required: true, message: t("input_required") },
+            { min: 18, max: 20, message: t("gb_id_length") },
+          ]}
+        >
+          <Input
+            placeholder={t("input_gb_id")}
+            suffix={
+              <span className="text-xs text-gray-400">
+                {(form.getFieldValue("id") || "").length}
+              </span>
+            }
+          />
+        </Form.Item>
 
-      <div className="w-[380px] px-6 pt-6 m-auto">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((values: any) => mutateAsync(values))}
-            className="space-y-4 w-full"
-          >
-            <FormField
-              control={form.control}
-              name="id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>*{t("gb_id")}</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Input {...field} className="pr-12" />
-                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-muted-foreground">
-                        {String(field.value || "").length}
-                      </span>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <Form.Item
+          label={t("gb_domain")}
+          name="domain"
+          rules={[{ required: true, message: t("input_required") }]}
+        >
+          <Input placeholder={t("input_gb_domain")} />
+        </Form.Item>
 
-            <FormField
-              control={form.control}
-              name="domain"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>*{t("gb_domain")}</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <Form.Item
+          label={t("port_udp_tcp")}
+          name="port"
+          rules={[
+            { required: true, message: t("input_required") },
+            { type: "number", min: 1, max: 65535, message: t("port_range") },
+          ]}
+          tooltip={t("port_config_tip")}
+        >
+          <InputNumber
+            disabled
+            style={{ width: "100%" }}
+            placeholder={t("input_port")}
+          />
+        </Form.Item>
 
-            <FormField
-              control={form.control}
-              name="port"
-              disabled
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>*{t("port_udp_tcp")}</FormLabel>
-                  <FormDescription>{t("port_config_tip")}</FormDescription>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        <Form.Item label={t("password")} name="password">
+          <Input.Password placeholder={t("input_password_placeholder")} />
+        </Form.Item>
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("password")}</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button
-              isLoading={isPending}
-              className="w-full sm:w-48 mt-10 rounded-2xl min-h-9"
-              type="submit"
-              isFull
-            >
-              {t("save_config")}
-            </Button>
-          </form>
-        </Form>
-      </div>
-    </>
+        <Button
+          type="primary"
+          loading={isPending}
+          onClick={handleSubmit}
+          block
+          size="large"
+          className="mt-6"
+        >
+          {t("save_config")}
+        </Button>
+      </Form>
+    </div>
   );
 }
