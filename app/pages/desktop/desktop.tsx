@@ -109,6 +109,36 @@ const ZLMNode = ({ data }: { data: any }) => {
 
         {/* 端口小模块 - 垂直排列 */}
         <div className="space-y-3">
+          <div className="relative flex items-center p-2 bg-purple-50 rounded border-l-4 border-purple-500">
+            <Handle
+              type="source"
+              position={Position.Left}
+              id="http-output"
+              style={{
+                background: "#722ed1",
+                width: 8,
+                height: 8,
+                left: "-4px",
+              }}
+            />
+            <div className="ml-2 font-medium text-xs">HTTP: {data.http}</div>
+          </div>
+
+          <div className="relative flex items-center p-2 bg-yellow-50 rounded border-l-4 border-yellow-500">
+            <Handle
+              type="target"
+              position={Position.Left}
+              id="rtp-input"
+              style={{
+                background: "#faad14",
+                width: 8,
+                height: 8,
+                left: "-4px",
+              }}
+            />
+            <div className="ml-2 font-medium text-xs">RTP: {data.rtp}</div>
+          </div>
+
           <div className="relative flex items-center p-2 bg-blue-50 rounded border-l-4 border-blue-500">
             <Handle
               type="target"
@@ -138,36 +168,6 @@ const ZLMNode = ({ data }: { data: any }) => {
             />
             <div className="ml-2 font-medium text-xs">RTSP: {data.rtsp}</div>
           </div>
-
-          <div className="relative flex items-center p-2 bg-yellow-50 rounded border-l-4 border-yellow-500">
-            <Handle
-              type="target"
-              position={Position.Left}
-              id="rtp-input"
-              style={{
-                background: "#faad14",
-                width: 8,
-                height: 8,
-                left: "-4px",
-              }}
-            />
-            <div className="ml-2 font-medium text-xs">RTP: {data.rtp}</div>
-          </div>
-
-          <div className="relative flex items-center p-2 bg-purple-50 rounded border-l-4 border-purple-500">
-            <Handle
-              type="source"
-              position={Position.Left}
-              id="http-output"
-              style={{
-                background: "#722ed1",
-                width: 8,
-                height: 8,
-                left: "-4px",
-              }}
-            />
-            <div className="ml-2 font-medium text-xs">HTTP: {data.http}</div>
-          </div>
         </div>
       </div>
 
@@ -190,29 +190,46 @@ const GoWVPNode = () => {
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
       <div className="flex flex-col items-center">
         {/* 图片 */}
-        <div className="flex justify-center mb-4">
+        <div className="flex justify-cent">
           <img
             src={"./assets/imgs/logo.png"}
             alt="GoWVP"
-            className="w-16 h-16 object-contain"
+            className="w-36 object-contain"
           />
         </div>
 
         {/* 功能小模块 - 垂直排列 */}
         <div className="space-y-3 w-full">
-          <div className="relative flex items-center p-2 bg-purple-50 rounded border-l-4 border-purple-500">
+          <div className="relative flex items-center p-2 bg-red-50 rounded border-r-4 border-red-500">
+            <Handle
+              type="target"
+              position={Position.Right}
+              id="http-15123-input"
+              style={{
+                background: "#f5222d",
+                width: 8,
+                height: 8,
+                right: "-4px",
+              }}
+            />
+            <div className="mr-2 font-medium text-xs text-right w-full">
+              HTTP 15123
+            </div>
+          </div>
+
+          <div className="relative flex items-center p-2 bg-orange-50 rounded border-l-4 border-orange-500">
             <Handle
               type="target"
               position={Position.Left}
-              id="zlm-input"
+              id="onvif-input"
               style={{
-                background: "#722ed1",
+                background: "#fa8c16",
                 width: 8,
                 height: 8,
                 left: "-4px",
               }}
             />
-            <div className="ml-2 font-medium text-xs">ZLM 连接</div>
+            <div className="ml-2 font-medium text-xs">ONVIF</div>
           </div>
 
           <div className="relative flex items-center p-2 bg-cyan-50 rounded border-l-4 border-cyan-500">
@@ -230,19 +247,19 @@ const GoWVPNode = () => {
             <div className="ml-2 font-medium text-xs">国标信令</div>
           </div>
 
-          <div className="relative flex items-center p-2 bg-orange-50 rounded border-l-4 border-orange-500">
+          <div className="relative flex items-center p-2 bg-purple-50 rounded border-l-4 border-purple-500">
             <Handle
               type="target"
-              position={Position.Right}
-              id="http-15123-input"
+              position={Position.Left}
+              id="zlm-input"
               style={{
-                background: "#faad14",
+                background: "#722ed1",
                 width: 8,
                 height: 8,
-                right: "-4px",
+                left: "-4px",
               }}
             />
-            <div className="mr-2 font-medium text-xs">HTTP 15123</div>
+            <div className="ml-2 font-medium text-xs">ZLM 连接</div>
           </div>
         </div>
       </div>
@@ -293,41 +310,9 @@ const nodeTypes = {
 // 初始节点数据
 const initialNodes: Node[] = [
   {
-    id: "rtmp",
-    type: "ipc",
-    position: { x: 50, y: 50 },
-    data: { name: "RTMP 推流", value: 0, path: "/rtmps" },
-  },
-  {
-    id: "rtsp",
-    type: "ipc",
-    position: { x: -45, y: 250 }, // 往左边偏一点，从 x:50 改为 x:20
-    data: { name: "RTSP 拉流", value: 0, path: "/rtsps" },
-  },
-  {
-    id: "zlm",
-    type: "zlm",
-    position: { x: 350, y: 50 },
-    data: {
-      name: "zlm",
-      value: 0,
-      rtmp: 1935,
-      rtsp: 554,
-      rtp: "0.0.0.0:10000-20000(UDP/TCP)",
-      http: "0.0.0.0:80",
-      item: null,
-    },
-  },
-  {
-    id: "gb28181",
-    type: "ipc",
-    position: { x: 50, y: 450 },
-    data: { name: "GB/T28181", value: 0, path: "/nchannels" },
-  },
-  {
     id: "gowvp",
     type: "gowvp",
-    position: { x: 350, y: 400 }, // 增加与ZLM的垂直间距
+    position: { x: 350, y: 100 }, // GoWVP往下移，靠近ZLM
     data: {
       name: "GOWVP",
       value: 0,
@@ -336,10 +321,48 @@ const initialNodes: Node[] = [
   {
     id: "client",
     type: "client",
-    position: { x: 650, y: 200 },
+    position: { x: 650, y: 150 }, // Client往下移
     data: {
       name: "client",
       value: 0,
+    },
+  },
+  {
+    id: "rtmp",
+    type: "ipc",
+    position: { x: 50, y: 480 }, // RTMP往下移
+    data: { name: "RTMP 推流", value: 0, path: "/rtmps" },
+  },
+  {
+    id: "rtsp",
+    type: "ipc",
+    position: { x: 50, y: 580 }, // RTSP往下移
+    data: { name: "RTSP 拉流", value: 0, path: "/rtsps" },
+  },
+  {
+    id: "gb28181",
+    type: "ipc",
+    position: { x: 50, y: 250 }, // GB28181移到中间位置
+    data: { name: "GB/T28181", value: 0, path: "/nchannels" },
+  },
+  {
+    id: "onvif",
+    type: "ipc",
+    position: { x: 50, y: 150 }, // ONVIF在GB28181上方
+    data: { name: "ONVIF", value: 0, path: "/nchannels" },
+  },
+  {
+    id: "zlm",
+    type: "zlm",
+    position: { x: 350, y: 420 }, // ZLM往上移，靠近GoWVP
+    data: {
+      name: "zlm",
+      value: 0,
+      rtmp: 1935,
+      rtsp: 554,
+      rtp: "0.0.0.0:10000-20000(UDP/TCP)",
+      http: "0.0.0.0:80",
+      item: null,
     },
   },
 ];
@@ -378,10 +401,10 @@ const initialEdges: Edge[] = [
     source: "zlm",
     target: "gowvp",
     sourceHandle: "http-output",
-    targetHandle: "zlm-input", // ZLM HTTP 连接到 GoWVP ZLM 连接 - 垂直连接
+    targetHandle: "zlm-input", // ZLM HTTP(左侧顶部) 连接到 GoWVP ZLM连接(左侧底部)
     animated: true,
     style: { stroke: "#722ed1", strokeWidth: 2 },
-    type: "smoothstep", // 只对这个连接使用smoothstep避免遮挡
+    type: "smoothstep", // 使用smoothstep避免垂直遮挡，形成弯曲连接线
   },
   {
     id: "gb28181->gowvp",
@@ -391,6 +414,15 @@ const initialEdges: Edge[] = [
     targetHandle: "gb28181-input", // GB/T28181 连接到 GoWVP 左侧的国标信令
     animated: true,
     style: { stroke: "#13c2c2", strokeWidth: 2 },
+  },
+  {
+    id: "onvif->gowvp",
+    source: "onvif",
+    target: "gowvp",
+    sourceHandle: "output",
+    targetHandle: "onvif-input", // ONVIF 连接到 GoWVP 左侧的 ONVIF 端口
+    animated: true,
+    style: { stroke: "#fa8c16", strokeWidth: 2 },
   },
   {
     id: "client->gowvp",

@@ -17,8 +17,8 @@ import { Radio } from "antd";
 import { AddProxy, EditProxy } from "~/service/api/rtsp/rtsp";
 
 const formSchema = z.object({
-  app: z.string().min(2).max(20),
-  stream: z.string().min(2).max(20),
+  // app: z.string().min(2).max(20),
+  // stream: z.string().min(2).max(20),
   id: z.any(),
   timeout_s: z.number().min(1).max(100),
   enabled: z.boolean(),
@@ -82,33 +82,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
 
       <FormField
         control={form.control}
-        name="app"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*应用名</FormLabel>
-            <FormControl>
-              <Input {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="stream"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>*流 ID</FormLabel>
-            <FormControl>
-              <Input placeholder="" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
         name="source_url"
         render={({ field }) => (
           <FormItem className="space-y-3">
@@ -120,6 +93,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           </FormItem>
         )}
       />
+
       <FormField
         control={form.control}
         name="transport"
@@ -142,6 +116,34 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           </FormItem>
         )}
       />
+
+      {/* <FormField
+        control={form.control}
+        name="app"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>*应用名</FormLabel>
+            <FormControl>
+              <Input disabled {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      /> */}
+
+      {/* <FormField
+        control={form.control}
+        name="stream"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>流 ID</FormLabel>
+            <FormControl>
+              <Input disabled placeholder="" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      /> */}
 
       <FormField
         control={form.control}

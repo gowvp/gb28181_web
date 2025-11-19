@@ -2,7 +2,7 @@ import * as React from "react";
 import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Copy, Edit, SquarePlay } from "lucide-react";
+import { Edit, SquarePlay } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { EditForm } from "./edit";
 import { useRef, useState } from "react";
@@ -13,11 +13,8 @@ import { ErrorHandle } from "~/service/config/error";
 import PlayBox, { type PlayBoxRef } from "../../components/xui/play";
 import { formatDate } from "~/components/util/date";
 import { Badge } from "~/components/ui/badge";
-import { copy2Clipboard } from "~/components/util/copy";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import ToolTips from "~/components/xui/tips";
-import XHeader from "~/components/xui/header";
 import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
 import type { RTSPItem } from "~/service/api/rtsp/state";
 
@@ -100,7 +97,7 @@ export default function RTSPView() {
       title: "创建时间",
       dataIndex: "created_at",
       key: "created_at",
-      render: (created_at: string, record: RTSPItem) => {
+      render: (created_at: string) => {
         return <div>{formatDate(created_at)}</div>;
       },
     },
