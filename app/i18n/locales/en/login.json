@@ -1,0 +1,8 @@
+{
+  "title": "Login",
+  "forgot_password": "Forgot password?",
+  "forgot_password_title": "Forgot Password",
+  "forgot_password_tip": "Please find the configuration file in the deployment directory\nCheck the value of the password parameter",
+  "logging_in": "Logging in...",
+  "login_btn": "Login"
+}

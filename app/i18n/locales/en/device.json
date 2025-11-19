@@ -1,0 +1,20 @@
+{
+  "title": "Device Management",
+  "device_list": "Device List",
+  "device_name": "Device Name",
+  "device_id": "Device ID",
+  "device_type": "Device Type",
+  "manufacturer": "Manufacturer",
+  "model": "Model",
+  "firmware_version": "Firmware Version",
+  "ip_address": "IP Address",
+  "port": "Port",
+  "register_time": "Register Time",
+  "last_keepalive": "Last Keepalive",
+  "add_device": "Add Device",
+  "edit_device": "Edit Device",
+  "delete_device": "Delete Device",
+  "device_config": "Device Config",
+  "channel_sync": "Channel Sync",
+  "device_info": "Device Info"
+}

@@ -1,0 +1,21 @@
+{
+  "rtmp_title": "推流管理",
+  "rtsp_title": "拉流代理",
+  "stream_list": "流列表",
+  "stream_name": "流名称",
+  "stream_id": "流ID",
+  "app": "应用名",
+  "stream": "流名",
+  "vhost": "虚拟主机",
+  "push_url": "推流地址",
+  "pull_url": "拉流地址",
+  "source_url": "源地址",
+  "target_url": "目标地址",
+  "start_time": "开始时间",
+  "duration": "持续时间",
+  "add_stream": "添加流",
+  "edit_stream": "编辑流",
+  "delete_stream": "删除流",
+  "start_proxy": "启动代理",
+  "stop_proxy": "停止代理"
+}

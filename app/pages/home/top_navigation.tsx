@@ -31,6 +31,8 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { useNavigate } from "react-router";
+import { LanguageSwitcher } from "~/components/language-switcher";
+import { useTranslation } from "react-i18next";
 
 // 顶部导航菜单项类型定义
 interface TopNavItem {
@@ -121,6 +123,9 @@ export function TopNavigation({
             <div className="h-4 sm:h-6 w-px bg-gray-300 flex-shrink-0" />
           )}
 
+          {/* 语言切换按钮 */}
+          <LanguageSwitcher />
+
           {/* 用户菜单 */}
           {user && <TopNavUser user={user} />}
         </div>
@@ -140,6 +145,7 @@ function TopNavUser({
   };
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation("common");
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   return (
@@ -215,7 +221,7 @@ function TopNavUser({
               isLoggingOut ? "animate-spin" : ""
             }`}
           />
-          Log out
+          {t("logout")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

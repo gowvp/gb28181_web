@@ -3,37 +3,42 @@ import { Outlet } from "react-router";
 import { TopNavigation } from "./top_navigation";
 import { Cctv, MonitorUp, Waypoints, Home } from "lucide-react";
 import type { Route } from "./+types/home";
+import { useTranslation } from "react-i18next";
 
 // 菜单数据（从app_sidebar.tsx复制）
-const navigationData = {
-  user: {
-    name: "gowvp",
-    email: "GB/T28181",
-    avatar: "./assets/imgs/bg.webp",
-  },
-  projects: [
-    {
-      name: "快捷桌面",
-      url: "desktop",
-      icon: Home,
+function useNavigationData() {
+  const { t } = useTranslation("common");
+
+  return {
+    user: {
+      name: t("app_name"),
+      email: t("app_title"),
+      avatar: "./assets/imgs/bg.webp",
     },
-    {
-      name: "国标通道",
-      url: "nchannels",
-      icon: Cctv,
-    },
-    {
-      name: "推流列表",
-      url: "rtmps",
-      icon: MonitorUp,
-    },
-    {
-      name: "拉流代理",
-      url: "rtsps",
-      icon: Waypoints,
-    },
-  ],
-};
+    projects: [
+      {
+        name: t("quick_desktop"),
+        url: "desktop",
+        icon: Home,
+      },
+      {
+        name: t("gb_channel"),
+        url: "nchannels",
+        icon: Cctv,
+      },
+      {
+        name: t("rtmp_stream"),
+        url: "rtmps",
+        icon: MonitorUp,
+      },
+      {
+        name: t("rtsp_proxy"),
+        url: "rtsps",
+        icon: Waypoints,
+      },
+    ],
+  };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-empty-pattern
 function meta({}: Route.MetaArgs) {
@@ -43,6 +48,8 @@ function meta({}: Route.MetaArgs) {
   ];
 }
 export default function Page() {
+  const navigationData = useNavigationData();
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* 顶部导航菜单 */}

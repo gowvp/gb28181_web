@@ -18,8 +18,11 @@ import ChannelDetailView from "./detail";
 import { cn } from "~/lib/utils";
 import { Button, Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
+import { useTranslation } from "react-i18next";
 
 export default function ChannelsView() {
+  const { t } = useTranslation("common");
+
   // 查询通道树数据
   const { data, isLoading } = useQuery({
     queryKey: [findDevicesChannelsKey],
@@ -32,8 +35,8 @@ export default function ChannelsView() {
   const navigate = useNavigate();
 
   const options: CheckboxGroupProps<string>["options"] = [
-    { label: "客户端", value: "/nchannels" },
-    { label: "管理端", value: "/devices" },
+    { label: t("client_side"), value: "/nchannels" },
+    { label: t("management_side"), value: "/devices" },
   ];
 
   return (
@@ -53,7 +56,7 @@ export default function ChannelsView() {
           />
 
           <Link to="/gb/sip">
-            <Button>接入信息</Button>
+            <Button>{t("access_info")}</Button>
           </Link>
         </div>
 
@@ -94,6 +97,7 @@ function ChannelCard({
   channel: ChannelItem;
   onClick: () => void;
 }) {
+  const { t } = useTranslation("common");
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
 
   const { data: url } = useQuery({
@@ -138,7 +142,7 @@ function ChannelCard({
               }`}
             ></span>
             <span className="text-xs">
-              {channel.is_online ? "在线" : "离线"}
+              {channel.is_online ? t("online") : t("offline")}
             </span>
           </div>
 
@@ -149,7 +153,7 @@ function ChannelCard({
               }`}
             ></span>
             <span className="text-xs">
-              {channel.is_playing ? "LIVE" : "空闲"}
+              {channel.is_playing ? t("live") : t("idle")}
             </span>
           </div>
         </div>
@@ -207,6 +211,7 @@ function DeviceCard({
   device: DeviceWithChannelsItem;
   onChannelClick: (channel: ChannelItem) => void;
 }) {
+  const { t } = useTranslation("common");
   const maxChannels = 4;
   const displayChannels = device.children || [];
   const hasMoreChannels = displayChannels.length > maxChannels; // 显示最多6个通道
@@ -225,11 +230,11 @@ function DeviceCard({
             />
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900">
-                {device.ext.name || device.name || "未命名设备"}
+                {device.ext.name || device.name || t("unnamed_device")}
               </CardTitle>{" "}
               {device.ext.manufacturer}
               <p className="text-gray-500 text-xs">
-                设备ID: {device.device_id}
+                {t("device_id")}: {device.device_id}
               </p>
             </div>
           </div>
@@ -237,7 +242,7 @@ function DeviceCard({
           {hasMoreChannels && (
             <div className=" mt-4 text-center">
               <span style={{ marginRight: "1rem" }}>
-                总通道数:
+                {t("total_channels")}:
                 <span
                   style={{
                     fontWeight: "bold",
@@ -257,7 +262,7 @@ function DeviceCard({
                     boxShadow: "none",
                   }}
                 >
-                  查看更多
+                  {t("view_more")}
                 </Button>
               </Link>
             </div>
@@ -281,7 +286,7 @@ function DeviceCard({
         ) : (
           <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-200 rounded-lg">
             <Monitor className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-            <p>暂无通道</p>
+            <p>{t("no_channels")}</p>
           </div>
         )}
       </CardContent>

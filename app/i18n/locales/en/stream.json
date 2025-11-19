@@ -1,0 +1,21 @@
+{
+  "rtmp_title": "RTMP Streams",
+  "rtsp_title": "RTSP Proxy",
+  "stream_list": "Stream List",
+  "stream_name": "Stream Name",
+  "stream_id": "Stream ID",
+  "app": "App",
+  "stream": "Stream",
+  "vhost": "VHost",
+  "push_url": "Push URL",
+  "pull_url": "Pull URL",
+  "source_url": "Source URL",
+  "target_url": "Target URL",
+  "start_time": "Start Time",
+  "duration": "Duration",
+  "add_stream": "Add Stream",
+  "edit_stream": "Edit Stream",
+  "delete_stream": "Delete Stream",
+  "start_proxy": "Start Proxy",
+  "stop_proxy": "Stop Proxy"
+}

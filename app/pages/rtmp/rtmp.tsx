@@ -20,8 +20,11 @@ import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import ToolTips from "~/components/xui/tips";
 import XHeader from "~/components/xui/header";
+import { useTranslation } from "react-i18next";
 
 export default function RTMPView() {
+  const { t } = useTranslation("common");
+
   // =============== 状态定义 ===============
   const [selectedPlayID, setSelectedPlayID] = useState("");
 
@@ -44,22 +47,22 @@ export default function RTMPView() {
   // =============== 表格列定义 ===============
   const columns: ColumnsType<RTMPItem> = [
     {
-      title: "名称",
+      title: t("name"),
       dataIndex: "name",
       key: "name",
     },
     {
-      title: "应用名",
+      title: t("app_name"),
       dataIndex: "app",
       key: "app",
     },
     {
-      title: "流 ID",
+      title: t("stream_id"),
       dataIndex: "stream",
       key: "stream",
     },
     {
-      title: "推流状态",
+      title: t("push_status"),
       dataIndex: "status",
       key: "status",
       render: (value: string) => {
@@ -83,13 +86,13 @@ export default function RTMPView() {
       },
     },
     {
-      title: "流媒体",
+      title: t("media_server"),
       dataIndex: "media_server_id",
       key: "media_server_id",
       render: (value: string) => value || "-",
     },
     {
-      title: "推流时间",
+      title: t("push_time"),
       dataIndex: "pushed_at",
       key: "pushed_at",
       render: (pushed_at: string, record: RTMPItem) => {
@@ -98,7 +101,7 @@ export default function RTMPView() {
       },
     },
     {
-      title: "停流时间",
+      title: t("stop_time"),
       dataIndex: "stopped_at",
       key: "stopped_at",
       render: (stopped_at: string, record: RTMPItem) => {
@@ -107,7 +110,7 @@ export default function RTMPView() {
       },
     },
     {
-      title: "操作",
+      title: t("operation"),
       key: "action",
       fixed: "right",
       render: (_, record) => (
@@ -123,7 +126,7 @@ export default function RTMPView() {
             size="sm"
           >
             <SquarePlay className="h-4 w-4 mr-1" />
-            播放
+            {t("play")}
           </Button>
 
           <Button
@@ -139,7 +142,7 @@ export default function RTMPView() {
             }
           >
             <Edit className="h-4 w-4 mr-1" />
-            编辑
+            {t("edit")}
           </Button>
 
           <ToolTips
@@ -189,9 +192,9 @@ export default function RTMPView() {
       <div className="w-full bg-white p-4 rounded-lg">
         {/* 搜索和添加区域 */}
         <div className="flex justify-end items-center py-4">
-          <span className="mr-3">搜索</span>
+          <span className="mr-3">{t("search")}</span>
           <Input
-            placeholder="可输入应用名/流 ID 模糊搜索"
+            placeholder={t("placeholder_search")}
             onChange={(event) => debouncedFilters(event.target.value)}
             className="w-56"
           />

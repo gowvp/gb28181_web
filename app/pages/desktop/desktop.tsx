@@ -19,10 +19,12 @@ import { ErrorHandle } from "~/service/config/error";
 import { Cctv, Settings } from "lucide-react";
 import { EditForm } from "./media/edit";
 import { Tooltip } from "antd";
+import { useTranslation } from "react-i18next";
 
 // 简单的节点组件
 const SimpleNode = ({ data }: { data: any }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation("desktop");
 
   const handleClick = useCallback(() => {
     if (data.path) {
@@ -45,7 +47,9 @@ const SimpleNode = ({ data }: { data: any }) => {
         <Cctv className="w-5 h-5" />
         <span className="font-medium text-sm">{data.name}</span>
       </div>
-      <div className="text-xs text-gray-500">点击跳转到{data.name}页面</div>
+      <div className="text-xs text-gray-500">
+        {t("click_to_jump", { name: data.name })}
+      </div>
     </div>
   );
 };
@@ -53,6 +57,7 @@ const SimpleNode = ({ data }: { data: any }) => {
 const ZLMNode = ({ data }: { data: any }) => {
   const editRef = useRef<any>(null);
   const queryClient = useQueryClient();
+  const { t } = useTranslation("desktop");
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
@@ -78,12 +83,9 @@ const ZLMNode = ({ data }: { data: any }) => {
           <Tooltip
             title={
               <div>
-                <p className="font-bold">播放黑屏?</p>
-                <p>1. 查看「国标收流默认地址」 此地址是否能被监控设备访问到</p>
-                <p>
-                  2. zlm 能否访问到 gowvp?? docker 合并版本填写 127.0.0.1
-                  即可，分离部署则要明确的 IP 地址
-                </p>
+                <p className="font-bold">{t("play_black_screen")}</p>
+                <p>{t("tip_1")}</p>
+                <p>{t("tip_2")}</p>
               </div>
             }
           >
@@ -186,6 +188,8 @@ const ZLMNode = ({ data }: { data: any }) => {
 };
 
 const GoWVPNode = () => {
+  const { t } = useTranslation("desktop");
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
       <div className="flex flex-col items-center">
@@ -244,7 +248,7 @@ const GoWVPNode = () => {
                 left: "-4px",
               }}
             />
-            <div className="ml-2 font-medium text-xs">国标信令</div>
+            <div className="ml-2 font-medium text-xs">{t("gb_signaling")}</div>
           </div>
 
           <div className="relative flex items-center p-2 bg-purple-50 rounded border-l-4 border-purple-500">
@@ -259,7 +263,9 @@ const GoWVPNode = () => {
                 left: "-4px",
               }}
             />
-            <div className="ml-2 font-medium text-xs">ZLM 连接</div>
+            <div className="ml-2 font-medium text-xs">
+              {t("zlm_connection")}
+            </div>
           </div>
         </div>
       </div>
@@ -268,6 +274,8 @@ const GoWVPNode = () => {
 };
 
 const ClientNode = () => {
+  const { t } = useTranslation("desktop");
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-32 relative">
       {/* 连接点 */}
@@ -291,7 +299,7 @@ const ClientNode = () => {
         {/* 端口信息 */}
         <div className="text-xs text-center">
           <div className="p-2 bg-gray-50 rounded">
-            <div className="font-medium">网页后台管理</div>
+            <div className="font-medium">{t("web_management")}</div>
           </div>
         </div>
       </div>
@@ -307,8 +315,8 @@ const nodeTypes = {
   client: ClientNode,
 };
 
-// 初始节点数据
-const initialNodes: Node[] = [
+// 初始节点数据生成函数
+const getInitialNodes = (t: any): Node[] => [
   {
     id: "gowvp",
     type: "gowvp",
@@ -331,13 +339,13 @@ const initialNodes: Node[] = [
     id: "rtmp",
     type: "ipc",
     position: { x: 50, y: 480 }, // RTMP往下移
-    data: { name: "RTMP 推流", value: 0, path: "/rtmps" },
+    data: { name: t("desktop:rtmp_push"), value: 0, path: "/rtmps" },
   },
   {
     id: "rtsp",
     type: "ipc",
     position: { x: 50, y: 580 }, // RTSP往下移
-    data: { name: "RTSP 拉流", value: 0, path: "/rtsps" },
+    data: { name: t("desktop:rtsp_pull"), value: 0, path: "/rtsps" },
   },
   {
     id: "gb28181",
@@ -436,7 +444,8 @@ const initialEdges: Edge[] = [
 ];
 
 export default function DesktopView() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const { t, i18n } = useTranslation(["desktop", "common"]);
+  const [nodes, setNodes] = useState<Node[]>(getInitialNodes(t));
   const [edges] = useState<Edge[]>(initialEdges);
 
   const { data } = useQuery({
@@ -447,6 +456,11 @@ export default function DesktopView() {
       return true;
     },
   });
+
+  // 当语言切换时，重新生成节点数据
+  useEffect(() => {
+    setNodes(getInitialNodes(t));
+  }, [i18n.language, t]);
 
   // 更新 ZLM 节点数据
   useEffect(() => {

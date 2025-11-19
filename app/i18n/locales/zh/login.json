@@ -1,0 +1,8 @@
+{
+  "title": "登录",
+  "forgot_password": "忘记密码？",
+  "forgot_password_title": "忘记密码",
+  "forgot_password_tip": "请在部署目录找到配置文件\n检查 password 参数的值",
+  "logging_in": "登录中...",
+  "login_btn": "登 录"
+}

@@ -17,8 +17,11 @@ import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
 import type { RTSPItem } from "~/service/api/rtsp/state";
+import { useTranslation } from "react-i18next";
 
 export default function RTSPView() {
+  const { t } = useTranslation("common");
+
   // =============== 状态定义 ===============
   const [selectedPlayID, setSelectedPlayID] = useState("");
 
@@ -41,22 +44,22 @@ export default function RTSPView() {
   // =============== 表格列定义 ===============
   const columns: ColumnsType<RTSPItem> = [
     {
-      title: "备注",
+      title: t("remark"),
       dataIndex: "name",
       key: "name",
     },
     {
-      title: "应用名",
+      title: t("app_name"),
       dataIndex: "app",
       key: "app",
     },
     {
-      title: "流 ID",
+      title: t("stream_id"),
       dataIndex: "stream",
       key: "stream",
     },
     {
-      title: "拉流状态",
+      title: t("pull_status"),
       dataIndex: "status",
       key: "status",
       render: (value: string) => {
@@ -80,13 +83,13 @@ export default function RTSPView() {
       },
     },
     {
-      title: "流媒体",
+      title: t("media_server"),
       dataIndex: "media_server_id",
       key: "media_server_id",
       render: (value: string) => value || "-",
     },
     {
-      title: "代理方式",
+      title: t("proxy_method"),
       dataIndex: "transport",
       key: "transport",
       render: (value: number) => {
@@ -94,7 +97,7 @@ export default function RTSPView() {
       },
     },
     {
-      title: "创建时间",
+      title: t("create_time"),
       dataIndex: "created_at",
       key: "created_at",
       render: (created_at: string) => {
@@ -111,7 +114,7 @@ export default function RTSPView() {
     //   },
     // },
     {
-      title: "操作",
+      title: t("operation"),
       key: "action",
       fixed: "right",
       render: (_, record) => (
@@ -127,7 +130,7 @@ export default function RTSPView() {
             size="sm"
           >
             <SquarePlay className="h-4 w-4 mr-1" />
-            播放
+            {t("play")}
           </Button>
 
           <Button
@@ -146,7 +149,7 @@ export default function RTSPView() {
             }
           >
             <Edit className="h-4 w-4 mr-1" />
-            编辑
+            {t("edit")}
           </Button>
 
           {/* todo: 删除 loading 状态 */}
@@ -173,9 +176,9 @@ export default function RTSPView() {
       <div className="w-full bg-white p-4 rounded-lg">
         {/* 搜索和添加区域 */}
         <div className="flex justify-end items-center py-4">
-          <span className="mr-3">搜索</span>
+          <span className="mr-3">{t("search")}</span>
           <Input
-            placeholder="可输入应用名/流 ID 模糊搜索"
+            placeholder={t("placeholder_search")}
             onChange={(event) => debouncedFilters(event.target.value)}
             className="w-56"
           />

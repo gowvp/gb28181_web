@@ -1,0 +1,13 @@
+{
+  "title": "仪表盘",
+  "system_overview": "系统概览",
+  "cpu_usage": "CPU使用率",
+  "memory_usage": "内存使用率",
+  "disk_usage": "磁盘使用率",
+  "network_traffic": "网络流量",
+  "device_count": "设备数量",
+  "online_devices": "在线设备",
+  "offline_devices": "离线设备",
+  "total_bandwidth": "总带宽",
+  "load_average": "系统负载"
+}

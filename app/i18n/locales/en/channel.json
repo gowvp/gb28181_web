@@ -1,0 +1,17 @@
+{
+  "title": "Channel Management",
+  "channel_name": "Channel Name",
+  "channel_id": "Channel ID",
+  "parent_id": "Parent ID",
+  "live": "Live",
+  "stop": "Stop",
+  "record": "Record",
+  "snapshot": "Snapshot",
+  "ptz_control": "PTZ Control",
+  "channel_detail": "Channel Detail",
+  "video_stream": "Video Stream",
+  "codec": "Codec",
+  "resolution": "Resolution",
+  "frame_rate": "Frame Rate",
+  "bitrate": "Bitrate"
+}

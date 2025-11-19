@@ -16,6 +16,8 @@ import { z } from "zod";
 import { Toaster } from "./components/ui/sonner";
 import { ConfigProvider, App as AntdApp } from "antd";
 import { DrawerCSSProvider } from "./components/xui/drawer";
+import { I18nextProvider } from "react-i18next";
+import i18n from "./i18n/config";
 
 import "@ant-design/v5-patch-for-react-19";
 // import { Toaster } from "./components/ui/toaster";
@@ -107,7 +109,7 @@ const queryClient = new QueryClient({
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-cn">
+    <html lang="zh-CN">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -115,23 +117,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <QueryClientProvider client={queryClient}>
-          {/* antd 主题 */}
-          <ConfigProvider
-            theme={{
-              token: {
-                colorPrimary: "#000",
-              },
-            }}
-          >
-            <AntdApp>
-              <DrawerCSSProvider>{children}</DrawerCSSProvider>
-            </AntdApp>
-          </ConfigProvider>
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={queryClient}>
+            {/* antd 主题 */}
+            <ConfigProvider
+              theme={{
+                token: {
+                  colorPrimary: "#000",
+                },
+              }}
+            >
+              <AntdApp>
+                <DrawerCSSProvider>{children}</DrawerCSSProvider>
+              </AntdApp>
+            </ConfigProvider>
 
-          <ScrollRestoration />
-          <Scripts />
-        </QueryClientProvider>
+            <ScrollRestoration />
+            <Scripts />
+          </QueryClientProvider>
+        </I18nextProvider>
         <Toaster />
         <script
           src={`${import.meta.env.VITE_BASENAME}assets/js/jessibuca.js`}

@@ -10,12 +10,14 @@ import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import { ChannelCardItem } from "./channels";
+import { useTranslation } from "react-i18next";
 
 export default function DeviceDetailView({
   ref,
 }: {
   ref: React.RefObject<any>;
 }) {
+  const { t } = useTranslation(["device", "common"]);
   const [did, setDid] = useState("");
 
   const { data: device, refetch } = useQuery({
@@ -36,10 +38,9 @@ export default function DeviceDetailView({
   React.useImperativeHandle(ref, () => ({
     showDetail(deviceID: string) {
       if (!deviceID) {
-        console.error("设备ID为空");
+        console.error("Device ID is empty");
         return;
       }
-      // console.log("🚀 ~ showDetail ~ deviceID:", deviceID);
       setDid(deviceID);
       setTimeout(() => refetch(), 100);
     },
@@ -53,14 +54,14 @@ export default function DeviceDetailView({
             className="data-[state=active]:bg-black data-[state=active]:text-white"
             value="device"
           >
-            设备详情
+            {t("common:device_detail")}
           </TabsTrigger>
           <TabsTrigger
             className="data-[state=active]:bg-black data-[state=active]:text-white"
             value="channels"
             onClick={() => refetchChannels()}
           >
-            通道列表
+            {t("common:channel_list")}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="device">
@@ -74,7 +75,9 @@ export default function DeviceDetailView({
                   device?.data.is_online ? "bg-green-300" : "bg-orange-300"
                 } text-white`}
               >
-                {device?.data.is_online ? "在线" : "离线"}
+                {device?.data.is_online
+                  ? t("common:online")
+                  : t("common:offline")}
               </Badge>
             </DrawerTitle>
 
@@ -83,17 +86,21 @@ export default function DeviceDetailView({
               {`${device?.data.trasnport}://${device?.data.address}`}
             </DrawerDescription>
 
-            <h4 className="py-2">属性</h4>
+            <h4 className="py-2">{t("common:attributes")}</h4>
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">
-                厂商:{device?.data.ext.manufacturer}
+                {t("common:vendor")}:{device?.data.ext.manufacturer}
               </Badge>
-              <Badge variant="secondary">模型:{device?.data.ext.model}</Badge>
               <Badge variant="secondary">
-                固件:{device?.data.ext.firmware}
+                {t("common:model")}:{device?.data.ext.model}
+              </Badge>
+              <Badge variant="secondary">
+                {t("common:firmware")}:{device?.data.ext.firmware}
               </Badge>
 
-              <Badge variant="secondary">创建:{device?.data.created_at}</Badge>
+              <Badge variant="secondary">
+                {t("common:created")}:{device?.data.created_at}
+              </Badge>
             </div>
           </DrawerHeader>
         </TabsContent>
@@ -117,7 +124,7 @@ export default function DeviceDetailView({
                 }}
                 onClick={() => {
                   // 处理通道点击事件
-                  console.log("点击通道:", item.name);
+                  console.log(t("common:click_channel") + ":", item.name);
                 }}
               />
             ))}

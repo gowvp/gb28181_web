@@ -3,8 +3,8 @@ import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Button as AntButton } from "antd";
 import { Input } from "~/components/ui/input";
-import { Edit, Filter, Folder, RefreshCcw } from "lucide-react";
-import { useRef, useState } from "react";
+import { Edit, Folder } from "lucide-react";
+import { useRef } from "react";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
 import { formatDate } from "~/components/util/date";
@@ -17,16 +17,14 @@ import {
   FindDevices,
   findDevicesKey,
 } from "~/service/api/device/device";
-import { toastWarn } from "~/components/xui/toast";
 import { Badge } from "~/components/ui/badge";
 import { Link, useNavigate } from "react-router";
-import XHeader from "~/components/xui/header";
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group";
-import { cn } from "~/lib/utils";
 import { Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
+import { useTranslation } from "react-i18next";
 
 export default function DeviceView() {
+  const { t } = useTranslation(["device", "common"]);
   const navigate = useNavigate();
   // refs
   const editFromRef = useRef<EditSheetImpl>(null);
@@ -35,7 +33,7 @@ export default function DeviceView() {
   // =============== 表格列定义 ===============
   const columns: ColumnsType<DeviceItem> = [
     {
-      title: "名称",
+      title: t("common:name"),
       dataIndex: "name",
       key: "name",
       minWidth: 100,
@@ -49,13 +47,13 @@ export default function DeviceView() {
       },
     },
     {
-      title: "设备编号",
+      title: t("common:device_number"),
       dataIndex: "device_id",
       key: "device_id",
       minWidth: 180,
     },
     {
-      title: "地址",
+      title: t("common:address"),
       dataIndex: "address",
       key: "address",
       minWidth: 180,
@@ -66,7 +64,7 @@ export default function DeviceView() {
       },
     },
     {
-      title: "厂家",
+      title: t("common:manufacturer"),
       dataIndex: "manufacturer",
       key: "manufacturer",
       render(value, record) {
@@ -75,25 +73,25 @@ export default function DeviceView() {
       minWidth: 100,
     },
     {
-      title: "流传输模式",
+      title: t("common:stream_mode"),
       dataIndex: "stream_mode",
       key: "stream_mode",
       render(value, record) {
         return record.stream_mode === 0
-          ? "UDP"
+          ? t("common:udp")
           : record.stream_mode === 1
-          ? "TCP Passive"
-          : "TCP Active";
+          ? t("common:tcp_passive")
+          : t("common:tcp_active");
       },
     },
     {
-      title: "通道数",
+      title: t("common:channel_count"),
       dataIndex: "channels",
       key: "channels",
       minWidth: 80,
     },
     {
-      title: "状态",
+      title: t("common:status"),
       dataIndex: "is_online",
       align: "center",
       key: "is_online",
@@ -189,7 +187,7 @@ export default function DeviceView() {
     }));
   }, 500);
 
-  const [isShowFilter, setIsShowFilter] = useState(true);
+  // const [isShowFilter, setIsShowFilter] = useState(true);
 
   const options: CheckboxGroupProps<string>["options"] = [
     { label: "客户端", value: "/nchannels" },

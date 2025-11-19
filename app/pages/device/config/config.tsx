@@ -21,6 +21,8 @@ import {
 import { Input } from "~/components/ui/input";
 import { ErrorHandle } from "~/service/config/error";
 import { toastSuccess } from "~/components/xui/toast";
+import { useTranslation } from "react-i18next";
+
 const formSchema = z.object({
   domain: z.string(),
   id: z.string().min(18).max(20),
@@ -29,6 +31,8 @@ const formSchema = z.object({
 });
 
 export default function config() {
+  const { t } = useTranslation("common");
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -54,7 +58,7 @@ export default function config() {
     mutationFn: (values: any) => SetConfigSIP(values),
     onError: ErrorHandle,
     onSuccess: () => {
-      toastSuccess("保存成功");
+      toastSuccess(t("save_success"));
     },
   });
 
@@ -78,7 +82,7 @@ export default function config() {
               name="id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>*国标 ID</FormLabel>
+                  <FormLabel>*{t("gb_id")}</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input {...field} className="pr-12" />
@@ -97,7 +101,7 @@ export default function config() {
               name="domain"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>*国标域</FormLabel>
+                  <FormLabel>*{t("gb_domain")}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -112,10 +116,8 @@ export default function config() {
               disabled
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>*端口号(UDP/TCP)</FormLabel>
-                  <FormDescription>
-                    端口号需要在配置文件修改并重启程序
-                  </FormDescription>
+                  <FormLabel>*{t("port_udp_tcp")}</FormLabel>
+                  <FormDescription>{t("port_config_tip")}</FormDescription>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -129,7 +131,7 @@ export default function config() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>密码</FormLabel>
+                  <FormLabel>{t("password")}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -144,7 +146,7 @@ export default function config() {
               type="submit"
               isFull
             >
-              保存配置
+              {t("save_config")}
             </Button>
           </form>
         </Form>
