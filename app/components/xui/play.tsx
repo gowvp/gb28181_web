@@ -21,12 +21,15 @@ import {
 import { copy2Clipboard } from "~/components/util/copy";
 import ToolTips from "~/components/xui/tips";
 import type { PlayResponse } from "~/service/api/channel/state";
+import { useTranslation } from "react-i18next";
 
 export type PlayBoxRef = {
   play: (link: string, data: PlayResponse) => void;
 };
 
 function PlayBox({ ref }: { ref: React.RefObject<any> }) {
+  const { t } = useTranslation("common");
+
   useEffect(() => {
     console.log("🚀 ~ PlayBox ~ useEffect:", useEffect);
 
@@ -54,12 +57,10 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
   };
 
   useEffect(() => {
-    console.log("🚀 ~ useEffect ~ play link:", link)
+    console.log("🚀 ~ useEffect ~ play link:", link);
     playRef.current?.play(link);
-    return () => {
-    }
-  }, [link])
-
+    return () => {};
+  }, [link]);
 
   useImperativeHandle(ref, () => ({
     play(link: string, data: PlayResponse) {
@@ -81,9 +82,9 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
         <div>
           <AlertDialogHeader className="flex-none">
             <div className="flex justify-between">
-              <AlertDialogTitle>播放</AlertDialogTitle>
+              <AlertDialogTitle>{t("play")}</AlertDialogTitle>
               <Button variant="outline" onClick={close}>
-                关闭
+                {t("close")}
               </Button>
             </div>
             <AlertDialogDescription className="flex-none"></AlertDialogDescription>
@@ -91,7 +92,7 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
           {/* 播放器设置一个最小宽高 */}
           <div className="min-h-[10rem] min-w-[40rem]">
             <AspectRatio ratio={16 / 9}>
-              <Player ref={playRef}/>
+              <Player ref={playRef} />
             </AspectRatio>
           </div>
           {/* 播放地址 */}
@@ -157,7 +158,7 @@ function PlayBox({ ref }: { ref: React.RefObject<any> }) {
                     onClick={() => {
                       if (item.copy == true) {
                         copy2Clipboard(item.addr, {
-                          title: "流地址已复制",
+                          title: t("stream_address_copied"),
                           description: item.addr,
                         });
                         return;

@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Radio } from "antd";
 import { AddProxy, EditProxy } from "~/service/api/rtsp/rtsp";
+import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
   // app: z.string().min(2).max(20),
@@ -37,6 +38,8 @@ const defaultValues = {
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
+  const { t } = useTranslation("common");
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues,
@@ -46,8 +49,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     <EditSheet
       form={form}
       ref={ref}
-      title="拉流信息"
-      description="在此输入拉流信息，然后点击保存"
+      title={t("pull_info")}
+      description={t("pull_info_desc")}
       schema={formSchema}
       defaultValues={defaultValues}
       onSuccess={{
@@ -61,7 +64,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       trigger={
         <Button className="mx-3">
           <SquarePlus />
-          添加通道
+          {t("add_channel")}
         </Button>
       }
     >
@@ -71,7 +74,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         disabled
         render={({ field }) => (
           <FormItem hidden={!field.value}>
-            <FormLabel>*ID</FormLabel>
+            <FormLabel>*{t("id")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -85,7 +88,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="source_url"
         render={({ field }) => (
           <FormItem className="space-y-3">
-            <FormLabel>*拉流地址</FormLabel>
+            <FormLabel>*{t("source_url")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -99,7 +102,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="transport"
         render={({ field }) => (
           <FormItem className="space-y-3">
-            <FormLabel>*拉流方式</FormLabel>
+            <FormLabel>*{t("pull_method")}</FormLabel>
 
             <FormControl>
               <div>
@@ -150,7 +153,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="timeout_s"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*拉流超时(秒)</FormLabel>
+            <FormLabel>*{t("timeout_s")}</FormLabel>
             <FormControl>
               <Input
                 type="number"
@@ -169,15 +172,15 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="enabled"
         render={({ field }) => (
           <FormItem className="space-y-3">
-            <FormLabel>是否启用</FormLabel>
+            <FormLabel>{t("enabled")}</FormLabel>
             <FormControl>
               <div>
                 <Radio.Group
                   value={field.value.toString()}
                   onChange={(e) => field.onChange(e.target.value == "true")}
                 >
-                  <Radio.Button value="true">开启</Radio.Button>
-                  <Radio.Button value="false">禁用</Radio.Button>
+                  <Radio.Button value="true">{t("enable")}</Radio.Button>
+                  <Radio.Button value="false">{t("disable")}</Radio.Button>
                 </Radio.Group>
               </div>
             </FormControl>

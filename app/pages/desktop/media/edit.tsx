@@ -1,5 +1,4 @@
 import React from "react";
-import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import {
   FormControl,
@@ -10,13 +9,12 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { z } from "zod";
-import { AddRTMP, EditRTMP } from "~/service/api/rtmp/rtmp";
+import { AddRTMP } from "~/service/api/rtmp/rtmp";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
-import { SquarePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Radio } from "antd";
 import { EditMediaServer } from "~/service/api/media/media";
+import { useTranslation } from "react-i18next";
 
 // export type Request = {
 //   /**
@@ -72,6 +70,8 @@ const defaultValues = {
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
+  const { t } = useTranslation("common");
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues,
@@ -81,8 +81,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     <EditSheet
       form={form}
       ref={ref}
-      title="流媒体配置"
-      description="在此输入流媒体配置，然后点击保存"
+      title={t("media_config")}
+      description={t("media_config_desc")}
       schema={formSchema}
       defaultValues={defaultValues}
       onSuccess={{
@@ -97,7 +97,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         <></>
         //   <Button className="mx-3">
         //     <SquarePlus />
-        //     添加通道
+        //     {t("add_channel")}
         //   </Button>
       }
     >
@@ -107,7 +107,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         disabled
         render={({ field }) => (
           <FormItem hidden={!field.value}>
-            <FormLabel>*ID</FormLabel>
+            <FormLabel>*{t("id")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -121,8 +121,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="ip"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*IP</FormLabel>
-            <FormDescription>ZLM 的地址，用于被 gowvp 访问</FormDescription>
+            <FormLabel>*{t("ip")}</FormLabel>
+            <FormDescription>{t("ip_desc")}</FormDescription>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -136,7 +136,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="sdp_ip"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*国标收流默认地址</FormLabel>
+            <FormLabel>*{t("gb_receive_address")}</FormLabel>
             <FormControl>
               <Input placeholder="" {...field} />
             </FormControl>
@@ -150,8 +150,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="hook_ip"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*Hook IP</FormLabel>
-            <FormDescription>gowvp 的地址，用于接收 zlm 回调</FormDescription>
+            <FormLabel>*{t("hook_ip")}</FormLabel>
+            <FormDescription>{t("hook_ip_desc")}</FormDescription>
             <FormControl>
               <Input placeholder="" {...field} />
             </FormControl>
@@ -165,10 +165,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="secret"
         render={({ field }) => (
           <FormItem className="space-y-3">
-            <FormLabel>zlm api secret</FormLabel>
-            <FormDescription>
-              可以从 configs/config.ini 文件中查找，用于接口鉴权
-            </FormDescription>
+            <FormLabel>{t("zlm_secret")}</FormLabel>
+            <FormDescription>{t("zlm_secret_desc")}</FormDescription>
             <FormControl>
               <Input placeholder="" {...field} />
             </FormControl>

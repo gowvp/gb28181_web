@@ -15,7 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AddDevice, EditDevice } from "~/service/api/device/device";
 import { Radio } from "antd";
-import { Button as AntButton } from "antd";
+import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
   device_id: z.string().min(18).max(20),
@@ -34,6 +34,8 @@ const defaultValues = {
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
+  const { t } = useTranslation("common");
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues,
@@ -43,8 +45,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     <EditSheet
       form={form}
       ref={ref}
-      title="设备编辑"
-      description="可在此处添加国标设备，也可免添加由设备自动注册上线"
+      title={t("device_edit")}
+      description={t("device_edit_desc")}
       schema={formSchema}
       defaultValues={defaultValues}
       onSuccess={{
@@ -58,7 +60,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       trigger={
         <Button className="mx-3">
           <SquarePlus />
-          添加设备
+          {t("add_device")}
         </Button>
       }
     >
@@ -68,7 +70,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         disabled
         render={({ field }) => (
           <FormItem hidden={!field.value}>
-            <FormLabel>*ID</FormLabel>
+            <FormLabel>*{t("id")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -81,7 +83,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="device_id"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*国标编码</FormLabel>
+            <FormLabel>*{t("device_code")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -95,7 +97,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>名称</FormLabel>
+            <FormLabel>{t("name")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -109,7 +111,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="password"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>密码</FormLabel>
+            <FormLabel>{t("password")}</FormLabel>
             <FormControl>
               <Input placeholder="" {...field} />
             </FormControl>
@@ -123,16 +125,16 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="stream_mode"
         render={({ field }) => (
           <FormItem className="space-y-3">
-            <FormLabel>收流模式</FormLabel>
+            <FormLabel>{t("stream_receive_mode")}</FormLabel>
             <FormControl>
               <div>
                 <Radio.Group
                   value={field.value.toString()}
                   onChange={(e) => field.onChange(Number(e.target.value))}
                 >
-                  <Radio.Button value="0">UDP</Radio.Button>
-                  <Radio.Button value="1">TCP Passive</Radio.Button>
-                  <Radio.Button value="2">TCP Active</Radio.Button>
+                  <Radio.Button value="0">{t("udp")}</Radio.Button>
+                  <Radio.Button value="1">{t("tcp_passive")}</Radio.Button>
+                  <Radio.Button value="2">{t("tcp_active")}</Radio.Button>
                 </Radio.Group>
               </div>
             </FormControl>

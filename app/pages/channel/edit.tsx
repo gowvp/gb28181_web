@@ -16,6 +16,7 @@ import { SquarePlus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Radio } from "antd";
+import { useTranslation } from "react-i18next";
 
 const formSchema = z.object({
   app: z.string().min(2).max(20),
@@ -32,6 +33,8 @@ const defaultValues = {
 };
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
+  const { t } = useTranslation("common");
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues,
@@ -41,8 +44,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     <EditSheet
       form={form}
       ref={ref}
-      title="推流信息"
-      description="在此输入推流信息，然后点击保存"
+      title={t("push_info")}
+      description={t("push_info_desc")}
       schema={formSchema}
       defaultValues={defaultValues}
       onSuccess={{
@@ -56,7 +59,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       trigger={
         <Button className="mx-3">
           <SquarePlus />
-          添加通道
+          {t("add_channel")}
         </Button>
       }
     >
@@ -66,7 +69,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         disabled
         render={({ field }) => (
           <FormItem hidden={!field.value}>
-            <FormLabel>*ID</FormLabel>
+            <FormLabel>*{t("id")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -80,7 +83,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="app"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*应用名</FormLabel>
+            <FormLabel>*{t("app")}</FormLabel>
             <FormControl>
               <Input {...field} />
             </FormControl>
@@ -94,7 +97,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="stream"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>*流 ID</FormLabel>
+            <FormLabel>*{t("stream")}</FormLabel>
             <FormControl>
               <Input placeholder="" {...field} />
             </FormControl>
@@ -108,16 +111,16 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         name="is_auth_disabled"
         render={({ field }) => (
           <FormItem className="space-y-3">
-            <FormLabel>推流鉴权</FormLabel>
-            <FormDescription>建议开启，禁用推流鉴权是不安全的</FormDescription>
+            <FormLabel>{t("push_auth")}</FormLabel>
+            <FormDescription>{t("push_auth_tip")}</FormDescription>
             <FormControl>
               <div>
                 <Radio.Group
                   value={field.value.toString()}
                   onChange={(e) => field.onChange(e.target.value == "true")}
                 >
-                  <Radio.Button value="false">开启</Radio.Button>
-                  <Radio.Button value="true">禁用</Radio.Button>
+                  <Radio.Button value="false">{t("enable")}</Radio.Button>
+                  <Radio.Button value="true">{t("disable")}</Radio.Button>
                 </Radio.Group>
               </div>
             </FormControl>

@@ -412,6 +412,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@babel/runtime@npm:^7.27.6, @babel/runtime@npm:^7.28.4":
+  version: 7.28.4
+  resolution: "@babel/runtime@npm:7.28.4"
+  checksum: 10c0/792ce7af9750fb9b93879cc9d1db175701c4689da890e6ced242ea0207c9da411ccf16dc04e689cc01158b28d7898c40d75598f4559109f761c12ce01e959bf7
+  languageName: node
+  linkType: hard
+
 "@babel/template@npm:^7.25.9":
   version: 7.25.9
   resolution: "@babel/template@npm:7.25.9"
@@ -5052,6 +5059,8 @@ __metadata:
     eslint-plugin-react-refresh: "npm:^0.4.18"
     framer-motion: "npm:^12.7.4"
     globals: "npm:^15.14.0"
+    i18next: "npm:^25.6.3"
+    i18next-browser-languagedetector: "npm:^8.2.0"
     isbot: "npm:^5.1.21"
     lucide-react: "npm:^0.475.0"
     next-themes: "npm:^0.4.4"
@@ -5059,6 +5068,7 @@ __metadata:
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
     react-hook-form: "npm:^7.54.2"
+    react-i18next: "npm:^16.3.4"
     react-resizable-panels: "npm:^2.1.7"
     react-router: "npm:^7.1.3"
     recharts: "npm:^2.15.0"
@@ -5310,6 +5320,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"html-parse-stringify@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "html-parse-stringify@npm:3.0.1"
+  dependencies:
+    void-elements: "npm:3.1.0"
+  checksum: 10c0/159292753d48b84d216d61121054ae5a33466b3db5b446e2ffc093ac077a411a99ce6cbe0d18e55b87cf25fa3c5a86c4d8b130b9719ec9b66623259000c72c15
+  languageName: node
+  linkType: hard
+
 "http-cache-semantics@npm:^4.1.1":
   version: 4.1.1
   resolution: "http-cache-semantics@npm:4.1.1"
@@ -5347,6 +5366,29 @@ __metadata:
     agent-base: "npm:^7.1.2"
     debug: "npm:4"
   checksum: 10c0/f729219bc735edb621fa30e6e84e60ee5d00802b8247aac0d7b79b0bd6d4b3294737a337b93b86a0bd9e68099d031858a39260c976dc14cdbba238ba1f8779ac
+  languageName: node
+  linkType: hard
+
+"i18next-browser-languagedetector@npm:^8.2.0":
+  version: 8.2.0
+  resolution: "i18next-browser-languagedetector@npm:8.2.0"
+  dependencies:
+    "@babel/runtime": "npm:^7.23.2"
+  checksum: 10c0/4fcb6ec316e0fd4a10eee67a8d1e3d7e1407f14d5bed98978c50ed6f1853f5d559dc18ea7fd4b2de445ac0a4ed44df5b38f0b31b89b9ac883f99050d59ffec82
+  languageName: node
+  linkType: hard
+
+"i18next@npm:^25.6.3":
+  version: 25.6.3
+  resolution: "i18next@npm:25.6.3"
+  dependencies:
+    "@babel/runtime": "npm:^7.28.4"
+  peerDependencies:
+    typescript: ^5
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  checksum: 10c0/cbeaff5641247ef724dbf1b609df2bc24306b610cfefc6afab1f574e3c6e4171731a1959915c82c606bdb9a535da374ac14d43c7849e680482e9b0d8a93c19fb
   languageName: node
   linkType: hard
 
@@ -7444,6 +7486,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-i18next@npm:^16.3.4":
+  version: 16.3.4
+  resolution: "react-i18next@npm:16.3.4"
+  dependencies:
+    "@babel/runtime": "npm:^7.27.6"
+    html-parse-stringify: "npm:^3.0.1"
+    use-sync-external-store: "npm:^1.6.0"
+  peerDependencies:
+    i18next: ">= 25.6.2"
+    react: ">= 16.8.0"
+    typescript: ^5
+  peerDependenciesMeta:
+    react-dom:
+      optional: true
+    react-native:
+      optional: true
+    typescript:
+      optional: true
+  checksum: 10c0/ceb542bc4166bec7d8734835d94465ca2ad40a4f5b22967981bfddac0648b2004cee4c1a5f7914031e2189fa517bd51886ff5dfc5a8391b794e41db9099a6025
+  languageName: node
+  linkType: hard
+
 "react-is@npm:^16.13.1":
   version: 16.13.1
   resolution: "react-is@npm:16.13.1"
@@ -8824,6 +8888,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"use-sync-external-store@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "use-sync-external-store@npm:1.6.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/35e1179f872a53227bdf8a827f7911da4c37c0f4091c29b76b1e32473d1670ebe7bcd880b808b7549ba9a5605c233350f800ffab963ee4a4ee346ee983b6019b
+  languageName: node
+  linkType: hard
+
 "util-deprecate@npm:^1.0.2, util-deprecate@npm:~1.0.1":
   version: 1.0.2
   resolution: "util-deprecate@npm:1.0.2"
@@ -8988,6 +9061,13 @@ __metadata:
   bin:
     vite: bin/vite.js
   checksum: 10c0/ae81047b4290a7206b9394a39a782d509e9610462e7946422ba22d5bc615b5a322c07e33d7bf9dd0b3312ec3f5c63353b725913d1519324bfdf539b4f1e03f52
+  languageName: node
+  linkType: hard
+
+"void-elements@npm:3.1.0":
+  version: 3.1.0
+  resolution: "void-elements@npm:3.1.0"
+  checksum: 10c0/0b8686f9f9aa44012e9bd5eabf287ae0cde409b9a2854c5a2335cb83920c957668ac5876e3f0d158dd424744ac411a7270e64128556b451ed3bec875ef18534d
   languageName: node
   linkType: hard
 
