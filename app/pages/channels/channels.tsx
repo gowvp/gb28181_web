@@ -114,7 +114,7 @@ function ChannelCard({
   const { data: url } = useQuery({
     queryKey: ["snapshot", channel.id],
     queryFn: () => RefreshSnapshot(channel.id, "", 2592000),
-    enabled: channel.is_online,
+    // enabled: channel.is_online,
     retry: 1,
     // refetchInterval: 120000,
   });
@@ -244,8 +244,17 @@ function DeviceCard({
             <div>
               <CardTitle className="text-lg font-semibold text-gray-900">
                 {device.ext.name || device.name || t("unnamed_device")}
-              </CardTitle>{" "}
-              {device.ext.manufacturer}
+              </CardTitle>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-gray-600">
+                  {device.ext.manufacturer}
+                </span>
+                {device.ext.gb_version && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    GB28181-{device.ext.gb_version}
+                  </span>
+                )}
+              </div>
               <p className="text-gray-500 text-xs">
                 {t("device_id")}: {device.device_id}
               </p>
@@ -299,7 +308,15 @@ function DeviceCard({
         ) : (
           <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-200 rounded-lg">
             <Monitor className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-            <p>{t("no_channels")}</p>
+            <p className="mb-2">{t("no_channels")}</p>
+            {device.type !== "ONVIF" && (
+              <p
+                className="text-sm text-gray-400"
+                dangerouslySetInnerHTML={{
+                  __html: t("no_channels_check_config"),
+                }}
+              />
+            )}
           </div>
         )}
       </CardContent>

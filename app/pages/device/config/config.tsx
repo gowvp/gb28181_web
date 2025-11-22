@@ -14,6 +14,23 @@ import { useTranslation } from "react-i18next";
 export default function config() {
   const { t } = useTranslation("common");
   const [form] = Form.useForm();
+  const [serverIp, setServerIp] = React.useState<string>("");
+
+  // 从网页地址栏提取IP
+  React.useEffect(() => {
+    const hostname = window.location.hostname;
+
+    // 如果是IP地址，直接使用
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+      setServerIp(hostname);
+    } else if (hostname === "localhost" || hostname === "127.0.0.1") {
+      // 本地开发环境
+      setServerIp(hostname);
+    } else {
+      // 如果是域名，尝试通过DNS查询转换为IP（浏览器限制，只能显示域名）
+      setServerIp(hostname);
+    }
+  }, []);
 
   const { data } = useQuery({
     queryKey: [getConfigInfoKey],
@@ -46,6 +63,10 @@ export default function config() {
   return (
     <div className="w-[380px] px-6 pt-6 m-auto">
       <Form form={form} layout="vertical" size="large">
+        <Form.Item label={t("server_ip")}>
+          <Input value={serverIp} disabled />
+        </Form.Item>
+
         <Form.Item
           label={t("gb_id")}
           name="id"

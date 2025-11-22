@@ -14,7 +14,7 @@ export type DeviceWithChannelsItem = {
   id: string;
   device_id: string;
   name: string;
-  trasnport: string;
+  transport: string;
   stream_mode: number;
   ip: string;
   port: number;
@@ -30,6 +30,7 @@ export type DeviceWithChannelsItem = {
   address: string;
   ext: Ext;
   children: ChannelItem[];
+  type: "" | "ONVIF" | "GB28181";
 };
 
 // 通道项类型定义
@@ -41,7 +42,7 @@ export type ChannelItem = {
   name: string;
   ptztype: number;
   is_online: boolean;
-  is_playing: boolean;  // 是否播放中
+  is_playing: boolean; // 是否播放中
   ext: Ext;
   created_at: string;
   updated_at: string;
@@ -63,7 +64,7 @@ export type DeviceItem = {
   port?: number;
   registered_at?: string;
   stream_mode?: number;
-  trasnport?: string;
+  transport?: string;
   updated_at?: string;
   address?: string;
 };
@@ -73,6 +74,7 @@ export type Ext = {
   manufacturer: string;
   model: string;
   name: string;
+  gb_version: string;
 };
 
 export type GetDeviceResponse = {
@@ -107,7 +109,7 @@ export type GetDeviceResponse = {
   /**
    * tcp/udp
    */
-  trasnport: string;
+  transport: string;
   updated_at: string;
   [property: string]: any;
 };

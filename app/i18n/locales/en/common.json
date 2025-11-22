@@ -125,7 +125,12 @@
   "stream_address_copied": "Stream address copied",
   "device_discover": "Discovery",
   "device_discovering": "Scanning devices...",
-  "device_discover_desc": "Searching for camera devices on LAN...",
+  "stop_discover": "Stop Scanning",
+  "no_devices_found": "No devices found",
+  "discovery_tip_1": "1. Please get closer to the device",
+  "discovery_tip_2": "2. Ensure the device and platform are on the same LAN",
+  "add_device_success": "Device added successfully",
+  "please_fill_required_fields": "Please fill in all required fields",
   "found_devices": "Found {{count}} device(s)",
   "waiting_search": "Waiting to search...",
   "click_to_add": "Click to add",
@@ -167,5 +172,7 @@
   "gb_id_length": "GB ID should be 18-20 characters",
   "input_gb_id": "Please enter GB ID",
   "input_gb_domain": "Please enter GB domain",
-  "port_range": "Port should be 1-65535"
+  "port_range": "Port should be 1-65535",
+  "server_ip": "Server IP",
+  "no_channels_check_config": "Please check if the <strong>SIP Server ID</strong> and <strong>Server Domain</strong> filled in the camera are consistent with the platform"
 }

@@ -1,7 +1,9 @@
 import type { AxiosError } from "axios";
 import { toastErrorMore } from "~/components/xui/toast";
+import i18n from "~/i18n/config";
 
-export const codeMessage: { [key: number]: string } = {
+// 中文错误消息
+export const codeMessageZh: { [key: number]: string } = {
   200: "服务器成功返回请求的数据。",
   201: "新建或修改数据成功。",
   202: "一个请求已经进入后台排队（异步任务）。",
@@ -19,6 +21,29 @@ export const codeMessage: { [key: number]: string } = {
   504: "网关超时。",
   511: "没有权限 , 非法操作",
 };
+
+// 英文错误消息
+export const codeMessageEn: { [key: number]: string } = {
+  200: "The server successfully returned the requested data.",
+  201: "Data created or modified successfully.",
+  202: "A request has entered the background queue (asynchronous task).",
+  204: "Data deleted successfully.",
+  400: "The request has an error, the server did not create or modify data.",
+  401: "User does not have permission (token, username, password error).",
+  403: "User is authorized, but access is forbidden.",
+  404: "404 The requested resource does not exist",
+  406: "The requested format is not available.",
+  410: "The requested resource has been permanently deleted and will not be available again.",
+  422: "A validation error occurred when creating an object.",
+  500: "Please check if you can connect to the server network.",
+  502: "Gateway error.",
+  503: "Service unavailable, server temporarily overloaded or under maintenance.",
+  504: "Gateway timeout.",
+  511: "No permission, illegal operation",
+};
+
+// 根据当前语言获取错误消息
+export const codeMessage: { [key: number]: string } = codeMessageZh;
 
 export type CommonError = {
   reason: string;
@@ -40,31 +65,17 @@ export function ErrorHandle(error: any) {
   }
 
   if (err.response.status >= 400) {
-    toastErrorMore("发生错误", data.details, {
-      description: data.msg ?? codeMessage[err.response.status],
+    // 获取当前语言
+    const isEnglish = i18n.language === "en";
+
+    // 根据语言选择合适的消息
+    const errorTitle = isEnglish ? "Error" : "发生错误";
+    const errorMessage = isEnglish
+      ? data.reason || codeMessageEn[err.response.status]
+      : data.msg || codeMessageZh[err.response.status];
+
+    toastErrorMore(errorTitle, data.details, {
+      description: errorMessage,
     });
-    // {
-    //   itemID: data.msg,
-    //   title: "Error",
-    //   description: data.msg,
-    //   variant: "destructive",
-    //   duration: 2000,
-    // }
-    // message.error({
-    //   content: `${data.msg} ${data.details?.length > 0 ? "😦" : ""}`,
-    //   duration: 2,
-    //   key: key,
-    //   onClick(e) {
-    //     message.destroy(key);
-    //     data.details?.map((v: string) => {
-    //       if (v) {
-    //         message.error({
-    //           content: v,
-    //           duration: 3,
-    //         });
-    //       }
-    //     });
-    //   },
-    // });
   }
 }

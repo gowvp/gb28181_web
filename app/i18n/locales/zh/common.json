@@ -125,7 +125,12 @@
   "stream_address_copied": "流地址已复制",
   "device_discover": "设备发现",
   "device_discovering": "正在扫描设备...",
-  "device_discover_desc": "正在搜索局域网内的摄像头设备...",
+  "stop_discover": "停止搜索",
+  "no_devices_found": "未找到任何设备",
+  "discovery_tip_1": "1. 请尽量靠近设备",
+  "discovery_tip_2": "2. 确保监控设备与平台在同一个局域网",
+  "add_device_success": "添加设备成功",
+  "please_fill_required_fields": "请填写所有必填项",
   "found_devices": "发现 {{count}} 个设备",
   "waiting_search": "等待搜索...",
   "click_to_add": "点击添加",
@@ -167,5 +172,7 @@
   "gb_id_length": "国标ID长度应为18-20位",
   "input_gb_id": "请输入国标ID",
   "input_gb_domain": "请输入国标域",
-  "port_range": "端口应为1-65535"
+  "port_range": "端口应为1-65535",
+  "server_ip": "服务器IP",
+  "no_channels_check_config": "请检查摄像头填写的 <strong>SIP服务器ID</strong> 和 <strong>服务器域</strong> 是否与平台一致"
 }

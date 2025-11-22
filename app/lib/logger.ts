@@ -10,6 +10,11 @@ export function IsDebug() {
 }
 
 export const getLocalStorage = <T>(key: string): T | null => {
+  // 检测是否在浏览器环境
+  if (typeof window === "undefined" || typeof localStorage === "undefined") {
+    return null;
+  }
+
   let data = localStorage.getItem(key);
   try {
     data = JSON.parse(data ?? "");
@@ -37,20 +42,30 @@ class Logger {
   info: (name: string, ...args: any[]) => void;
   warn: (name: string, ...args: any[]) => void;
   error: (name: string, ...args: any[]) => void;
-  indexedDBService: IndexedDBService;
+  indexedDBService: IndexedDBService | null;
+  private isBrowser: boolean;
+
   constructor() {
     const isDev = process.env.NODE_ENV === "development";
+    // 检测是否在浏览器环境
+    this.isBrowser =
+      typeof window !== "undefined" && typeof indexedDB !== "undefined";
 
-    this.indexedDBService = new IndexedDBService("logger", 1, LOGGER_DB);
-    this.indexedDBService
-      .openDatabase()
-      .then(() => {
-        console.log("开启logger成功!!!");
-        this._delLogger();
-      })
-      .catch((err) => {
-        console.log("开启logger失败!", err);
-      });
+    // 只在浏览器环境中初始化 IndexedDB
+    if (this.isBrowser) {
+      this.indexedDBService = new IndexedDBService("logger", 1, LOGGER_DB);
+      this.indexedDBService
+        .openDatabase()
+        .then(() => {
+          console.log("开启logger成功!!!");
+          this._delLogger();
+        })
+        .catch((err) => {
+          console.log("开启logger失败!", err);
+        });
+    } else {
+      this.indexedDBService = null;
+    }
 
     this.info = (...args) => {
       if (isDev || isInfoDebug() || IsDebug()) {
@@ -82,6 +97,11 @@ class Logger {
   }
 
   _addLogger(...args: any[]) {
+    // 只在浏览器环境中记录到 IndexedDB
+    if (!this.isBrowser || !this.indexedDBService) {
+      return;
+    }
+
     const data = JSON.stringify(args);
     const currentTime = this._getCurrentTime();
     this.indexedDBService.addData<any>({
@@ -93,6 +113,11 @@ class Logger {
   }
 
   _delLogger() {
+    // 只在浏览器环境中清理日志
+    if (!this.isBrowser || !this.indexedDBService) {
+      return;
+    }
+
     this.indexedDBService
       .deleteExpiredData()
       .then(() => {

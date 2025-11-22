@@ -83,7 +83,7 @@ export default function DeviceDetailView({
 
             <DrawerDescription>{device?.data.device_id}</DrawerDescription>
             <DrawerDescription>
-              {`${device?.data.trasnport}://${device?.data.address}`}
+              {`${device?.data.transport}://${device?.data.address}`}
             </DrawerDescription>
 
             <h4 className="py-2">{t("common:attributes")}</h4>

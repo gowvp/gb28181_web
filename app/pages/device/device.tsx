@@ -59,7 +59,7 @@ export default function DeviceView() {
       minWidth: 180,
       render(value, record) {
         return (
-          <span className="lowercase">{`${record.trasnport}://${record.address}`}</span>
+          <span className="lowercase">{`${record.transport}://${record.address}`}</span>
         );
       },
     },
