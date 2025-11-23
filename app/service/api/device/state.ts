@@ -67,6 +67,8 @@ export type DeviceItem = {
   transport?: string;
   updated_at?: string;
   address?: string;
+  type?: string;
+  username?: string;
 };
 
 export type Ext = {

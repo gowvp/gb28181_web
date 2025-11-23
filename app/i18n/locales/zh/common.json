@@ -129,6 +129,7 @@
   "no_devices_found": "未找到任何设备",
   "discovery_tip_1": "1. 请尽量靠近设备",
   "discovery_tip_2": "2. 确保监控设备与平台在同一个局域网",
+  "discovery_tip_3": "3. Docker 部署需要 host 模式才能发现设备",
   "add_device_success": "添加设备成功",
   "please_fill_required_fields": "请填写所有必填项",
   "found_devices": "发现 {{count}} 个设备",

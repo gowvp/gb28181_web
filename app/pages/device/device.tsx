@@ -3,7 +3,7 @@ import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Button as AntButton } from "antd";
 import { Input } from "~/components/ui/input";
-import { Edit, Folder } from "lucide-react";
+import { Edit, Folder, Wifi } from "lucide-react";
 import { useRef } from "react";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
@@ -22,6 +22,7 @@ import { Link, useNavigate } from "react-router";
 import { Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
 import { useTranslation } from "react-i18next";
+import DeviceDiscover from "../channels/device_discover";
 
 export default function DeviceView() {
   const { t } = useTranslation(["device", "common"]);
@@ -159,6 +160,10 @@ export default function DeviceView() {
                 device_id: record.device_id,
                 password: record.password,
                 stream_mode: record.stream_mode,
+                type: record.type,
+                ip: record.ip,
+                port: record.port,
+                username: record.username,
               })
             }
           >
@@ -194,6 +199,8 @@ export default function DeviceView() {
     { label: t("common:management_side"), value: "/devices" },
   ];
 
+  const discoverRef = useRef<any>(null);
+
   return (
     <>
       <div className="min-h-screen bg-transparent p-6">
@@ -214,6 +221,13 @@ export default function DeviceView() {
               <Link to="/gb/sip">
                 <AntButton>{t("common:access_info")}</AntButton>
               </Link>
+
+              <AntButton
+                icon={<Wifi className="w-4 h-4" />}
+                onClick={() => discoverRef.current?.open()}
+              >
+                {t("common:device_discover")}
+              </AntButton>
             </div>
 
             {/* 搜索和添加区域 */}
@@ -281,6 +295,8 @@ export default function DeviceView() {
           deleteFn={DelDevice}
           columns={columns}
         />
+
+        <DeviceDiscover ref={discoverRef} />
       </div>
     </>
   );

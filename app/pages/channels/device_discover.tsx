@@ -6,10 +6,8 @@ import { useState } from "react";
 import { cn } from "~/lib/utils";
 import { Form, Input, Button, message } from "antd";
 import { useTranslation } from "react-i18next";
-import { service } from "~/service/config/http";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addOnvifDevice } from "~/service/api/onvif/onvif";
-import { findDevicesChannelsKey } from "~/service/api/device/device";
+import { AddDevice, findDevicesChannelsKey } from "~/service/api/device/device";
 import { ErrorHandle } from "~/service/config/error";
 
 /**
@@ -45,11 +43,12 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
     username: "",
     password: "",
     name: "",
+    type: "ONVIF",
   });
 
   // 添加设备的 mutation
   const addDeviceMutation = useMutation({
-    mutationFn: addOnvifDevice,
+    mutationFn: AddDevice,
     onSuccess: () => {
       message.success(t("add_device_success"));
       // 刷新设备列表
@@ -96,9 +95,9 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
       eventSourceRef.current.close();
     }
 
-    // 从 service 获取 baseURL 并构建完整的 SSE URL
-    const baseURL = service.defaults.baseURL || "";
-    const sseUrl = `${baseURL}/onvif/discover`;
+    // 构建 SSE URL，使用环境变量配置的 API 基础路径
+    const baseURL = import.meta.env.VITE_API_BASE_URL || "/api";
+    const sseUrl = `${baseURL}/onvif/discover`.replace("//", "/");
 
     // 创建 SSE 连接
     const eventSource = new EventSource(sseUrl);
@@ -164,6 +163,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
       username: "admin",
       password: "",
       name: `Camera ${device.ip}`,
+      type: "ONVIF",
     });
     setShowForm(true);
   };
@@ -189,6 +189,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
       username: formData.username,
       password: formData.password,
       name: formData.name,
+      type: formData.type,
     });
   };
 
@@ -321,6 +322,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
                       <div className="text-sm text-gray-500 space-y-2 text-left bg-gray-50 rounded-2xl px-5 py-4">
                         <p>{t("discovery_tip_1")}</p>
                         <p>{t("discovery_tip_2")}</p>
+                        <p>{t("discovery_tip_3")}</p>
                       </div>
                     </div>
                   ) : null}
@@ -402,6 +404,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
                             username: "admin",
                             password: "",
                             name: "",
+                            type: "ONVIF",
                           });
                           setShowForm(true);
                         }}

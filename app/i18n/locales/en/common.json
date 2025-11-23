@@ -129,6 +129,7 @@
   "no_devices_found": "No devices found",
   "discovery_tip_1": "1. Please get closer to the device",
   "discovery_tip_2": "2. Ensure the device and platform are on the same LAN",
+  "discovery_tip_3": "3. Docker deployment requires host mode to be on the same LAN as devices",
   "add_device_success": "Device added successfully",
   "please_fill_required_fields": "Please fill in all required fields",
   "found_devices": "Found {{count}} device(s)",
