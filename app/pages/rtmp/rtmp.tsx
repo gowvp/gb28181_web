@@ -3,46 +3,34 @@ import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Copy, Edit, SquarePlay } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
 import { DelRTMP, FindRTMPs, findRTMPsKey } from "~/service/api/rtmp/rtmp";
 import type { RTMPItem } from "~/service/api/rtmp/state";
 import { EditForm } from "./edit";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
-import { Play } from "~/service/api/channel/channel";
-import { ErrorHandle } from "~/service/config/error";
-import PlayBox, { type PlayBoxRef } from "../../components/xui/play";
 import { formatDate } from "~/components/util/date";
 import { Badge } from "~/components/ui/badge";
 import { copy2Clipboard } from "~/components/util/copy";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import ToolTips from "~/components/xui/tips";
-import XHeader from "~/components/xui/header";
 import { useTranslation } from "react-i18next";
+import PlayDrawer, {
+  type PlayDrawerRef,
+} from "~/components/player/play-drawer";
 
 export default function RTMPView() {
   const { t } = useTranslation("common");
 
   // =============== 状态定义 ===============
-  const [selectedPlayID, setSelectedPlayID] = useState("");
 
   // refs
   const editFromRef = useRef<EditSheetImpl>(null);
-  const playRef = useRef<PlayBoxRef>(null);
+  const playRef = useRef<PlayDrawerRef>(null);
   const tableRef = useRef<TableQueryRef<RTMPItem>>(null);
 
   // =============== 查询与操作 ===============
-
-  // 播放功能
-  const { mutate: playMutate, isPending: playIsPending } = useMutation({
-    mutationFn: Play,
-    onSuccess(data) {
-      playRef.current?.play(data.data.items[0].http_flv ?? "", data.data);
-    },
-    onError: ErrorHandle,
-  });
 
   // =============== 表格列定义 ===============
   const columns: ColumnsType<RTMPItem> = [
@@ -116,11 +104,8 @@ export default function RTMPView() {
       render: (_, record) => (
         <div className="flex gap-0">
           <Button
-            disabled={playIsPending}
-            isLoading={playIsPending && selectedPlayID === record.id}
             onClick={() => {
-              setSelectedPlayID(record.id);
-              playMutate(record.id);
+              playRef.current?.open(record, { hideSidebar: true });
             }}
             variant="ghost"
             size="sm"
@@ -215,29 +200,8 @@ export default function RTMPView() {
         />
 
         {/* 播放器 */}
-        <PlayBox ref={playRef} />
+        <PlayDrawer ref={playRef} />
       </div>
     </>
   );
 }
-
-// function PushAddrsButton({
-//   children,
-//   items,
-// }: {
-//   children: React.ReactNode;
-//   items: string[];
-// }) {
-//   return (
-//     <Popover>
-//       <PopoverTrigger asChild>{children}</PopoverTrigger>
-//       <PopoverContent className="w-80">
-//         {items.map((item) => (
-//           <Button className="w-full" key={item}>
-//             {item}
-//           </Button>
-//         ))}
-//       </PopoverContent>
-//     </Popover>
-//   );
-// }

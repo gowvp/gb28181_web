@@ -3,14 +3,10 @@ import type { ColumnsType } from "antd/es/table";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Edit, SquarePlay } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
 import { EditForm } from "./edit";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
-import { Play } from "~/service/api/channel/channel";
-import { ErrorHandle } from "~/service/config/error";
-import PlayBox, { type PlayBoxRef } from "../../components/xui/play";
 import { formatDate } from "~/components/util/date";
 import { Badge } from "~/components/ui/badge";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
@@ -18,28 +14,21 @@ import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
 import type { RTSPItem } from "~/service/api/rtsp/state";
 import { useTranslation } from "react-i18next";
+import PlayDrawer, {
+  type PlayDrawerRef,
+} from "~/components/player/play-drawer";
 
 export default function RTSPView() {
   const { t } = useTranslation("common");
 
   // =============== 状态定义 ===============
-  const [selectedPlayID, setSelectedPlayID] = useState("");
 
   // refs
   const editFromRef = useRef<EditSheetImpl>(null);
-  const playRef = useRef<PlayBoxRef>(null);
+  const playRef = useRef<PlayDrawerRef>(null);
   const tableRef = useRef<TableQueryRef<RTSPItem>>(null);
 
   // =============== 查询与操作 ===============
-
-  // 播放功能
-  const { mutate: playMutate, isPending: playIsPending } = useMutation({
-    mutationFn: Play,
-    onSuccess(data) {
-      playRef.current?.play(data.data.items[0].http_flv ?? "", data.data);
-    },
-    onError: ErrorHandle,
-  });
 
   // =============== 表格列定义 ===============
   const columns: ColumnsType<RTSPItem> = [
@@ -104,15 +93,6 @@ export default function RTSPView() {
         return <div>{formatDate(created_at)}</div>;
       },
     },
-    // {
-    //   title: "停流时间",
-    //   dataIndex: "stopped_at",
-    //   key: "stopped_at",
-    //   render: (stopped_at: string, record: RTMPItem) => {
-    //     const color = record.pushed_at > stopped_at ? "text-gray-400" : "";
-    //     return <div className={color}>{formatDate(stopped_at)}</div>;
-    //   },
-    // },
     {
       title: t("operation"),
       key: "action",
@@ -120,11 +100,8 @@ export default function RTSPView() {
       render: (_, record) => (
         <div className="flex gap-0">
           <Button
-            disabled={playIsPending}
-            isLoading={playIsPending && selectedPlayID === record.id}
             onClick={() => {
-              setSelectedPlayID(record.id);
-              playMutate(record.id);
+              playRef.current?.open(record, { hideSidebar: true });
             }}
             variant="ghost"
             size="sm"
@@ -199,29 +176,8 @@ export default function RTSPView() {
         />
 
         {/* 播放器 */}
-        <PlayBox ref={playRef} />
+        <PlayDrawer ref={playRef} />
       </div>
     </>
   );
 }
-
-// function PushAddrsButton({
-//   children,
-//   items,
-// }: {
-//   children: React.ReactNode;
-//   items: string[];
-// }) {
-//   return (
-//     <Popover>
-//       <PopoverTrigger asChild>{children}</PopoverTrigger>
-//       <PopoverContent className="w-80">
-//         {items.map((item) => (
-//           <Button className="w-full" key={item}>
-//             {item}
-//           </Button>
-//         ))}
-//       </PopoverContent>
-//     </Popover>
-//   );
-// }
