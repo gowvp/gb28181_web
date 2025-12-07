@@ -18,8 +18,6 @@ import { DrawerCSSProvider } from "./components/xui/drawer";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config";
 
-import "@ant-design/v5-patch-for-react-19";
-
 // eslint-disable-next-line react-refresh/only-export-components
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },

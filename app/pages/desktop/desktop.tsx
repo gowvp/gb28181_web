@@ -58,6 +58,10 @@ const ZLMNode = ({ data }: { data: any }) => {
   const editRef = useRef<any>(null);
   const queryClient = useQueryClient();
   const { t } = useTranslation("desktop");
+  // 根据流媒体类型切换展示图标，避免配置与视觉提示不一致
+  const mediaType = data.item?.type || "zlm";
+  const mediaImage =
+    mediaType === "zlm" ? "./assets/imgs/zlm.webp" : "./assets/imgs/lalmax.png";
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
@@ -103,8 +107,8 @@ const ZLMNode = ({ data }: { data: any }) => {
         {/* 图片 */}
         <div className="flex justify-center mb-4">
           <img
-            src={"./assets/imgs/zlm.webp"}
-            alt="ZLM"
+            src={mediaImage}
+            alt={mediaType === "zlm" ? "ZLM" : "Lalmax"}
             className="w-16 h-16 object-contain"
           />
         </div>

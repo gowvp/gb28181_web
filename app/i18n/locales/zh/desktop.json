@@ -3,7 +3,7 @@
   "rtmp_push": "RTMP 推流",
   "rtsp_pull": "RTSP 拉流",
   "gb_signaling": "国标信令",
-  "zlm_connection": "ZLM 连接",
+  "zlm_connection": "流媒体连接",
   "web_management": "网页后台管理",
   "play_black_screen": "播放黑屏?",
   "tip_1": "1. 查看「国标收流默认地址」 此地址是否能被监控设备访问到",

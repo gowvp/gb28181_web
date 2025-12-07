@@ -1,10 +1,11 @@
 import React from "react";
 import { AddRTMP } from "~/service/api/rtmp/rtmp";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
-import { Form, Input } from "antd";
+import { Form, Input, Radio } from "antd";
 import { EditMediaServer } from "~/service/api/media/media";
 import { useTranslation } from "react-i18next";
 
+// 统一通过抽屉表单处理流媒体新增与编辑，减少新增/编辑逻辑分散导致的维护成本
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
   const [form] = Form.useForm();
@@ -25,6 +26,19 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       }}
       trigger={<></>}
     >
+      <Form.Item
+        label={t("media_type")}
+        name="type"
+        initialValue="zlm"
+        rules={[{ required: true, message: t("input_required") }]}
+        tooltip={t("media_type_desc")}
+      >
+        <Radio.Group optionType="button" buttonStyle="solid">
+          <Radio.Button value="zlm">ZLM</Radio.Button>
+          <Radio.Button value="lalmax">Lalmax</Radio.Button>
+        </Radio.Group>
+      </Form.Item>
+
       <Form.Item name="id" hidden>
         <Input />
       </Form.Item>
@@ -65,13 +79,13 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       </Form.Item>
 
       <Form.Item
-        label={t("zlm_secret")}
+        label={t("api_secret")}
         name="secret"
         rules={[
           { required: true, message: t("input_required") },
           { min: 2, max: 50, message: t("secret_length") },
         ]}
-        tooltip={t("zlm_secret_desc")}
+        tooltip={t("api_secret_desc")}
       >
         <Input placeholder={t("input_api_secret")} />
       </Form.Item>

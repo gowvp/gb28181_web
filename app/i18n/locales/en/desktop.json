@@ -3,7 +3,7 @@
   "rtmp_push": "RTMP Push",
   "rtsp_pull": "RTSP Pull",
   "gb_signaling": "GB Signaling",
-  "zlm_connection": "ZLM Connection",
+  "zlm_connection": "Media Connection",
   "web_management": "Web Management",
   "play_black_screen": "Black screen when playing?",
   "tip_1": "1. Check if the 'GB Stream Address' can be accessed by the monitoring device",
