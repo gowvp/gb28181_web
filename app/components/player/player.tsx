@@ -1,7 +1,8 @@
-import React, { useEffect, useImperativeHandle, useRef } from "react";
-import type Jessibuca from "./jessibuca";
-import { toastError } from "../xui/toast";
+import type React from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef } from "react";
 import logger from "~/lib/logger";
+import { toastError } from "../xui/toast";
+import type Jessibuca from "./jessibuca";
 
 declare global {
   interface Window {
@@ -30,6 +31,23 @@ function Player({ ref }: PlayerProps) {
   // 记录待播放的链接（用于播放器加载完成后自动播放）
   const pendingPlayRef = useRef<string | null>(null);
 
+  // 内部播放方法（不检查加载状态）- 使用 useCallback 包装以避免依赖问题
+  const playInternal = useCallback((link: string) => {
+    if (!p.current) {
+      logger.error("Jessibuca-player ~ playInternal ~ 播放器未初始化");
+      return;
+    }
+
+    p.current
+      .play(link)
+      .then(() => {
+        logger.info("Jessibuca-player ~ play ~ success");
+      })
+      .catch((e: Error) => {
+        toastError("播放失败", { description: e.message });
+      });
+  }, []);
+
   useEffect(() => {
     logger.info("Jessibuca-player useEffect ~ init jessibuca");
 
@@ -37,7 +55,7 @@ function Player({ ref }: PlayerProps) {
     if (p.current) {
       logger.info(
         "Jessibuca-player useEffect ~ exist, hasload:",
-        p.current.hasLoaded()
+        p.current.hasLoaded(),
       );
       return;
     }
@@ -67,14 +85,14 @@ function Player({ ref }: PlayerProps) {
     // 监听播放器初始化完成事件
     // 使用轮询检测播放器是否加载完成（Jessibuca没有提供ready事件）
     const checkLoaded = () => {
-      if (p.current && p.current.hasLoaded()) {
+      if (p.current?.hasLoaded()) {
         logger.info("Jessibuca-player ~ 播放器加载完成");
 
         // 如果有待播放的链接，立即播放
         if (pendingPlayRef.current) {
           logger.info(
             "Jessibuca-player ~ 执行待播放链接:",
-            pendingPlayRef.current
+            pendingPlayRef.current,
           );
           const link = pendingPlayRef.current;
           pendingPlayRef.current = null;
@@ -92,24 +110,7 @@ function Player({ ref }: PlayerProps) {
     return () => {
       logger.info("Jessibuca-player ~ dispose");
     };
-  }, []);
-
-  // 内部播放方法（不检查加载状态）
-  const playInternal = (link: string) => {
-    if (!p.current) {
-      logger.error("Jessibuca-player ~ playInternal ~ 播放器未初始化");
-      return;
-    }
-
-    p.current
-      .play(link)
-      .then(() => {
-        logger.info("Jessibuca-player ~ play ~ success");
-      })
-      .catch((e: Error) => {
-        toastError("播放失败", { description: e.message });
-      });
-  };
+  }, [playInternal]);
 
   const play = (link: string) => {
     logger.info("Jessibuca-player ~ play ~ link:", link);
@@ -126,7 +127,7 @@ function Player({ ref }: PlayerProps) {
     } else {
       // 如果未加载完成，记录待播放链接，等待加载完成后自动播放
       logger.info(
-        "Jessibuca-player ~ play ~ 播放器正在加载中，将在加载完成后自动播放"
+        "Jessibuca-player ~ play ~ 播放器正在加载中，将在加载完成后自动播放",
       );
       pendingPlayRef.current = link;
 

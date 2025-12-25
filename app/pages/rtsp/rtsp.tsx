@@ -1,22 +1,21 @@
-import * as React from "react";
 import type { ColumnsType } from "antd/es/table";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Edit, SquarePlay } from "lucide-react";
-import { EditForm } from "./edit";
 import { useRef } from "react";
-import useDebounce from "~/components/util/debounce";
-import { XButtonDelete } from "~/components/xui/button";
-import { formatDate } from "~/components/util/date";
-import { Badge } from "~/components/ui/badge";
-import type { EditSheetImpl } from "~/components/xui/edit-sheet";
-import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
-import type { RTSPItem } from "~/service/api/rtsp/state";
 import { useTranslation } from "react-i18next";
 import PlayDrawer, {
   type PlayDrawerRef,
 } from "~/components/player/play-drawer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { formatDate } from "~/components/util/date";
+import useDebounce from "~/components/util/debounce";
+import { XButtonDelete } from "~/components/xui/button";
+import type { EditSheetImpl } from "~/components/xui/edit-sheet";
+import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
+import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
+import type { RTSPItem } from "~/service/api/rtsp/state";
+import { EditForm } from "./edit";
 
 export default function RTSPView() {
   const { t } = useTranslation("common");
@@ -54,10 +53,10 @@ export default function RTSPView() {
       render: (value: string) => {
         let color = "";
         let text = "";
-        if (value == "STOPPED") {
+        if (value === "STOPPED") {
           color = "bg-orange-300";
           text = "NO";
-        } else if (value == "PUSHING") {
+        } else if (value === "PUSHING") {
           color = "bg-green-300";
           text = "OK";
         }
@@ -82,7 +81,7 @@ export default function RTSPView() {
       dataIndex: "transport",
       key: "transport",
       render: (value: number) => {
-        return value == 0 ? "TCP" : "UDP";
+        return value === 0 ? "TCP" : "UDP";
       },
     },
     {

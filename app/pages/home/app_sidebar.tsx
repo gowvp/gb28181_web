@@ -1,19 +1,15 @@
-import * as React from "react";
 import {
   AudioWaveform,
+  Cctv,
   Command,
   GalleryVerticalEnd,
-  SquareTerminal,
-  Cctv,
-  MonitorUp,
-  Waypoints,
   Github,
   Home,
+  MonitorUp,
+  SquareTerminal,
+  Waypoints,
 } from "lucide-react";
-
-import { NavMain } from "./nav_main";
-import { NavUser } from "./nav_user";
-import { TeamSwitcher } from "./team_switcher";
+import type * as React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,7 +17,10 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "~/components/ui/sidebar";
+import { NavMain } from "./nav_main";
 import { NavSecondary } from "./nav_secondary";
+import { NavUser } from "./nav_user";
+import { TeamSwitcher } from "./team_switcher";
 
 // This is sample data.
 const data = {

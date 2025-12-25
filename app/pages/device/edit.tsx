@@ -1,10 +1,9 @@
-import React from "react";
+import { Form, Input, InputNumber, Radio } from "antd";
+import { SquarePlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "~/components/ui/button";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
-import { SquarePlus } from "lucide-react";
 import { AddDevice, EditDevice } from "~/service/api/device/device";
-import { Form, Input, InputNumber, Radio } from "antd";
-import { useTranslation } from "react-i18next";
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");

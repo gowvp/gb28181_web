@@ -1,12 +1,12 @@
-import React from "react";
-import { CPUBox } from "./cpu";
+import { useQuery } from "@tanstack/react-query";
+import type React from "react";
+import { FindStats } from "~/service/api/stat/stat";
 import CountBox from "./count";
-import { NetworkBox } from "./network";
-import { MemoryBox } from "./memory";
+import { CPUBox } from "./cpu";
 import { DiskBox } from "./disk";
 import { LoadBox } from "./load";
-import { useQuery } from "@tanstack/react-query";
-import { FindStats } from "~/service/api/stat/stat";
+import { MemoryBox } from "./memory";
+import { NetworkBox } from "./network";
 
 export default function DashboardView() {
   // 使用 react-query 固定间隔获取一次服务端状态信息

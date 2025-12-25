@@ -1,12 +1,12 @@
+import { Link } from "@tanstack/react-router";
 import React from "react";
 import {
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
   Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "../ui/breadcrumb";
-import { Link } from "react-router";
 
 export default function XHeader({
   items = [],
@@ -23,7 +23,7 @@ export default function XHeader({
             {items.map((item, index) => (
               <React.Fragment key={index}>
                 <BreadcrumbItem className="hidden md:block">
-                  {(item.url?.length ?? 0) == 0 ? (
+                  {(item.url?.length ?? 0) === 0 ? (
                     <BreadcrumbPage>{item.title}</BreadcrumbPage>
                   ) : (
                     <Link to={item.url ?? ""}>{item.title}</Link>

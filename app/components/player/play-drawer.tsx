@@ -1,15 +1,15 @@
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { Bug, Copy, ScanSearch, Settings2 } from "lucide-react";
 import * as React from "react";
-import { Bug, Copy } from "lucide-react";
-
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
+import Player, { type PlayerRef } from "~/components/player/player";
+import { AspectRatio } from "~/components/ui/aspect-ratio";
 import { Button } from "~/components/ui/button";
 import { Drawer, DrawerContent } from "~/components/ui/drawer";
-import { AspectRatio } from "~/components/ui/aspect-ratio";
-import Player, { type PlayerRef } from "~/components/player/player";
-import { useRef, useState } from "react";
-import { Play } from "~/service/api/channel/channel";
-import { useMutation } from "@tanstack/react-query";
-import { ErrorHandle } from "~/service/config/error";
-import DeviceDetailView from "~/pages/channels/device";
+import { Input } from "~/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,9 +19,10 @@ import {
 } from "~/components/ui/select";
 import { copy2Clipboard } from "~/components/util/copy";
 import ToolTips from "~/components/xui/tips";
-import { Input } from "~/components/ui/input";
-import { useTranslation } from "react-i18next";
 import { usePlayerLayout } from "~/hooks/use-player-layout";
+import DeviceDetailView from "~/pages/channels/device";
+import { Play } from "~/service/api/channel/channel";
+import { ErrorHandle } from "~/service/config/error";
 
 export interface PlayDrawerRef {
   open: (item: any, options?: { hideSidebar?: boolean }) => void;
@@ -33,19 +34,22 @@ export default function PlayDrawer({
   ref: React.RefObject<PlayDrawerRef | null>;
 }) {
   const { t } = useTranslation("common");
+  const navigate = useNavigate();
   const deviceDetailRef = useRef<any>(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [detectEnabled, setDetectEnabled] = useState(false);
+  const [currentChannelId, setCurrentChannelId] = useState<string>("");
 
   // 底部容器引用，用于动态测量高度
   const footerRef = useRef<HTMLDivElement>(null);
 
-  // 使用布局计算 Hook
+  // 使用布局计算 Hook（侧边栏宽度减少 30px）
   const layout = usePlayerLayout({
     headerHeight: 40,
-    footerRef, // 传入 ref 代替固定高度
+    footerRef,
     sidebarWidth:
       showSidebar && typeof window !== "undefined" && window.innerWidth >= 640
-        ? 320
+        ? 290
         : 0,
   });
 
@@ -64,6 +68,7 @@ export default function PlayDrawer({
   React.useImperativeHandle(ref, () => ({
     open(item: any, options?: { hideSidebar?: boolean }) {
       console.log("打开播放详情，ID:", item.id);
+      setCurrentChannelId(item.id);
 
       if (options?.hideSidebar !== undefined) {
         setShowSidebar(!options.hideSidebar);
@@ -148,7 +153,7 @@ export default function PlayDrawer({
                   </SelectContent>
                 </Select>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 flex-1">
                   {[
                     {
                       name: "HTTP_FLV",
@@ -212,13 +217,45 @@ export default function PlayDrawer({
                     </ToolTips>
                   ))}
                 </div>
+
+                {/* 检测开关和区域设置按钮 */}
+                <div className="flex gap-2 ml-auto shrink-0">
+                  <ToolTips tips={t("detection")}>
+                    <Button
+                      size="sm"
+                      variant={detectEnabled ? "default" : "outline"}
+                      onClick={() => {
+                        toast.info(t("developing"));
+                        setDetectEnabled(!detectEnabled);
+                      }}
+                    >
+                      <ScanSearch className="w-4 h-4" />
+                    </Button>
+                  </ToolTips>
+                  <ToolTips tips={t("zone_settings")}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (!currentChannelId) return;
+                        onOpenChange(false);
+                        navigate({
+                          to: "/zones",
+                          search: { cid: currentChannelId },
+                        });
+                      }}
+                    >
+                      <Settings2 className="w-4 h-4" />
+                    </Button>
+                  </ToolTips>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 设备详情/介绍 - 小屏幕时隐藏 */}
+          {/* 设备详情/介绍 - 小屏幕时隐藏，宽度减少 30px */}
           {showSidebar && (
-            <div className="hidden sm:block w-80 lg:w-96 border-l bg-white overflow-y-auto">
+            <div className="hidden sm:block w-72 lg:w-[360px] border-l bg-white overflow-y-auto">
               <DeviceDetailView ref={deviceDetailRef} />
             </div>
           )}

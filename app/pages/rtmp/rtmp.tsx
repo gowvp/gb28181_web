@@ -1,24 +1,23 @@
-import * as React from "react";
 import type { ColumnsType } from "antd/es/table";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { Copy, Edit, SquarePlay } from "lucide-react";
-import { DelRTMP, FindRTMPs, findRTMPsKey } from "~/service/api/rtmp/rtmp";
-import type { RTMPItem } from "~/service/api/rtmp/state";
-import { EditForm } from "./edit";
 import { useRef } from "react";
-import useDebounce from "~/components/util/debounce";
-import { XButtonDelete } from "~/components/xui/button";
-import { formatDate } from "~/components/util/date";
-import { Badge } from "~/components/ui/badge";
-import { copy2Clipboard } from "~/components/util/copy";
-import type { EditSheetImpl } from "~/components/xui/edit-sheet";
-import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import ToolTips from "~/components/xui/tips";
 import { useTranslation } from "react-i18next";
 import PlayDrawer, {
   type PlayDrawerRef,
 } from "~/components/player/play-drawer";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { copy2Clipboard } from "~/components/util/copy";
+import { formatDate } from "~/components/util/date";
+import useDebounce from "~/components/util/debounce";
+import { XButtonDelete } from "~/components/xui/button";
+import type { EditSheetImpl } from "~/components/xui/edit-sheet";
+import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
+import ToolTips from "~/components/xui/tips";
+import { DelRTMP, FindRTMPs, findRTMPsKey } from "~/service/api/rtmp/rtmp";
+import type { RTMPItem } from "~/service/api/rtmp/state";
+import { EditForm } from "./edit";
 
 export default function RTMPView() {
   const { t } = useTranslation("common");
@@ -56,10 +55,10 @@ export default function RTMPView() {
       render: (value: string) => {
         let color = "";
         let text = "";
-        if (value == "STOPPED") {
+        if (value === "STOPPED") {
           color = "bg-orange-300";
           text = "NO";
-        } else if (value == "PUSHING") {
+        } else if (value === "PUSHING") {
           color = "bg-green-300";
           text = "OK";
         }

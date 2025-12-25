@@ -1,24 +1,24 @@
-import React, { useCallback, useRef } from "react";
+import type { Connection, Edge, Node } from "@xyflow/react";
 import {
-  ReactFlow,
-  useNodesState,
-  useEdgesState,
   addEdge,
   Background,
   Controls,
-  ReactFlowProvider,
-  MarkerType,
   Handle,
+  MarkerType,
   Position,
+  ReactFlow,
+  ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
 } from "@xyflow/react";
-import type { Node, Edge, Connection } from "@xyflow/react";
+import type React from "react";
+import { useCallback, useRef } from "react";
 import "@xyflow/react/dist/style.css";
 
-import { motion } from "framer-motion";
-import { MediaServerCard } from "./media";
-import { Cctv, User } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Cctv, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { MediaServerCard } from "./media";
 
 // 通用节点样式
 const commonNodeStyle = {
@@ -55,7 +55,7 @@ const createEdge = (
   target: string,
   sourceHandle: string,
   targetHandle: string,
-  color: string
+  color: string,
 ): Edge => ({
   id,
   source,
@@ -77,7 +77,7 @@ const createEdge = (
 const createBaseNode = (
   id: string,
   position: { x: number; y: number },
-  label: React.ReactNode
+  label: React.ReactNode,
 ): Node => ({
   id,
   position,
@@ -92,7 +92,7 @@ const createIconNode = (
   position: { x: number; y: number },
   icon: React.ReactNode,
   text: string,
-  handles: { type: "source" | "target"; position: Position; id: string }[]
+  handles: { type: "source" | "target"; position: Position; id: string }[],
 ): Node => {
   const handleElements = handles.map((handle) => (
     <Handle
@@ -113,7 +113,7 @@ const createIconNode = (
         <span className="font-medium text-sm">{text}</span>
         {handleElements}
       </CardContent>
-    </Card>
+    </Card>,
   );
 };
 
@@ -123,7 +123,7 @@ const createCardNode = (
   position: { x: number; y: number },
   title: string,
   subtitle: string,
-  handles: { type: "source" | "target"; position: Position; id: string }[]
+  handles: { type: "source" | "target"; position: Position; id: string }[],
 ): Node => {
   const handleElements = handles.map((handle) => (
     <Handle
@@ -144,7 +144,7 @@ const createCardNode = (
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </CardHeader>
       {handleElements}
-    </Card>
+    </Card>,
   );
 };
 
@@ -154,21 +154,21 @@ const initialNodes: Node[] = [
     { x: 100, y: 200 },
     <Cctv className="w-4 h-4 text-blue-500" />,
     "GB/T28181",
-    [{ type: "source", position: Position.Right, id: "right" }]
+    [{ type: "source", position: Position.Right, id: "right" }],
   ),
   createIconNode(
     "rtmp",
     { x: 100, y: 30 },
     <Cctv className="w-4 h-4 text-blue-500" />,
     "RTMP 推流",
-    [{ type: "source", position: Position.Right, id: "right" }]
+    [{ type: "source", position: Position.Right, id: "right" }],
   ),
   createIconNode(
     "rtsp",
     { x: 100, y: 80 },
     <Cctv className="w-4 h-4 text-blue-500" />,
     "RTSP 拉流",
-    [{ type: "target", position: Position.Right, id: "right" }]
+    [{ type: "target", position: Position.Right, id: "right" }],
   ),
   {
     id: "zlm",
@@ -217,7 +217,7 @@ const initialNodes: Node[] = [
     { x: 600, y: 255 },
     <User className="w-4 h-4 text-blue-500" />,
     "网页客户端",
-    [{ type: "source", position: Position.Left, id: "left" }]
+    [{ type: "source", position: Position.Left, id: "left" }],
   ),
 ];
 
@@ -233,7 +233,7 @@ const initialEdges: Edge[] = [
     "gowvp",
     "left",
     "right",
-    "#6366f1"
+    "#6366f1",
   ),
 ];
 
@@ -329,15 +329,15 @@ const nodeTypes = {
 };
 
 export default function Desktop() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const editRef = useRef<any>(null);
-  const queryClient = useQueryClient();
+  const _editRef = useRef<any>(null);
+  const _queryClient = useQueryClient();
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    [setEdges],
   );
 
   return (

@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-const SIDEBAR_STATE_KEY = 'sidebar-open-state';
+const SIDEBAR_STATE_KEY = "sidebar-open-state";
 
 /**
  * 侧边栏状态管理 hook
@@ -10,7 +10,7 @@ const SIDEBAR_STATE_KEY = 'sidebar-open-state';
 export function useSidebarState() {
   // 从 localStorage 获取初始状态，默认为 true
   const [isOpen, setIsOpen] = useState<boolean>(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return true; // 服务端渲染时默认为开启
     }
 
@@ -18,7 +18,7 @@ export function useSidebarState() {
       const stored = localStorage.getItem(SIDEBAR_STATE_KEY);
       return stored !== null ? JSON.parse(stored) : false;
     } catch (error) {
-      console.warn('Failed to parse sidebar state from localStorage:', error);
+      console.warn("Failed to parse sidebar state from localStorage:", error);
       return true;
     }
   });
@@ -28,13 +28,13 @@ export function useSidebarState() {
     try {
       localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(isOpen));
     } catch (error) {
-      console.warn('Failed to save sidebar state to localStorage:', error);
+      console.warn("Failed to save sidebar state to localStorage:", error);
     }
   }, [isOpen]);
 
   // 切换侧边栏状态
   const toggleSidebar = useCallback(() => {
-    setIsOpen(prev => !prev);
+    setIsOpen((prev) => !prev);
   }, []);
 
   // 打开侧边栏

@@ -31,23 +31,29 @@ go wvp 是 Go 语言实现的开源 GB28181 解决方案，基于GB28181-2022标
 node.js > 20.x
 
 + [React 19](https://react.dev/)
-+ [React Router v7](https://reactrouter.com/)
++ [TanStack Router](https://tanstack.com/router/latest)
 + [shadcn/ui](https://ui.shadcn.com/)
-+ [vite](https://cn.vitejs.dev/)
-+ [Tailwind CSS](https://tailwindcss.com/)
++ [Vite 7](https://cn.vitejs.dev/)
++ [Tailwind CSS 4](https://tailwindcss.com/) - 使用 @tailwindcss/vite 插件
 + [React Query](https://tanstack.com/query/latest/docs/framework/react/overview)
 + [TypeScript](https://www.typescriptlang.org/)
++ [Biome](https://biomejs.dev/) - 代码格式化和 lint
 
 ## 使用帮助
 
 路由跳转
 
 ```tsx
+import { useNavigate } from "@tanstack/react-router";
+
 const navigate = useNavigate();
 
 const handleClick = () => {
-		navigate('/about');
+    navigate({ to: '/about' });
 }
+
+// 带搜索参数的导航
+navigate({ to: '/zones', search: { cid: '123' } });
 ```
 
 vite 配置代理
@@ -74,12 +80,8 @@ vite 配置代理
 ```ts
  base: mode === "development" ? "/" : "/web/",
 ```
-2. 更新 react-router.config.ts
-```ts
-  basename: import.meta.env.MODE === "development" ? "/" : "/web/",
-```
 
-3. 其它静态文件
+2. 其它静态文件
 ```tsx
 <img src={`${import.meta.env.BASE_URL}assets/logo.png`} alt="Logo" />
 ```

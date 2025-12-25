@@ -60,7 +60,7 @@ export function ErrorHandle(error: any) {
   console.log("🚀 ~ ErrorHandle ~ data:", data);
 
   // const key = Date.now().toString();
-  if (err.response.status == 401) {
+  if (err.response.status === 401) {
     window.location.href = "/";
   }
 

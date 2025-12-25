@@ -1,15 +1,14 @@
-import React from "react";
-import { Button } from "antd";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Button, Form, Input, InputNumber } from "antd";
+import React from "react";
+import { useTranslation } from "react-i18next";
+import { toastSuccess } from "~/components/xui/toast";
 import {
   GetConfigInfo,
   getConfigInfoKey,
   SetConfigSIP,
 } from "~/service/api/config/config";
-import { Form, Input, InputNumber } from "antd";
 import { ErrorHandle } from "~/service/config/error";
-import { toastSuccess } from "~/components/xui/toast";
-import { useTranslation } from "react-i18next";
 
 export default function config() {
   const { t } = useTranslation("common");

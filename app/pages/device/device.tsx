@@ -1,28 +1,26 @@
-import * as React from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Button as AntButton, Radio } from "antd";
+import type { CheckboxGroupProps } from "antd/es/checkbox";
 import type { ColumnsType } from "antd/es/table";
-import { Button } from "~/components/ui/button";
-import { Button as AntButton } from "antd";
-import { Input } from "~/components/ui/input";
 import { Edit, Folder, Wifi } from "lucide-react";
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { formatDate } from "~/components/util/date";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
-import { formatDate } from "~/components/util/date";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import { EditForm } from "./edit";
-import type { DeviceItem } from "~/service/api/device/state";
 import {
   DelDevice,
   FindDevices,
   findDevicesKey,
 } from "~/service/api/device/device";
-import { Badge } from "~/components/ui/badge";
-import { Link, useNavigate } from "react-router";
-import { Radio } from "antd";
-import type { CheckboxGroupProps } from "antd/es/checkbox";
-import { useTranslation } from "react-i18next";
+import type { DeviceItem } from "~/service/api/device/state";
 import DeviceDiscover from "../channels/device_discover";
+import { EditForm } from "./edit";
 
 export default function DeviceView() {
   const { t } = useTranslation(["device", "common"]);
@@ -38,7 +36,7 @@ export default function DeviceView() {
       dataIndex: "name",
       key: "name",
       minWidth: 100,
-      render(value, record) {
+      render(_value, record) {
         let name = record.name;
         // 用户未自定义名称，采用设备上报名称
         if (name.length <= 0) {
@@ -58,7 +56,7 @@ export default function DeviceView() {
       dataIndex: "address",
       key: "address",
       minWidth: 180,
-      render(value, record) {
+      render(_value, record) {
         return (
           <span className="lowercase">{`${record.transport}://${record.address}`}</span>
         );
@@ -68,7 +66,7 @@ export default function DeviceView() {
       title: t("common:manufacturer"),
       dataIndex: "manufacturer",
       key: "manufacturer",
-      render(value, record) {
+      render(_value, record) {
         return record.ext.manufacturer;
       },
       minWidth: 100,
@@ -77,12 +75,12 @@ export default function DeviceView() {
       title: t("common:stream_mode"),
       dataIndex: "stream_mode",
       key: "stream_mode",
-      render(value, record) {
+      render(_value, record) {
         return record.stream_mode === 0
           ? t("common:udp")
           : record.stream_mode === 1
-          ? t("common:tcp_passive")
-          : t("common:tcp_active");
+            ? t("common:tcp_passive")
+            : t("common:tcp_active");
       },
     },
     {
@@ -96,7 +94,7 @@ export default function DeviceView() {
       dataIndex: "is_online",
       align: "center",
       key: "is_online",
-      render(value, record) {
+      render(_value, record) {
         return (
           <Badge
             variant="secondary"
@@ -143,7 +141,10 @@ export default function DeviceView() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              navigate(`/channels?device_id=${record.device_id}`);
+              navigate({
+                to: `/channels`,
+                search: { device_id: record.device_id },
+              });
             }}
           >
             <Folder className="h-4 w-4 mr-1" />
@@ -202,55 +203,54 @@ export default function DeviceView() {
   const discoverRef = useRef<any>(null);
 
   return (
-    <>
-      <div className="min-h-screen bg-transparent p-6">
-        <div className="mx-auto flex flex-row  items-center mb-6 ">
-          <div className="flex gap-2 justify-between w-full">
-            <div className="flex flex-row gap-2">
-              <Radio.Group
-                value="/devices"
-                options={options}
-                onChange={(e) => {
-                  navigate(e.target.value);
-                }}
-                block
-                optionType="button"
-                buttonStyle="solid"
-              />
+    <div className="min-h-screen bg-transparent p-6">
+      <div className="mx-auto flex flex-row  items-center mb-6 ">
+        <div className="flex gap-2 justify-between w-full">
+          <div className="flex flex-row gap-2">
+            <Radio.Group
+              value="/devices"
+              options={options}
+              onChange={(e) => {
+                navigate({ to: e.target.value });
+              }}
+              block
+              optionType="button"
+              buttonStyle="solid"
+            />
 
-              <Link to="/gb/sip">
-                <AntButton>{t("common:access_info")}</AntButton>
-              </Link>
+            <Link to="/gb/sip">
+              <AntButton>{t("common:access_info")}</AntButton>
+            </Link>
 
-              <AntButton
-                icon={<Wifi className="w-4 h-4" />}
-                onClick={() => discoverRef.current?.open()}
-              >
-                {t("common:device_discover")}
-              </AntButton>
-            </div>
+            <AntButton
+              icon={<Wifi className="w-4 h-4" />}
+              onClick={() => discoverRef.current?.open()}
+            >
+              {t("common:device_discover")}
+            </AntButton>
+          </div>
 
-            {/* 搜索和添加区域 */}
-            <div className="flex items-center">
-              <span className="mr-3">{t("common:search")}</span>
-              <Input
-                placeholder={t("common:search_device_placeholder")}
-                onChange={(event) => debouncedFilters(event.target.value)}
-                className="w-60"
-              />
+          {/* 搜索和添加区域 */}
+          <div className="flex items-center">
+            <span className="mr-3">{t("common:search")}</span>
+            <Input
+              placeholder={t("common:search_device_placeholder")}
+              onChange={(event) => debouncedFilters(event.target.value)}
+              className="w-60"
+            />
 
-              <EditForm
-                ref={editFromRef}
-                onAddSuccess={() => tableRef.current?.handleAddSuccess()}
-                onEditSuccess={(data) =>
-                  tableRef.current?.handleEditSuccess(data)
-                }
-              />
-            </div>
+            <EditForm
+              ref={editFromRef}
+              onAddSuccess={() => tableRef.current?.handleAddSuccess()}
+              onEditSuccess={(data) =>
+                tableRef.current?.handleEditSuccess(data)
+              }
+            />
           </div>
         </div>
+      </div>
 
-        {/* <div
+      {/* <div
           className={cn(
             "mb-4 flex justify-start transition-all duration-300 overflow-hidden",
             isShowFilter ? "max-h-[300px]" : "max-h-0"
@@ -288,16 +288,15 @@ export default function DeviceView() {
           </ToggleGroup>
         </div> */}
 
-        <TableQuery
-          ref={tableRef}
-          queryKey={findDevicesKey}
-          fetchFn={FindDevices}
-          deleteFn={DelDevice}
-          columns={columns}
-        />
+      <TableQuery
+        ref={tableRef}
+        queryKey={findDevicesKey}
+        fetchFn={FindDevices}
+        deleteFn={DelDevice}
+        columns={columns}
+      />
 
-        <DeviceDiscover ref={discoverRef} />
-      </div>
-    </>
+      <DeviceDiscover ref={discoverRef} />
+    </div>
   );
 }

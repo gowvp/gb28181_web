@@ -1,16 +1,16 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useCallback,
-  type ReactNode,
-  forwardRef,
-} from "react";
 import {
-  NodeToolbar,
   type NodeProps,
+  NodeToolbar,
   type NodeToolbarProps,
 } from "@xyflow/react";
+import React, {
+  createContext,
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useState,
+} from "react";
 import { BaseNode } from "~/components/base-node";
 
 /* TOOLTIP CONTEXT ---------------------------------------------------------- */
@@ -69,7 +69,7 @@ export const TooltipContent = forwardRef<HTMLDivElement, TooltipContentProps>(
         <NodeToolbar
           isVisible={isTooltipVisible}
           className="rounded-sm bg-primary p-2 text-primary-foreground"
-          tabIndex={1}
+          tabIndex={0}
           position={position}
         >
           {children}

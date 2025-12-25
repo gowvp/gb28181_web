@@ -1,9 +1,8 @@
-import React from "react";
-import { useState, useImperativeHandle, forwardRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { XTable } from "./table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { ErrorHandle } from "~/service/config/error";
+import { XTable } from "./table";
 
 interface TableQueryProps<T> {
   queryKey: string; // 查询key
@@ -35,7 +34,7 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
       columns,
       defaultFilters = { page: 1, size: 10 },
     },
-    ref
+    ref,
   ) {
     const [filters, setFilters] = useState(defaultFilters);
     const queryClient = useQueryClient();
@@ -48,7 +47,7 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
       throwOnError: (err) => {
         ErrorHandle(err);
         return true;
-      }
+      },
     });
 
     // 删除功能
@@ -58,7 +57,7 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
       onSuccess: (data) => {
         queryClient.setQueryData([queryKey, filters], (old: any) => {
           const newItems = old.data.items.filter(
-            (item: any) => item.id !== data.data.id
+            (item: any) => item.id !== data.data.id,
           );
 
           // 如果当前页数据为空且不是第一页,回退一页
@@ -113,7 +112,7 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
           data: {
             ...old.data,
             items: old.data.items.map((item: any) =>
-              item.id === updatedItem.id ? updatedItem : item
+              item.id === updatedItem.id ? updatedItem : item,
             ),
           },
         };
@@ -145,5 +144,5 @@ export const TableQuery = forwardRef<TableQueryRef<any>, TableQueryProps<any>>(
         }}
       />
     );
-  }
+  },
 );

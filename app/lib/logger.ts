@@ -72,7 +72,7 @@ class Logger {
         console.log(
           `%cINFO`,
           "color: #ffffff; background-color: #007bff; padding:3px  6px; border-radius: 6px; text-align: center;",
-          ...args
+          ...args,
         );
       }
     };
@@ -82,7 +82,7 @@ class Logger {
       console.log(
         `%cWARN`,
         "color: #ffffff; background-color: #ffc107; padding:3px 6px; border-radius: 6px; text-align: center;",
-        ...args
+        ...args,
       );
     };
 
@@ -91,7 +91,7 @@ class Logger {
       console.error(
         `%cERROR`,
         "color: #ffffff; background-color: #dc3545; padding:3px 6px; border-radius: 6px; text-align: center;",
-        ...args
+        ...args,
       );
     };
   }
@@ -129,7 +129,7 @@ class Logger {
   }
 
   _padZero(num: number) {
-    return num < 10 ? "0" + num : num;
+    return num < 10 ? `0${num}` : num;
   }
 
   _getCurrentTime() {

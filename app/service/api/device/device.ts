@@ -2,9 +2,9 @@ import { DELETE, GET, POST, PUT } from "~/service/config/http";
 
 import type {
   DeviceItem,
+  FindDevicesChannelsResponse,
   FindDevicesResponse,
   GetDeviceResponse,
-  FindDevicesChannelsResponse,
 } from "./state";
 
 export const findDevicesKey = "findDevices";
@@ -30,7 +30,7 @@ export async function FindDevicesChannels({
 
 export const getDeviceKey = "getDevice";
 export async function GetDevice(did: string) {
-  if (did == "") {
+  if (did === "") {
     did = "unknown";
   }
   return await GET<GetDeviceResponse>(`/devices/${did}`);

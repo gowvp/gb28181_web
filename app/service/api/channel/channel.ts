@@ -1,6 +1,9 @@
 import { GET, POST } from "~/service/config/http";
 import type {
+  AddZoneInput,
+  AddZoneResponse,
   FindChannelsResponse,
+  GetZonesResponse,
   PlayResponse,
   RefreshSnapshotResponse,
 } from "./state";
@@ -12,7 +15,7 @@ export async function Play(id: string) {
 export async function RefreshSnapshot(
   id: string,
   url: string, // rtsp 播放地址
-  within_seconds: number // 多少秒以内生成的快照，建议 300 秒
+  within_seconds: number, // 多少秒以内生成的快照，建议 300 秒
 ) {
   return await POST<RefreshSnapshotResponse>(`/channels/${id}/snapshot`, {
     url,
@@ -23,4 +26,14 @@ export async function RefreshSnapshot(
 export const findChannelsKey = "findChannels";
 export async function FindChannels(data: object) {
   return await GET<FindChannelsResponse>(`/channels`, data);
+}
+
+// 区域管理 API
+export const getZonesKey = "getZones";
+export async function GetZones(channelId: string) {
+  return await GET<GetZonesResponse>(`/channels/${channelId}/zones`);
+}
+
+export async function AddZone(channelId: string, zone: AddZoneInput) {
+  return await POST<AddZoneResponse>(`/channels/${channelId}/zones`, zone);
 }

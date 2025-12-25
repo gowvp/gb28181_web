@@ -1,4 +1,3 @@
-import React, { useEffect } from "react";
 import {
   type Node,
   type NodeProps,
@@ -6,6 +5,7 @@ import {
   useReactFlow,
   useStore,
 } from "@xyflow/react";
+import { useEffect } from "react";
 
 import { BaseNode } from "~/components/base-node";
 import { LabeledHandle } from "~/components/labeled-handle";
@@ -19,21 +19,21 @@ export function GoWVPNode({ id }: NodeProps<SumNode>) {
   const { x, y } = useStore((state) => ({
     x: getHandleValue(
       getHandleConnections({ nodeId: id, id: "x", type: "target" }),
-      state.nodeLookup
+      state.nodeLookup,
     ),
     y: getHandleValue(
       getHandleConnections({ nodeId: id, id: "y", type: "target" }),
-      state.nodeLookup
+      state.nodeLookup,
     ),
     z: getHandleValue(
       getHandleConnections({ nodeId: id, id: "z", type: "target" }),
-      state.nodeLookup
+      state.nodeLookup,
     ),
   }));
 
   useEffect(() => {
     updateNodeData(id, { value: x + y });
-  }, [x, y]);
+  }, [x, y, id, updateNodeData]);
 
   return (
     <BaseNode className="w-52">
@@ -72,7 +72,7 @@ export function GoWVPNode({ id }: NodeProps<SumNode>) {
 
 function getHandleValue(
   connections: Array<{ source: string }>,
-  lookup: Map<string, Node<any>>
+  lookup: Map<string, Node<any>>,
 ) {
   return connections.reduce((acc, { source }) => {
     const node = lookup.get(source)!;

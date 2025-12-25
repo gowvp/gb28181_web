@@ -1,4 +1,3 @@
-import React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   Card,
@@ -8,10 +7,10 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import {
+  type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  type ChartConfig,
 } from "~/components/ui/chart";
 import type { Stat } from "~/service/api/stat/state";
 
@@ -52,7 +51,7 @@ export function MemoryBox({ data }: { data: Stat[] }) {
               axisLine={false}
               tickMargin={2}
               tickCount={5}
-              tickFormatter={(v) => v + "%"}
+              tickFormatter={(v) => `${v}%`}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 

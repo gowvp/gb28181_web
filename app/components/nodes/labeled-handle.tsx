@@ -1,5 +1,4 @@
-import React from "react";
-import { Handle, Position } from "@xyflow/react";
+import { Handle, type Position } from "@xyflow/react";
 
 interface LabeledHandleProps {
   id: string;

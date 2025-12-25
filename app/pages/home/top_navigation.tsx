@@ -1,22 +1,14 @@
-import * as React from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
-  type LucideIcon,
+  ChevronsUpDown,
   Github,
   LogOut,
+  type LucideIcon,
   Sparkles,
-  ChevronsUpDown,
 } from "lucide-react";
-
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from "~/components/ui/navigation-menu";
+import * as React from "react";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "~/components/language-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import {
@@ -28,9 +20,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { useNavigate } from "react-router";
-import { LanguageSwitcher } from "~/components/language-switcher";
-import { useTranslation } from "react-i18next";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "~/components/ui/navigation-menu";
 
 // 顶部导航菜单项类型定义
 interface TopNavItem {
@@ -57,7 +55,7 @@ export function TopNavigation({
   };
 }) {
   return (
-    <div className="w-full bg-white shadow-sm">
+    <div className="w-full">
       <div className="flex items-center justify-center px-4 sm:px-8 py-2 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-8 bg-white/80 backdrop-blur-sm rounded-full px-4 sm:px-8 py-2 shadow-lg border border-gray-200/50">
           {/* 主导航菜单 */}
@@ -101,6 +99,7 @@ export function TopNavigation({
                       <Link
                         to={item.url}
                         className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4"
+                        style={{ color: "#111827" }}
                       >
                         {item.icon && (
                           <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -209,7 +208,7 @@ function TopNavUser({
             setIsLoggingOut(true);
             setTimeout(() => {
               localStorage.removeItem("token");
-              navigate("/");
+              navigate({ to: "/" });
               setIsLoggingOut(false);
             }, 400);
           }}
@@ -242,6 +241,7 @@ function ListItem({
         <Link
           to={url}
           className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+          style={{ color: "#111827" }}
         >
           <div className="text-sm font-medium leading-none">{name}</div>
           <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">

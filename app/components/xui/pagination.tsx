@@ -1,4 +1,11 @@
-import React from "react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "../ui/pagination";
 import {
   Select,
   SelectContent,
@@ -6,14 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationLink,
-  PaginationNext,
-} from "../ui/pagination";
 
 // TODO: 这个组件是配置 shadcn table 的分页组件
 // 未使用
@@ -55,10 +54,10 @@ export default function PaginationBox({
               return (
                 <PaginationItem key={v}>
                   <PaginationLink
-                    isActive={v == page}
+                    isActive={v === page}
                     onClick={() => {
                       if (page <= 0) page = 1;
-                      if (page != v) {
+                      if (page !== v) {
                         setData(v, size);
                       }
                     }}

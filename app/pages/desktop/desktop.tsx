@@ -1,25 +1,24 @@
-import React from "react";
+import type { Edge, Node } from "@xyflow/react";
 import {
-  ReactFlow,
   Background,
   Controls,
   Handle,
   Position,
+  ReactFlow,
 } from "@xyflow/react";
-import type { Node, Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useEffect, useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { useNavigate } from "@tanstack/react-router";
+import { Tooltip } from "antd";
+import { Cctv, Settings } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FindMediaServers,
   findMediaServersKey,
 } from "~/service/api/media/media";
 import { ErrorHandle } from "~/service/config/error";
-import { Cctv, Settings } from "lucide-react";
 import { EditForm } from "./media/edit";
-import { Tooltip } from "antd";
-import { useTranslation } from "react-i18next";
 
 // 简单的节点组件
 const SimpleNode = ({ data }: { data: any }) => {
@@ -28,7 +27,7 @@ const SimpleNode = ({ data }: { data: any }) => {
 
   const handleClick = useCallback(() => {
     if (data.path) {
-      navigate(data.path);
+      navigate({ to: data.path });
     }
   }, [data.path, navigate]);
 
@@ -94,6 +93,7 @@ const ZLMNode = ({ data }: { data: any }) => {
             }
           >
             <button
+              type="button"
               onClick={() => {
                 editRef.current?.edit(data.item);
               }}
@@ -448,7 +448,7 @@ const initialEdges: Edge[] = [
 ];
 
 export default function DesktopView() {
-  const { t, i18n } = useTranslation(["desktop", "common"]);
+  const { t } = useTranslation(["desktop", "common"]);
   const [nodes, setNodes] = useState<Node[]>(getInitialNodes(t));
   const [edges] = useState<Edge[]>(initialEdges);
 
@@ -464,7 +464,7 @@ export default function DesktopView() {
   // 当语言切换时，重新生成节点数据
   useEffect(() => {
     setNodes(getInitialNodes(t));
-  }, [i18n.language, t]);
+  }, [t]);
 
   // 更新 ZLM 节点数据
   useEffect(() => {
@@ -480,14 +480,14 @@ export default function DesktopView() {
               ...node.data,
               rtmp: item.ports?.rtmp || 1935,
               rtsp: item.ports?.rtsp || 554,
-              rtp: item.sdp_ip + ":" + item.rtpport_range + "(UDP/TCP)",
-              http: item.ip + ":" + item.ports?.http,
+              rtp: `${item.sdp_ip}:${item.rtpport_range}(UDP/TCP)`,
+              http: `${item.ip}:${item.ports?.http}`,
               item: item,
             },
           };
         }
         return node;
-      })
+      }),
     );
   }, [data]);
 

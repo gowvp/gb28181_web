@@ -1,25 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import React, { useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Button, Radio } from "antd";
+import type { CheckboxGroupProps } from "antd/es/checkbox";
 import { Cctv, Monitor, Wifi } from "lucide-react";
-
-import type {
-  DeviceWithChannelsItem,
-  ChannelItem,
-} from "~/service/api/device/state";
+import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { cn } from "~/lib/utils";
+import { RefreshSnapshot } from "~/service/api/channel/channel";
 import {
   FindDevicesChannels,
   findDevicesChannelsKey,
 } from "~/service/api/device/device";
-import { RefreshSnapshot } from "~/service/api/channel/channel";
-
+import type {
+  ChannelItem,
+  DeviceWithChannelsItem,
+} from "~/service/api/device/state";
 import ChannelDetailView from "./detail";
 import DeviceDiscover from "./device_discover";
-import { cn } from "~/lib/utils";
-import { Button, Radio } from "antd";
-import type { CheckboxGroupProps } from "antd/es/checkbox";
-import { useTranslation } from "react-i18next";
 
 export default function ChannelsView() {
   const { t } = useTranslation("common");
@@ -50,7 +48,7 @@ export default function ChannelsView() {
             value="/nchannels"
             options={options}
             onChange={(e) => {
-              navigate(e.target.value);
+              navigate({ to: e.target.value });
             }}
             block
             optionType="button"
@@ -238,7 +236,7 @@ function DeviceCard({
             <Cctv
               className={cn(
                 "h-6 w-6",
-                device.is_online ? "text-gray-600" : "text-red-500"
+                device.is_online ? "text-gray-600" : "text-red-500",
               )}
             />
             <div>
@@ -276,7 +274,7 @@ function DeviceCard({
                 </span>
               </span>
 
-              <Link to={`/channels?device_id=${device.device_id}`}>
+              <Link to="/channels" search={{ device_id: device.device_id }}>
                 <Button
                   variant="outlined"
                   size="middle"
@@ -293,18 +291,16 @@ function DeviceCard({
       </CardHeader>
       <CardContent>
         {displayChannels.length > 0 ? (
-          <>
-            <div className="flex flex-wrap gap-4">
-              {visibleChannels.map((channel) => (
-                <div key={channel.id} className="w-[300px] flex-shrink-0">
-                  <ChannelCard
-                    channel={channel}
-                    onClick={() => onChannelClick(channel)}
-                  />
-                </div>
-              ))}
-            </div>
-          </>
+          <div className="flex flex-wrap gap-4">
+            {visibleChannels.map((channel) => (
+              <div key={channel.id} className="w-[300px] flex-shrink-0">
+                <ChannelCard
+                  channel={channel}
+                  onClick={() => onChannelClick(channel)}
+                />
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-200 rounded-lg">
             <Monitor className="h-12 w-12 text-gray-300 mx-auto mb-2" />

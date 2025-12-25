@@ -1,9 +1,7 @@
-import React from "react";
-import { Outlet } from "react-router";
-import { TopNavigation } from "./top_navigation";
-import { Cctv, MonitorUp, Waypoints, Home } from "lucide-react";
-import type { Route } from "./+types/home";
+import { Outlet } from "@tanstack/react-router";
+import { Cctv, Home, MonitorUp, Waypoints } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { TopNavigation } from "./top_navigation";
 
 // 菜单数据（从app_sidebar.tsx复制）
 function useNavigationData() {
@@ -18,35 +16,28 @@ function useNavigationData() {
     projects: [
       {
         name: t("quick_desktop"),
-        url: "desktop",
+        url: "/desktop",
         icon: Home,
       },
       {
         name: t("gb_channel"),
-        url: "nchannels",
+        url: "/nchannels",
         icon: Cctv,
       },
       {
         name: t("rtmp_stream"),
-        url: "rtmps",
+        url: "/rtmps",
         icon: MonitorUp,
       },
       {
         name: t("rtsp_proxy"),
-        url: "rtsps",
+        url: "/rtsps",
         icon: Waypoints,
       },
     ],
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars, no-empty-pattern
-function meta({}: Route.MetaArgs) {
-  return [
-    { title: "GoWVP 开箱即用的国标平台" },
-    { name: "description", content: "GOWVP" },
-  ];
-}
 export default function Page() {
   const navigationData = useNavigationData();
 

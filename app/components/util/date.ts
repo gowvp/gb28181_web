@@ -21,13 +21,13 @@ export function formatDate(dateString: string) {
 
   let result = "";
 
-  if (inputYear != currentYear) {
+  if (inputYear !== currentYear) {
     return dateString;
   }
   // 是今年，去掉年份
   result = `${inputMonth}-${inputDay} ${inputTime}`;
   if (inputMonth === currentMonth && inputDay === currentDay) {
-    result = "Today " + inputTime;
+    result = `Today ${inputTime}`;
   }
   return result;
 }

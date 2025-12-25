@@ -1,6 +1,6 @@
-import React from "react";
-import { Button } from "../ui/button";
+import type React from "react";
 import { cn } from "~/lib/utils";
+import { Button } from "../ui/button";
 
 export default function XButton({
   children,
@@ -14,14 +14,12 @@ export default function XButton({
   className?: string;
 }) {
   return (
-    <>
-      <Button className={cn(className)}>
-        {children ?? (
-          <>
-            {icon} {title}
-          </>
-        )}
-      </Button>
-    </>
+    <Button className={cn(className)}>
+      {children ?? (
+        <>
+          {icon} {title}
+        </>
+      )}
+    </Button>
   );
 }

@@ -1,4 +1,3 @@
-import React from "react";
 import { Bar, BarChart, CartesianGrid, Rectangle, XAxis } from "recharts";
 import {
   Card,

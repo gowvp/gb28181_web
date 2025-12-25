@@ -38,7 +38,7 @@ export default class IndexedDBService {
           objectStore.createIndex(
             this.dbIndex[i].label,
             this.dbIndex[i].label,
-            { unique: this.dbIndex[i].unique }
+            { unique: this.dbIndex[i].unique },
           ); //三个值分别是 索引名，索引所在属性，配置对象
         }
       };

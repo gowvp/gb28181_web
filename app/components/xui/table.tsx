@@ -1,6 +1,5 @@
-import React from "react";
-import { Table } from "antd";
 import type { TableProps } from "antd";
+import { Table } from "antd";
 
 interface XTableProps<T> extends TableProps<T> {
   className?: string;

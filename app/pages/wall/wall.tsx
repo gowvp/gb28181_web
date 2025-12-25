@@ -100,7 +100,7 @@ const layouts: LayoutConfig = {
 // 递归渲染面板组件
 function renderPanel(
   panel: number | NestedPanel,
-  panelIndex: string | number
+  panelIndex: string | number,
 ): React.ReactNode {
   // 如果是对象，表示嵌套布局
   if (typeof panel === "object") {

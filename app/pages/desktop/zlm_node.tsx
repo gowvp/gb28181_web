@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type Node,
   type NodeProps,
@@ -6,14 +6,12 @@ import {
   useReactFlow,
   useStore,
 } from "@xyflow/react";
-
+import { Settings } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { BaseNode } from "~/components/base-node";
 import { LabeledHandle } from "~/components/labeled-handle";
-
-import { Settings } from "lucide-react";
-import { EditForm } from "./media/edit";
 import { findMediaServersKey } from "~/service/api/media/media";
-import { useQueryClient } from "@tanstack/react-query";
+import { EditForm } from "./media/edit";
 
 export type SumNode = Node<{
   value: number;
@@ -29,21 +27,21 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
   const { x, y } = useStore((state) => ({
     x: getHandleValue(
       getHandleConnections({ nodeId: id, id: "x", type: "target" }),
-      state.nodeLookup
+      state.nodeLookup,
     ),
     y: getHandleValue(
       getHandleConnections({ nodeId: id, id: "y", type: "target" }),
-      state.nodeLookup
+      state.nodeLookup,
     ),
     z: getHandleValue(
       getHandleConnections({ nodeId: id, id: "z", type: "target" }),
-      state.nodeLookup
+      state.nodeLookup,
     ),
   }));
 
   useEffect(() => {
     updateNodeData(id, { value: x + y });
-  }, [x, y]);
+  }, [x, y, id, updateNodeData]);
 
   const editRef = useRef<any>(null);
   const queryClient = useQueryClient();
@@ -67,6 +65,7 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
       <div className="absolute top-1 right-1">
         <div className="relative">
           <button
+            type="button"
             onClick={() => {
               editRef.current?.edit(data.item);
             }}
@@ -129,7 +128,7 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
 
 function getHandleValue(
   connections: Array<{ source: string }>,
-  lookup: Map<string, Node<any>>
+  lookup: Map<string, Node<any>>,
 ) {
   return connections.reduce((acc, { source }) => {
     const node = lookup.get(source)!;

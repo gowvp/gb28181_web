@@ -1,12 +1,12 @@
-import * as React from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button, Form, Input, message } from "antd";
 import { Cctv, Wifi } from "lucide-react";
+import * as React from "react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button as ShadcnButton } from "~/components/ui/button";
 import { Drawer, DrawerContent } from "~/components/ui/drawer";
-import { useState } from "react";
 import { cn } from "~/lib/utils";
-import { Form, Input, Button, message } from "antd";
-import { useTranslation } from "react-i18next";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddDevice, findDevicesChannelsKey } from "~/service/api/device/device";
 import { ErrorHandle } from "~/service/config/error";
 
@@ -119,7 +119,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
           // 添加设备到列表（避免重复）
           setDevices((prev) => {
             const exists = prev.some(
-              (d) => d.ip === ip && d.port === newDevice.port
+              (d) => d.ip === ip && d.port === newDevice.port,
             );
             if (exists) return prev;
             return [...prev, newDevice];
@@ -209,7 +209,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
           <div
             className={cn(
               "absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]",
-              showForm ? "-translate-x-full" : "translate-x-0"
+              showForm ? "-translate-x-full" : "translate-x-0",
             )}
           >
             <div className="h-full flex flex-col overflow-hidden">
@@ -298,7 +298,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
                         <Wifi
                           className={cn(
                             "w-12 h-12 text-blue-500 transition-all duration-300",
-                            isDiscovering && "animate-pulse"
+                            isDiscovering && "animate-pulse",
                           )}
                         />
                       </div>
@@ -423,7 +423,7 @@ export default function DeviceDiscover({ ref }: { ref: React.RefObject<any> }) {
           <div
             className={cn(
               "absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] bg-white flex flex-col",
-              showForm ? "translate-x-0" : "translate-x-full"
+              showForm ? "translate-x-0" : "translate-x-full",
             )}
           >
             {/* 固定顶部标题栏 */}

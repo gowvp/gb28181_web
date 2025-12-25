@@ -1,8 +1,8 @@
-import React, { forwardRef } from "react";
-import { cn } from "~/lib/utils";
 import type { HandleProps } from "@xyflow/react";
-
+import type React from "react";
+import { forwardRef } from "react";
 import { BaseHandle } from "~/components/base-handle";
+import { cn } from "~/lib/utils";
 
 const flexDirections = {
   top: "flex-col",
@@ -22,7 +22,7 @@ export const LabeledHandle = forwardRef<
 >(
   (
     { className, labelClassName, handleClassName, title, position, ...props },
-    ref
+    ref,
   ) => (
     <div
       ref={ref}
@@ -30,7 +30,7 @@ export const LabeledHandle = forwardRef<
       className={cn(
         "relative flex items-center",
         flexDirections[position],
-        className
+        className,
       )}
     >
       <BaseHandle position={position} className={handleClassName} {...props} />
@@ -38,7 +38,7 @@ export const LabeledHandle = forwardRef<
         {title}
       </label>
     </div>
-  )
+  ),
 );
 
 LabeledHandle.displayName = "LabeledHandle";

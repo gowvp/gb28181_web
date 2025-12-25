@@ -1,4 +1,3 @@
-import React from "react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import {
   Card,
@@ -70,7 +69,7 @@ export function NetworkBox({ data }: { data: NetStat[] }) {
               axisLine={false}
               tickMargin={8}
               tickCount={5}
-              tickFormatter={(v) => v + "MB"}
+              tickFormatter={(v) => `${v}MB`}
               ticks={[0, 8, 16, 24, 32]}
             />
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />

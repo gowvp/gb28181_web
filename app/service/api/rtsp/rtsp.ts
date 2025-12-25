@@ -15,12 +15,12 @@ export async function AddProxy(data: object) {
 
 // DelProxy 删除推流通道
 export async function DelProxy(id: string) {
-  if (id == "") id = "unknown";
+  if (id === "") id = "unknown";
   return await DELETE<RTSPItem>(`/stream_proxys/${id}`);
 }
 
 // EditProxy 编辑推流通道
 export async function EditProxy(id: string, value: any) {
-  if (id == "") id = "unknown";
+  if (id === "") id = "unknown";
   return await PUT<RTSPItem>(`/stream_proxys/${id}`, value);
 }

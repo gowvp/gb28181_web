@@ -14,12 +14,12 @@ export async function AddRTMP(data: object) {
 
 // DelRTMP 删除推流通道
 export async function DelRTMP(id: string) {
-  if (id == "") id = "unknown";
+  if (id === "") id = "unknown";
   return await DELETE<RTMPItem>(`/stream_pushs/${id}`);
 }
 
 // EditRTMP 编辑推流通道
 export async function EditRTMP(id: string, value: any) {
-  if (id == "") id = "unknown";
+  if (id === "") id = "unknown";
   return await PUT<RTMPItem>(`/stream_pushs/${id}`, value);
 }

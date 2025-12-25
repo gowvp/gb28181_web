@@ -1,18 +1,15 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useEffect, useRef } from "react";
-import { Button } from "~/components/ui/button";
+import { Settings } from "lucide-react";
+import { useRef } from "react";
 import {
   FindMediaServers,
   findMediaServersKey,
 } from "~/service/api/media/media";
-import type { MediaServer } from "~/service/api/media/state";
 import { ErrorHandle } from "~/service/config/error";
 import { EditForm } from "./edit";
-import type { PFormProps } from "~/components/xui/edit-sheet";
-import { Settings } from "lucide-react";
 
 export function MediaServerCard() {
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: [findMediaServersKey],
     queryFn: () => FindMediaServers(),
     throwOnError: (error) => {
@@ -72,6 +69,7 @@ export function MediaServerCard() {
           </div>
           <div className="absolute top-1 right-1">
             <button
+              type="button"
               onClick={() => {
                 editRef.current?.edit(item);
               }}

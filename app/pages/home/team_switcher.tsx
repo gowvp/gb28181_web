@@ -1,12 +1,5 @@
+import { Cctv, ChevronsUpDown } from "lucide-react";
 import * as React from "react";
-import { Cctv, ChevronsUpDown, Plus } from "lucide-react";
-
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "~/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +9,12 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "~/components/ui/sidebar";
 
 export function TeamSwitcher({
   teams,

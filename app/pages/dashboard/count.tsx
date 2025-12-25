@@ -1,14 +1,12 @@
-import React from "react";
-
-import { ChartContainer, type ChartConfig } from "~/components/ui/chart";
-import { Card, CardContent, CardFooter } from "~/components/ui/card";
 import {
-  RadialBarChart,
-  PolarGrid,
-  RadialBar,
-  PolarRadiusAxis,
   Label,
+  PolarGrid,
+  PolarRadiusAxis,
+  RadialBar,
+  RadialBarChart,
 } from "recharts";
+import { Card, CardContent, CardFooter } from "~/components/ui/card";
+import { type ChartConfig, ChartContainer } from "~/components/ui/chart";
 export default function CountBox() {
   return (
     <Card className="flex flex-col h-full">

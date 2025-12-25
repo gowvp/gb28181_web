@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import React from "react";
 
 export function LanguageSwitcher() {
   const { i18n, t } = useTranslation();

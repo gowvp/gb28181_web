@@ -1,8 +1,7 @@
-import React from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Button } from "../ui/button";
-import { CircleAlert, Trash } from "lucide-react";
 import { PopoverClose } from "@radix-ui/react-popover";
+import { CircleAlert, Trash } from "lucide-react";
+import { Button } from "../ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 
 // XButtonDelete 删除按钮，提供二次确认功能
 export function XButtonDelete({

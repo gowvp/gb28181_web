@@ -1,15 +1,15 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent } from "~/components/ui/card";
-import { Form, Input, message } from "antd";
 import {
-  UserOutlined,
-  LockOutlined,
   EyeInvisibleOutlined,
   EyeTwoTone,
+  LockOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "@tanstack/react-router";
 import type { FormProps } from "antd";
+import { Form, Input, message } from "antd";
+import React, { useState } from "react";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent } from "~/components/ui/card";
 import { login } from "~/service/api/user/user";
 import { ErrorHandle } from "~/service/config/error";
 
@@ -72,12 +72,12 @@ export default function LoginView() {
       });
 
       message.success("登录成功！");
-      navigate("/desktop");
+      navigate({ to: "/desktop" });
     } catch (error) {
       ErrorHandle(error);
       console.log("🚀 ~ onFinish ~ error:", error);
       message.error(
-        error instanceof Error ? error.message : "登录失败，请重试"
+        error instanceof Error ? error.message : "登录失败，请重试",
       );
     } finally {
       setLoading(false);

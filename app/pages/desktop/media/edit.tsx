@@ -1,9 +1,8 @@
-import React from "react";
-import { AddRTMP } from "~/service/api/rtmp/rtmp";
-import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
 import { Form, Input, Radio } from "antd";
-import { EditMediaServer } from "~/service/api/media/media";
 import { useTranslation } from "react-i18next";
+import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
+import { EditMediaServer } from "~/service/api/media/media";
+import { AddRTMP } from "~/service/api/rtmp/rtmp";
 
 // 统一通过抽屉表单处理流媒体新增与编辑，减少新增/编辑逻辑分散导致的维护成本
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
@@ -24,7 +23,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         add: AddRTMP,
         edit: EditMediaServer,
       }}
-      trigger={<></>}
+      trigger={null}
     >
       <Form.Item
         label={t("media_type")}

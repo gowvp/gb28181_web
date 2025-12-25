@@ -1,6 +1,6 @@
 import axios, { type GenericAbortSignal } from "axios";
-import { codeMessage } from "./error";
 import { toastErrorMore } from "~/components/xui/toast";
+import { codeMessage } from "./error";
 
 // 忽略错误处理的url
 const neglectUrl = ["/configs/info/web", "/stats"];
@@ -34,7 +34,7 @@ service.interceptors.response.use(
     }
 
     const resp = error.response;
-    const errTips = resp?.data["msg"];
+    const errTips = resp?.data.msg;
 
     let errorText = "";
 
@@ -78,19 +78,19 @@ service.interceptors.response.use(
         console.log(
           "🚀 ~ file: http.ts ~ line 50 ~ service.interceptors.response.use",
           errorText,
-          resp?.status
+          resp?.status,
         );
         break;
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 service.interceptors.request.use((config) => {
   const token: string = GetToken();
   if (!token) return config;
-  config.headers["authorization"] = `Bearer ${token}`;
+  config.headers.authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -98,16 +98,16 @@ async function request<T>(
   url: string,
   method: string,
   data?: object,
-  signal?: GenericAbortSignal,
+  _signal?: GenericAbortSignal,
   timeOut?: number,
   responseType?: "json" | "blob" | "arraybuffer",
-  headers?: { [key: string]: string }
+  headers?: { [key: string]: string },
 ) {
   return await service.request<T>({
     url,
     method,
-    data: method == "GET" ? {} : data,
-    params: method == "GET" ? data : {},
+    data: method === "GET" ? {} : data,
+    params: method === "GET" ? data : {},
     // signal: signal,
     timeout: timeOut,
     responseType: responseType || "json",
@@ -121,7 +121,7 @@ export async function GET<T>(
   signal?: GenericAbortSignal,
   timeOut?: number,
   responseType?: "json" | "blob" | "arraybuffer",
-  headers?: { [key: string]: string }
+  headers?: { [key: string]: string },
 ) {
   return request<T>(url, "GET", params, signal, timeOut, responseType, headers);
 }
@@ -133,7 +133,7 @@ export async function POST<T>(
   signal?: GenericAbortSignal,
   timeOut?: number,
   responseType?: "json" | "blob" | "arraybuffer",
-  headers?: { [key: string]: string }
+  headers?: { [key: string]: string },
 ) {
   return request<T>(
     url,
@@ -142,7 +142,7 @@ export async function POST<T>(
     signal,
     timeOut,
     responseType,
-    headers
+    headers,
   );
 }
 
@@ -179,7 +179,7 @@ export async function Fetch(url: string, options: IFetch) {
     return response;
   }
   const contentType = response.headers.get("content-type");
-  if (contentType && contentType.includes("application/json")) {
+  if (contentType?.includes("application/json")) {
     return await response.json();
   } else {
     return await response.text();

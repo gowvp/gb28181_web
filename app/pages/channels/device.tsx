@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Badge } from "~/components/ui/badge";
 import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "~/components/ui/drawer";
-import { GetDevice, getDeviceKey } from "~/service/api/device/device";
-import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
+import { GetDevice, getDeviceKey } from "~/service/api/device/device";
 import { ChannelCardItem } from "./channels";
-import { useTranslation } from "react-i18next";
 
 export default function DeviceDetailView({
   ref,
@@ -124,7 +124,7 @@ export default function DeviceDetailView({
                 }}
                 onClick={() => {
                   // 处理通道点击事件
-                  console.log(t("common:click_channel") + ":", item.name);
+                  console.log(`${t("common:click_channel")}:`, item.name);
                 }}
               />
             ))}

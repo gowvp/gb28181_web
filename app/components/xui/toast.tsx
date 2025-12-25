@@ -1,12 +1,11 @@
-import React from "react";
 import { CircleCheckBig, OctagonAlert } from "lucide-react";
-import { toast, type ExternalToast } from "sonner";
+import { type ExternalToast, toast } from "sonner";
 
 // toastErrorMore 用于 api 统一错误处理
 export function toastErrorMore(
   message: string,
   details: string[] | null,
-  props?: ExternalToast
+  props?: ExternalToast,
 ) {
   toast.error(message, {
     ...props,

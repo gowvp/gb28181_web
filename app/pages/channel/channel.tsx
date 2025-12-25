@@ -1,19 +1,18 @@
-import * as React from "react";
+import { useMutation } from "@tanstack/react-query";
 import type { ColumnsType } from "antd/es/table";
+import { RefreshCcw, SquarePlay } from "lucide-react";
+import { useRef } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { RefreshCcw, SquarePlay } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
-import { useRef } from "react";
 import useDebounce from "~/components/util/debounce";
-import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
-import { ErrorHandle } from "~/service/config/error";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import type { ChannelItem } from "~/service/api/channel/state";
 import { toastSuccess } from "~/components/xui/toast";
-import { RefreshCatalog } from "~/service/api/device/device";
 import { cn } from "~/lib/utils";
 import ChannelDetailView from "~/pages/channels/detail";
+import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
+import type { ChannelItem } from "~/service/api/channel/state";
+import { RefreshCatalog } from "~/service/api/device/device";
+import { ErrorHandle } from "~/service/config/error";
 
 export default function ChannelsView() {
   // =============== 状态定义 ===============
@@ -190,7 +189,7 @@ export default function ChannelsView() {
             <RefreshCcw
               className={cn(
                 "h-4 w-4 mr-1",
-                refreshCatalogIsPending && "animate-spin"
+                refreshCatalogIsPending && "animate-spin",
               )}
             />
             向设备同步通道

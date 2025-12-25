@@ -1,20 +1,7 @@
-import React, { useState } from "react";
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  Github,
-  LogOut,
-  Sparkles,
-} from "lucide-react";
-
+import { useNavigate } from "@tanstack/react-router";
+import { ChevronsUpDown, Github, LogOut, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "~/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +11,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { useNavigate } from "react-router";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "~/components/ui/sidebar";
 
 export function NavUser({
   user,
@@ -115,7 +107,7 @@ export function NavUser({
                 setIsLoggingOut(true);
                 setTimeout(() => {
                   localStorage.removeItem("token");
-                  navigate("/");
+                  navigate({ to: "/" });
                   setIsLoggingOut(false);
                 }, 400);
               }}

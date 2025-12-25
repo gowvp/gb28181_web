@@ -1,5 +1,3 @@
-import type { decl } from "postcss";
-
 /**
  * Request
  */
@@ -62,8 +60,45 @@ export type Ext = {
   manufacturer: string;
   model: string;
   name: string;
+  gb_version: string;
 };
 
 export type RefreshSnapshotResponse = {
   link: string;
+};
+
+/**
+ * 区域定义
+ */
+export type Zone = {
+  /** 区域名称 */
+  name: string;
+  /** 归一化坐标数组，格式: [x1, y1, x2, y2, ...] */
+  coordinates: number[];
+  /** 颜色值，支持 hex 格式 */
+  color: string;
+};
+
+/**
+ * 添加区域请求参数
+ */
+export type AddZoneInput = {
+  /** 区域名称 */
+  name: string;
+  /** 归一化坐标数组 */
+  coordinates: number[];
+  /** 颜色值 */
+  color: string;
+};
+
+/**
+ * 获取区域列表响应
+ */
+export type GetZonesResponse = Zone[];
+
+/**
+ * 添加区域响应
+ */
+export type AddZoneResponse = {
+  items: Zone;
 };

@@ -1,20 +1,19 @@
-import {
-  forwardRef,
-  useCallback,
-  type HTMLAttributes,
-  type ReactNode,
-} from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { useNodeId, useReactFlow } from "@xyflow/react";
 import { EllipsisVertical, Trash } from "lucide-react";
-
-import { cn } from "~/lib/utils";
-import { Slot } from "@radix-ui/react-slot";
+import {
+  forwardRef,
+  type HTMLAttributes,
+  type ReactNode,
+  useCallback,
+} from "react";
 import { Button, type ButtonProps } from "~/components/ui/button";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { cn } from "~/lib/utils";
 
 /* NODE HEADER -------------------------------------------------------------- */
 
@@ -34,11 +33,11 @@ export const NodeHeader = forwardRef<HTMLElement, NodeHeaderProps>(
           "flex items-center justify-between gap-2 px-3 py-2",
           // Remove or modify these classes if you modify the padding in the
           // `<BaseNode />` component.
-          className
+          className,
         )}
       />
     );
-  }
+  },
 );
 
 NodeHeader.displayName = "NodeHeader";
@@ -79,7 +78,7 @@ export const NodeHeaderIcon = forwardRef<HTMLSpanElement, NodeHeaderIconProps>(
     return (
       <span ref={ref} {...props} className={cn(className, "[&>*]:size-5")} />
     );
-  }
+  },
 );
 
 NodeHeaderIcon.displayName = "NodeHeaderIcon";
@@ -101,7 +100,7 @@ export const NodeHeaderActions = forwardRef<
       {...props}
       className={cn(
         "ml-auto flex items-center gap-1 justify-self-end",
-        className
+        className,
       )}
     />
   );

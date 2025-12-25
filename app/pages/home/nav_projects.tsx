@@ -1,12 +1,11 @@
-import React from "react";
+import { Link } from "@tanstack/react-router";
 import {
   Folder,
   Forward,
+  type LucideIcon,
   MoreHorizontal,
   Trash2,
-  type LucideIcon,
 } from "lucide-react";
-
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +22,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "~/components/ui/sidebar";
-import { Link } from "react-router";
 
 export function NavProjects({
   projects,

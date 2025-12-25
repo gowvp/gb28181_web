@@ -1,9 +1,8 @@
-import React from "react";
-import type { NodeProps, Node } from "@xyflow/react";
+import type { Node, NodeProps } from "@xyflow/react";
 import { Position } from "@xyflow/react";
+import { CardHeader, CardTitle } from "~/components/ui/card";
 import { BaseNode } from "./base-node";
 import { LabeledHandle } from "./labeled-handle";
-import { CardHeader, CardTitle } from "~/components/ui/card";
 
 export type ZlmNodeData = {
   label: string;

@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-interface TableQueryOptions<T> {
+interface TableQueryOptions<_T> {
   queryKey: string;
   fetchFn: (params: any) => Promise<any>;
   deleteFn: (id: string) => Promise<any>;
@@ -33,7 +33,7 @@ export function useTableQuery<T>({
     onSuccess: (data) => {
       queryClient.setQueryData([queryKey, filters], (old: any) => {
         const newItems = old.data.items.filter(
-          (item: any) => item.id !== data.data.id
+          (item: any) => item.id !== data.data.id,
         );
 
         // 如果当前页数据为空且不是第一页,回退一页
@@ -80,7 +80,7 @@ export function useTableQuery<T>({
       data: {
         ...old.data,
         items: old.data.items.map((item: any) =>
-          item.id === (updatedItem as any).id ? updatedItem : item
+          item.id === (updatedItem as any).id ? updatedItem : item,
         ),
       },
     }));
