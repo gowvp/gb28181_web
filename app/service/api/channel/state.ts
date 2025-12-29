@@ -77,6 +77,8 @@ export type Zone = {
   coordinates: number[];
   /** 颜色值，支持 hex 格式 */
   color: string;
+  /** 应用的算法标签列表 */
+  labels?: string[];
 };
 
 /**
@@ -89,6 +91,8 @@ export type AddZoneInput = {
   coordinates: number[];
   /** 颜色值 */
   color: string;
+  /** 应用的算法标签列表 */
+  labels?: string[];
 };
 
 /**

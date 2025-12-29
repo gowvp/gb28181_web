@@ -5,7 +5,8 @@ interface LayoutOptions {
   headerHeight?: number; // 顶部留白/标题栏高度
   minWidth?: number; // 最小宽度，低于此宽度允许滚动 (iPhone 13 ~ 390px)
   sidebarWidth?: number; // 侧边栏宽度 (如果有)
-  footerRef: React.RefObject<HTMLElement | null>; // 底部容器的引用，用于动态测量高度
+  footerRef?: React.RefObject<HTMLElement | null>; // 底部容器的引用，用于动态测量高度
+  fixedFooterHeight?: number; // 固定的 footer 高度，设置后忽略动态测量，避免展开/收缩时位置变动
 }
 
 interface LayoutResult {
@@ -21,6 +22,7 @@ export function usePlayerLayout(options: LayoutOptions): LayoutResult {
     minWidth = 390,
     sidebarWidth = 0,
     footerRef,
+    fixedFooterHeight,
   } = options;
 
   const [layout, setLayout] = useState<LayoutResult>({
@@ -30,27 +32,32 @@ export function usePlayerLayout(options: LayoutOptions): LayoutResult {
   });
 
   // 存储实际测量到的底部高度
-  const [footerHeight, setFooterHeight] = useState(100); // 初始估算值
+  const [measuredFooterHeight, setMeasuredFooterHeight] = useState(100); // 初始估算值
 
-  // 1. 监听 footer 高度变化
+  // 使用固定高度或动态测量高度
+  const footerHeight = fixedFooterHeight ?? measuredFooterHeight;
+
+  // 1. 监听 footer 高度变化（仅当未设置固定高度时）
   useEffect(() => {
-    const footerEl = footerRef.current;
+    if (fixedFooterHeight !== undefined) return; // 使用固定高度时跳过动态测量
+
+    const footerEl = footerRef?.current;
     if (!footerEl) return;
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         // 使用 borderBoxSize 获取包含 padding/border 的高度
         if (entry.borderBoxSize && entry.borderBoxSize.length > 0) {
-          setFooterHeight(entry.borderBoxSize[0].blockSize);
+          setMeasuredFooterHeight(entry.borderBoxSize[0].blockSize);
         } else {
-          setFooterHeight(entry.contentRect.height);
+          setMeasuredFooterHeight(entry.contentRect.height);
         }
       }
     });
 
     observer.observe(footerEl);
     return () => observer.disconnect();
-  }, [footerRef]); // 依赖 footerRef
+  }, [footerRef, fixedFooterHeight]); // 依赖 footerRef 和 fixedFooterHeight
 
   // 2. 计算布局
   useEffect(() => {

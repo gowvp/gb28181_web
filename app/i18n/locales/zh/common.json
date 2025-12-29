@@ -202,5 +202,10 @@
   "no_image_available": "暂无图片，可在此绘制区域",
   "reset_points": "重置点位",
   "zone_edit_drag_tip": "可拖拽顶点调整区域形状。",
-  "closed": "已闭合"
+  "closed": "已闭合",
+  "labels": "应用算法列表",
+  "label_person": "人",
+  "label_car": "汽车",
+  "label_cat": "猫",
+  "label_dog": "狗"
 }

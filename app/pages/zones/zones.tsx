@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { Checkbox } from "antd";
 import { ArrowLeft, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -19,6 +20,17 @@ import {
   RefreshSnapshot,
 } from "~/service/api/channel/channel";
 import { ErrorHandle } from "~/service/config/error";
+
+// 可选的算法标签
+const LABEL_OPTIONS = [
+  { value: "person", labelKey: "label_person" },
+  { value: "car", labelKey: "label_car" },
+  { value: "cat", labelKey: "label_cat" },
+  { value: "dog", labelKey: "label_dog" },
+];
+
+// 默认全选的标签值
+const DEFAULT_LABELS = LABEL_OPTIONS.map((opt) => opt.value);
 
 /**
  * 区域设置页面
@@ -78,6 +90,7 @@ export default function ZonesPage() {
       name: string;
       coordinates: number[];
       color: string;
+      labels: string[];
     }) => AddZone(channelId, zone),
     onSuccess: () => {
       toast.success(t("save_success"));
@@ -101,6 +114,7 @@ export default function ZonesPage() {
         points: zone.coordinates,
         color: zone.color || COLOR_POOL[index % COLOR_POOL.length],
         isFinished: true,
+        labels: zone.labels || [],
       }));
       setZones(loadedZones);
     }
@@ -138,7 +152,26 @@ export default function ZonesPage() {
         });
       }
     },
-    [activeZoneIndex],
+    [activeZoneIndex]
+  );
+
+  // 更新区域标签
+  const handleLabelsChange = useCallback(
+    (labels: string[]) => {
+      if (activeZoneIndex !== undefined) {
+        setZones((prev) => {
+          const newZones = [...prev];
+          if (newZones[activeZoneIndex]) {
+            newZones[activeZoneIndex] = {
+              ...newZones[activeZoneIndex],
+              labels,
+            };
+          }
+          return newZones;
+        });
+      }
+    },
+    [activeZoneIndex]
   );
 
   // 删除区域
@@ -152,7 +185,7 @@ export default function ZonesPage() {
         setActiveZoneIndex(activeZoneIndex - 1);
       }
     },
-    [activeZoneIndex],
+    [activeZoneIndex]
   );
 
   // 添加新区域 - 进入编辑模式
@@ -169,6 +202,7 @@ export default function ZonesPage() {
       points: [],
       color: COLOR_POOL[zones.length % COLOR_POOL.length],
       isFinished: false,
+      labels: DEFAULT_LABELS,
     };
 
     const newZones = [...zones, newZone];
@@ -233,6 +267,7 @@ export default function ZonesPage() {
       name: zone.name,
       coordinates: zone.points,
       color: zone.color,
+      labels: zone.labels || [],
     });
   }, [activeZoneIndex, zones, addZoneMutate, t]);
 
@@ -308,6 +343,21 @@ export default function ZonesPage() {
               <p className="text-xs text-muted-foreground mt-1">
                 {t("zone_name_tip")}
               </p>
+            </div>
+
+            {/* 应用算法列表 */}
+            <div>
+              <label className="text-sm font-medium">{t("labels")}</label>
+              <div className="mt-2">
+                <Checkbox.Group
+                  value={activeZone.labels || []}
+                  onChange={(values) => handleLabelsChange(values as string[])}
+                  options={LABEL_OPTIONS.map((opt) => ({
+                    label: t(opt.labelKey),
+                    value: opt.value,
+                  }))}
+                />
+              </div>
             </div>
 
             {/* 操作按钮 */}
@@ -418,8 +468,8 @@ export default function ZonesPage() {
         </div>
       </div>
 
-      {/* 右侧画布区域 */}
-      <div className="flex-1 flex items-center justify-center p-4 min-h-[400px]">
+      {/* 右侧画布区域 - 固定在顶部，不受左侧内容高度影响 */}
+      <div className="flex-1 flex items-start justify-center p-4 min-h-[400px]">
         <PolygonZoneEditor
           imageUrl={snapshotUrl}
           initialZones={zones}

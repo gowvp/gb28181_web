@@ -1,22 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
+import { ScanSearch, Settings2 } from "lucide-react";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
 import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
 } from "~/components/ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import ToolTips from "~/components/xui/tips";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import { GetDevice, getDeviceKey } from "~/service/api/device/device";
 import { ChannelCardItem } from "./channels";
 
+export interface DeviceDetailViewRef {
+  showDetail: (deviceID: string) => void;
+}
+
+interface DeviceDetailViewProps {
+  ref: React.RefObject<DeviceDetailViewRef | null>;
+  channelId?: string;
+  onZoneSettings?: () => void;
+}
+
 export default function DeviceDetailView({
   ref,
-}: {
-  ref: React.RefObject<any>;
-}) {
+  channelId,
+  onZoneSettings,
+}: DeviceDetailViewProps) {
   const { t } = useTranslation(["device", "common"]);
   const [did, setDid] = useState("");
 
@@ -46,8 +60,38 @@ export default function DeviceDetailView({
     },
   }));
 
+  const [detectEnabled, setDetectEnabled] = useState(false);
+
   return (
     <div className="w-[300px]">
+      {/* 检测和区域设置按钮 */}
+      {channelId && (
+        <>
+          <div className="flex gap-2 p-4 pb-3">
+            <ToolTips tips={t("common:detection")}>
+              <Button
+                size="sm"
+                variant={detectEnabled ? "default" : "outline"}
+                onClick={() => {
+                  toast.info(t("common:developing"));
+                  setDetectEnabled(!detectEnabled);
+                }}
+              >
+                <ScanSearch className="w-4 h-4 mr-1" />
+                {t("common:detection")}
+              </Button>
+            </ToolTips>
+            <ToolTips tips={t("common:zone_settings")}>
+              <Button size="sm" variant="outline" onClick={onZoneSettings}>
+                <Settings2 className="w-4 h-4 mr-1" />
+                {t("common:zone_settings")}
+              </Button>
+            </ToolTips>
+          </div>
+          <div className="border-b border-dashed border-gray-200 mb-2 mx-4" />
+        </>
+      )}
+
       <Tabs defaultValue="device">
         <TabsList className="ml-4">
           <TabsTrigger

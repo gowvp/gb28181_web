@@ -17,6 +17,8 @@ export interface ZoneData {
   points: number[];
   color: string;
   isFinished: boolean;
+  /** 应用的算法标签列表，如 ["person", "car"] */
+  labels?: string[];
 }
 
 interface PolygonZoneEditorProps {
@@ -110,7 +112,7 @@ export default function PolygonZoneEditor({
       }
       return result;
     },
-    [dimensions],
+    [dimensions]
   );
 
   // 点击画布添加点（仅在编辑模式下生效）
@@ -149,7 +151,7 @@ export default function PolygonZoneEditor({
         }
       }
     },
-    [isEditing, activeZoneIndex, zones, dimensions, onZonesChange],
+    [isEditing, activeZoneIndex, zones, dimensions, onZonesChange]
   );
 
   // 点击第一个点闭合多边形
@@ -169,7 +171,7 @@ export default function PolygonZoneEditor({
       // 通知父组件区域已闭合，退出编辑模式
       onZoneFinished?.(zoneIndex);
     },
-    [zones, onZonesChange, onZoneFinished],
+    [zones, onZonesChange, onZoneFinished]
   );
 
   // 拖拽顶点（仅闭合后的区域可拖拽）
@@ -193,7 +195,7 @@ export default function PolygonZoneEditor({
       setZones(newZones);
       onZonesChange?.(newZones);
     },
-    [zones, dimensions, onZonesChange],
+    [zones, dimensions, onZonesChange]
   );
 
   // 渲染多边形和顶点
@@ -274,7 +276,7 @@ export default function PolygonZoneEditor({
       handleFirstPointClick,
       handleVertexDrag,
       onZoneSelect,
-    ],
+    ]
   );
 
   return (

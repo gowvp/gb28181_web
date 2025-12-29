@@ -1,32 +1,28 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Bug, Copy, ScanSearch, Settings2 } from "lucide-react";
+import { Bug, ChevronDown, Copy } from "lucide-react";
 import * as React from "react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { toast } from "sonner";
 import Player, { type PlayerRef } from "~/components/player/player";
 import { AspectRatio } from "~/components/ui/aspect-ratio";
 import { Button } from "~/components/ui/button";
 import { Drawer, DrawerContent } from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { copy2Clipboard } from "~/components/util/copy";
 import ToolTips from "~/components/xui/tips";
 import { usePlayerLayout } from "~/hooks/use-player-layout";
-import DeviceDetailView from "~/pages/channels/device";
+import DeviceDetailView, {
+  type DeviceDetailViewRef,
+} from "~/pages/channels/device";
 import { Play } from "~/service/api/channel/channel";
 import { ErrorHandle } from "~/service/config/error";
 
 export interface PlayDrawerRef {
   open: (item: any, options?: { hideSidebar?: boolean }) => void;
 }
+
+const PROTOCOLS_EXPANDED_KEY = "player_protocols_expanded";
 
 export default function PlayDrawer({
   ref,
@@ -35,18 +31,28 @@ export default function PlayDrawer({
 }) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
-  const deviceDetailRef = useRef<any>(null);
+  const deviceDetailRef = useRef<DeviceDetailViewRef>(null);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [detectEnabled, setDetectEnabled] = useState(false);
   const [currentChannelId, setCurrentChannelId] = useState<string>("");
+  // 协议选择器收缩/展开状态 - 从 localStorage 读取，默认收缩
+  const [protocolsExpanded, setProtocolsExpanded] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(PROTOCOLS_EXPANDED_KEY) === "true";
+    }
+    return false;
+  });
 
-  // 底部容器引用，用于动态测量高度
-  const footerRef = useRef<HTMLDivElement>(null);
+  // 切换协议展开状态并保存到 localStorage
+  const toggleProtocolsExpanded = () => {
+    const newValue = !protocolsExpanded;
+    setProtocolsExpanded(newValue);
+    localStorage.setItem(PROTOCOLS_EXPANDED_KEY, String(newValue));
+  };
 
-  // 使用布局计算 Hook（侧边栏宽度减少 30px）
+  // 使用布局计算 Hook（使用固定 footer 高度避免展开/收缩时视频位置变动）
   const layout = usePlayerLayout({
     headerHeight: 40,
-    footerRef,
+    fixedFooterHeight: 120, // 固定高度，无论展开收缩都保持视频位置一致
     sidebarWidth:
       showSidebar && typeof window !== "undefined" && window.innerWidth >= 640
         ? 290
@@ -96,7 +102,7 @@ export default function PlayDrawer({
 
   const [link, setLink] = useState("");
 
-  const [selected, setSelected] = useState(0);
+  const [selected] = useState(0);
 
   // 关闭弹窗，并销毁播放器
   const onOpenChange = (v: boolean) => {
@@ -120,8 +126,8 @@ export default function PlayDrawer({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="h-[85vh] sm:h-[95vh]">
         <div className="flex flex-col sm:flex-row h-full overflow-hidden">
-          {/* 播放器内容区域 */}
-          <div className="flex-1 bg-gray-100" style={layout.containerStyle}>
+          {/* 播放器内容区域 - 背景色改为白色 */}
+          <div className="flex-1 bg-white" style={layout.containerStyle}>
             {/* 播放器容器 */}
             <div style={layout.contentStyle}>
               <AspectRatio ratio={16 / 9}>
@@ -129,31 +135,44 @@ export default function PlayDrawer({
               </AspectRatio>
             </div>
 
-            {/* 底部信息 */}
+            {/* 底部信息 - 固定高度容器，通过 visibility 控制显隐避免视频位置变动 */}
             <div
-              ref={footerRef}
               className="w-full mt-2"
-              style={layout.contentStyle}
+              style={{ ...layout.contentStyle, height: "120px" }}
             >
-              <Input className="bg-white w-full my-2" disabled value={link} />
-              <div className="flex gap-2 items-start my-2">
-                <Select
-                  onValueChange={(v) => setSelected(Number(v))}
-                  defaultValue={selected.toString()}
+              {/* ZLM 标签 - 点击展开/收缩整个底部区域 */}
+              <div className="flex items-center my-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 font-medium transition-transform duration-200 hover:scale-105"
+                  onClick={toggleProtocolsExpanded}
                 >
-                  <SelectTrigger className="w-[120px] h-8">
-                    <SelectValue placeholder="Theme" />
-                  </SelectTrigger>
-                  <SelectContent className="min-w-[4rem]">
-                    {playData?.data?.items.map((item, i) => (
-                      <SelectItem key={i} value={i.toString()}>
-                        {item.label || `Stream ${i + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {playData?.data?.items?.[selected]?.label || "ZLM"}
+                  <span
+                    className={`ml-1 transition-transform duration-300 ${
+                      protocolsExpanded ? "rotate-180" : "rotate-0"
+                    }`}
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </span>
+                </Button>
+              </div>
 
-                <div className="flex flex-wrap gap-2 flex-1">
+              {/* 地址输入框和协议按钮 - 固定高度，通过 opacity 和 visibility 控制显隐 */}
+              <div
+                className={`transition-all duration-300 ease-in-out ${
+                  protocolsExpanded
+                    ? "opacity-100 visible"
+                    : "opacity-0 invisible"
+                }`}
+              >
+                <Input
+                  className="bg-gray-50 w-full my-2"
+                  disabled
+                  value={link}
+                />
+                <div className="flex flex-wrap gap-2 my-2">
                   {[
                     {
                       name: "HTTP_FLV",
@@ -193,8 +212,9 @@ export default function PlayDrawer({
                       <Button
                         size="sm"
                         variant="outline"
-                        key={i}
-                        className={item.addr === link ? "border-gray-800" : ""}
+                        className={`transition-all duration-200 ${
+                          item.addr === link ? "border-gray-800" : ""
+                        }`}
                         disabled={!item.addr}
                         onClick={() => {
                           if (!item.addr) return;
@@ -217,46 +237,25 @@ export default function PlayDrawer({
                     </ToolTips>
                   ))}
                 </div>
-
-                {/* 检测开关和区域设置按钮 */}
-                <div className="flex gap-2 ml-auto shrink-0">
-                  <ToolTips tips={t("detection")}>
-                    <Button
-                      size="sm"
-                      variant={detectEnabled ? "default" : "outline"}
-                      onClick={() => {
-                        toast.info(t("developing"));
-                        setDetectEnabled(!detectEnabled);
-                      }}
-                    >
-                      <ScanSearch className="w-4 h-4" />
-                    </Button>
-                  </ToolTips>
-                  <ToolTips tips={t("zone_settings")}>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (!currentChannelId) return;
-                        onOpenChange(false);
-                        navigate({
-                          to: "/zones",
-                          search: { cid: currentChannelId },
-                        });
-                      }}
-                    >
-                      <Settings2 className="w-4 h-4" />
-                    </Button>
-                  </ToolTips>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* 设备详情/介绍 - 小屏幕时隐藏，宽度减少 30px */}
+          {/* 设备详情/介绍 - 小屏幕时隐藏 */}
           {showSidebar && (
-            <div className="hidden sm:block w-72 lg:w-[360px] border-l bg-white overflow-y-auto">
-              <DeviceDetailView ref={deviceDetailRef} />
+            <div className="hidden sm:block w-72 lg:w-[360px] bg-white overflow-y-auto">
+              <DeviceDetailView
+                ref={deviceDetailRef}
+                channelId={currentChannelId}
+                onZoneSettings={() => {
+                  if (!currentChannelId) return;
+                  onOpenChange(false);
+                  navigate({
+                    to: "/zones",
+                    search: { cid: currentChannelId },
+                  });
+                }}
+              />
             </div>
           )}
         </div>

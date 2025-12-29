@@ -203,5 +203,10 @@
   "no_image_available": "No image available. You can still draw zones here.",
   "reset_points": "Reset Points",
   "zone_edit_drag_tip": "Drag vertices to adjust the zone shape.",
-  "closed": "Closed"
+  "closed": "Closed",
+  "labels": "Labels",
+  "label_person": "Person",
+  "label_car": "Car",
+  "label_cat": "Cat",
+  "label_dog": "Dog"
 }
