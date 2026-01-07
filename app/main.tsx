@@ -27,6 +27,7 @@ import HomeLayout from "~/pages/home/home";
 import LoginView from "~/pages/login/login";
 import RtmpView from "~/pages/rtmp/rtmp";
 import RtspView from "~/pages/rtsp/rtsp";
+import AlertsView from "~/pages/alerts/alerts";
 import WallView from "~/pages/wall/wall";
 import ZonesView from "~/pages/zones/zones";
 
@@ -110,6 +111,12 @@ const rtspsRoute = createRoute({
   component: RtspView,
 });
 
+const alertsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/alerts",
+  component: AlertsView,
+});
+
 // 搜索参数类型定义
 type ChannelsSearch = {
   device_id?: string;
@@ -117,6 +124,31 @@ type ChannelsSearch = {
 
 type ZonesSearch = {
   cid?: string;
+};
+
+// 自定义搜索参数序列化函数，避免 JSON 序列化导致字符串被加双引号
+const stringifySearchParams = (search: Record<string, unknown>): string => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    if (value !== undefined && value !== null && value !== "") {
+      params.set(key, String(value));
+    }
+  }
+  const str = params.toString();
+  // 返回带 ? 前缀的查询字符串，如果没有参数则返回空字符串
+  return str ? `?${str}` : "";
+};
+
+// 自定义搜索参数解析函数
+const parseSearchParams = (searchStr: string): Record<string, string> => {
+  // 移除开头的 ? 号（如果有）
+  const cleanStr = searchStr.startsWith("?") ? searchStr.slice(1) : searchStr;
+  const params = new URLSearchParams(cleanStr);
+  const result: Record<string, string> = {};
+  for (const [key, value] of params.entries()) {
+    result[key] = value;
+  }
+  return result;
 };
 
 const channelsRoute = createRoute({
@@ -165,6 +197,7 @@ const routeTree = rootRoute.addChildren([
     devicesRoute,
     rtmpsRoute,
     rtspsRoute,
+    alertsRoute,
     channelsRoute,
     nchannelsRoute,
     gbSipRoute,
@@ -187,6 +220,7 @@ function getBasepath(): string {
     "/devices",
     "/rtmps",
     "/rtsps",
+    "/alerts",
     "/channels",
     "/nchannels",
     "/gb",
@@ -203,6 +237,9 @@ const router = createRouter({
   defaultPreload: "intent",
   scrollRestoration: true,
   basepath: getBasepath(),
+  // 使用自定义的搜索参数序列化/解析函数，避免 JSON 序列化导致字符串被加双引号
+  stringifySearch: stringifySearchParams,
+  parseSearch: parseSearchParams,
 });
 
 // 注册路由类型

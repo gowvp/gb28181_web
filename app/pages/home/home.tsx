@@ -1,5 +1,5 @@
 import { Outlet } from "@tanstack/react-router";
-import { Cctv, Home, MonitorUp, Waypoints } from "lucide-react";
+import { Bell, Cctv, Home, MonitorUp, Waypoints } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { TopNavigation } from "./top_navigation";
 
@@ -23,6 +23,11 @@ function useNavigationData() {
         name: t("gb_channel"),
         url: "/nchannels",
         icon: Cctv,
+      },
+      {
+        name: t("alerts"),
+        url: "/alerts",
+        icon: Bell,
       },
       {
         name: t("rtmp_stream"),
