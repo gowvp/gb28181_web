@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { ScanSearch, Settings2 } from "lucide-react";
-import React, { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Loader2, ScanSearch, Settings2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
@@ -12,8 +12,15 @@ import {
 } from "~/components/ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import ToolTips from "~/components/xui/tips";
-import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
+import {
+  DisableAI,
+  EnableAI,
+  FindChannels,
+  findChannelsKey,
+} from "~/service/api/channel/channel";
+import type { Ext } from "~/service/api/channel/state";
 import { GetDevice, getDeviceKey } from "~/service/api/device/device";
+import { ErrorHandle } from "~/service/config/error";
 import { ChannelCardItem } from "./channels";
 
 export interface DeviceDetailViewRef {
@@ -23,12 +30,15 @@ export interface DeviceDetailViewRef {
 interface DeviceDetailViewProps {
   ref: React.RefObject<DeviceDetailViewRef | null>;
   channelId?: string;
+  /** 通道扩展信息，包含 enabled_ai 状态 */
+  channelExt?: Ext;
   onZoneSettings?: () => void;
 }
 
 export default function DeviceDetailView({
   ref,
   channelId,
+  channelExt,
   onZoneSettings,
 }: DeviceDetailViewProps) {
   const { t } = useTranslation(["device", "common"]);
@@ -60,7 +70,51 @@ export default function DeviceDetailView({
     },
   }));
 
-  const [detectEnabled, setDetectEnabled] = useState(false);
+  // AI 检测开关状态，初始值从 channelExt 获取
+  const [detectEnabled, setDetectEnabled] = useState(
+    channelExt?.enabled_ai ?? false
+  );
+
+  // 当 channelExt 变化时同步状态，确保切换通道时状态正确
+  useEffect(() => {
+    setDetectEnabled(channelExt?.enabled_ai ?? false);
+  }, [channelExt?.enabled_ai]);
+
+  // 启用 AI 检测
+  const { mutate: enableAIMutate, isPending: enablePending } = useMutation({
+    mutationFn: () => EnableAI(channelId!),
+    onSuccess: (data) => {
+      setDetectEnabled(true);
+      toast.success(data.data.message || t("common:ai_enabled"));
+    },
+    onError: (error) => {
+      ErrorHandle(error);
+    },
+  });
+
+  // 禁用 AI 检测
+  const { mutate: disableAIMutate, isPending: disablePending } = useMutation({
+    mutationFn: () => DisableAI(channelId!),
+    onSuccess: (data) => {
+      setDetectEnabled(false);
+      toast.success(data.data.message || t("common:ai_disabled"));
+    },
+    onError: (error) => {
+      ErrorHandle(error);
+    },
+  });
+
+  const isAIPending = enablePending || disablePending;
+
+  // 切换 AI 检测状态
+  const handleToggleAI = () => {
+    if (!channelId || isAIPending) return;
+    if (detectEnabled) {
+      disableAIMutate();
+    } else {
+      enableAIMutate();
+    }
+  };
 
   return (
     <div className="w-[300px]">
@@ -68,16 +122,24 @@ export default function DeviceDetailView({
       {channelId && (
         <>
           <div className="flex gap-2 p-4 pb-3">
-            <ToolTips tips={t("common:detection")}>
+            <ToolTips
+              tips={
+                detectEnabled
+                  ? t("common:click_to_disable_ai")
+                  : t("common:click_to_enable_ai")
+              }
+            >
               <Button
                 size="sm"
                 variant={detectEnabled ? "default" : "outline"}
-                onClick={() => {
-                  toast.info(t("common:developing"));
-                  setDetectEnabled(!detectEnabled);
-                }}
+                onClick={handleToggleAI}
+                disabled={isAIPending}
               >
-                <ScanSearch className="w-4 h-4 mr-1" />
+                {isAIPending ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <ScanSearch className="w-4 h-4 mr-1" />
+                )}
                 {t("common:detection")}
               </Button>
             </ToolTips>

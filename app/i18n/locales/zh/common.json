@@ -228,5 +228,9 @@
   "today": "今天",
   "yesterday": "昨天",
   "last_7_days": "最近7天",
-  "last_30_days": "最近30天"
+  "last_30_days": "最近30天",
+  "ai_enabled": "AI 检测已启用",
+  "ai_disabled": "AI 检测已禁用",
+  "click_to_enable_ai": "点击启用 AI 检测",
+  "click_to_disable_ai": "点击禁用 AI 检测"
 }

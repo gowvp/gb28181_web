@@ -34,6 +34,7 @@ export default function PlayDrawer({
   const deviceDetailRef = useRef<DeviceDetailViewRef>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentChannelId, setCurrentChannelId] = useState<string>("");
+  const [currentChannelExt, setCurrentChannelExt] = useState<any>(undefined);
   // 协议选择器收缩/展开状态 - 从 localStorage 读取，默认收缩
   const [protocolsExpanded, setProtocolsExpanded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -75,6 +76,7 @@ export default function PlayDrawer({
     open(item: any, options?: { hideSidebar?: boolean }) {
       console.log("打开播放详情，ID:", item.id);
       setCurrentChannelId(item.id);
+      setCurrentChannelExt(item.ext);
 
       if (options?.hideSidebar !== undefined) {
         setShowSidebar(!options.hideSidebar);
@@ -247,6 +249,7 @@ export default function PlayDrawer({
               <DeviceDetailView
                 ref={deviceDetailRef}
                 channelId={currentChannelId}
+                channelExt={currentChannelExt}
                 onZoneSettings={() => {
                   if (!currentChannelId) return;
                   onOpenChange(false);

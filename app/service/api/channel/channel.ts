@@ -2,6 +2,8 @@ import { GET, POST } from "~/service/config/http";
 import type {
   AddZoneInput,
   AddZoneResponse,
+  DisableAIResponse,
+  EnableAIResponse,
   FindChannelsResponse,
   GetZonesResponse,
   PlayResponse,
@@ -15,7 +17,7 @@ export async function Play(id: string) {
 export async function RefreshSnapshot(
   id: string,
   url: string, // rtsp 播放地址
-  within_seconds: number, // 多少秒以内生成的快照，建议 300 秒
+  within_seconds: number // 多少秒以内生成的快照，建议 300 秒
 ) {
   return await POST<RefreshSnapshotResponse>(`/channels/${id}/snapshot`, {
     url,
@@ -36,4 +38,13 @@ export async function GetZones(channelId: string) {
 
 export async function AddZone(channelId: string, zone: AddZoneInput) {
   return await POST<AddZoneResponse>(`/channels/${channelId}/zones`, zone);
+}
+
+// AI 检测管理 API
+export async function EnableAI(channelId: string) {
+  return await POST<EnableAIResponse>(`/channels/${channelId}/ai/enable`);
+}
+
+export async function DisableAI(channelId: string) {
+  return await POST<DisableAIResponse>(`/channels/${channelId}/ai/disable`);
 }

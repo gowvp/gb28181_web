@@ -229,5 +229,9 @@
   "today": "Today",
   "yesterday": "Yesterday",
   "last_7_days": "Last 7 Days",
-  "last_30_days": "Last 30 Days"
+  "last_30_days": "Last 30 Days",
+  "ai_enabled": "AI Detection Enabled",
+  "ai_disabled": "AI Detection Disabled",
+  "click_to_enable_ai": "Click to enable AI detection",
+  "click_to_disable_ai": "Click to disable AI detection"
 }

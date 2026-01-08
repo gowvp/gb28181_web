@@ -61,6 +61,8 @@ export type Ext = {
   model: string;
   name: string;
   gb_version: string;
+  /** 是否启用 AI 检测 */
+  enabled_ai?: boolean;
 };
 
 export type RefreshSnapshotResponse = {
@@ -105,4 +107,30 @@ export type GetZonesResponse = Zone[];
  */
 export type AddZoneResponse = {
   items: Zone;
+};
+
+/**
+ * 启用 AI 检测响应
+ */
+export type EnableAIResponse = {
+  /** 是否已启用 */
+  enabled: boolean;
+  /** 消息 */
+  message: string;
+  /** 视频源宽度 */
+  source_width?: number;
+  /** 视频源高度 */
+  source_height?: number;
+  /** 视频源帧率 */
+  source_fps?: number;
+};
+
+/**
+ * 禁用 AI 检测响应
+ */
+export type DisableAIResponse = {
+  /** 是否已启用 */
+  enabled: boolean;
+  /** 消息 */
+  message: string;
 };
