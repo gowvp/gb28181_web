@@ -72,7 +72,7 @@ export default function DeviceDetailView({
 
   // AI 检测开关状态，初始值从 channelExt 获取
   const [detectEnabled, setDetectEnabled] = useState(
-    channelExt?.enabled_ai ?? false
+    channelExt?.enabled_ai ?? false,
   );
 
   // 当 channelExt 变化时同步状态，确保切换通道时状态正确

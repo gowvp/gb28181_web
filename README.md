@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="./docs/logo.png" alt="GoWVP Logo" width="550"/>
+    <img src="./docs/logo.avif" alt="GoWVP Logo" width="550"/>
 </p>
 
 <p align="center">
@@ -83,7 +83,7 @@ vite 配置代理
 
 2. 其它静态文件
 ```tsx
-<img src={`${import.meta.env.BASE_URL}assets/logo.png`} alt="Logo" />
+<img src={`${import.meta.env.BASE_URL}assets/logo.avif`} alt="Logo" />
 ```
 
 ## 开发与生成环境区分

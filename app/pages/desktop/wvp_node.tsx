@@ -38,7 +38,7 @@ export function GoWVPNode({ id }: NodeProps<SumNode>) {
   return (
     <BaseNode className="w-52">
       <img
-        src={"./assets/imgs/logo.png"}
+        src={"./assets/imgs/logo.avif"}
         alt="直播预览"
         className=" object-contain "
       />

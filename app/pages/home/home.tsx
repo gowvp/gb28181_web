@@ -1,7 +1,16 @@
 import { Outlet } from "@tanstack/react-router";
 import { Bell, Cctv, Home, MonitorUp, Waypoints } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import VersionUpdateModal, {
+  isVersionIgnored,
+} from "~/components/version/version_update_modal";
+import logger from "~/lib/logger";
+import type { CheckVersionResponse } from "~/service/api/version/state";
+import { checkVersion } from "~/service/api/version/version";
 import { TopNavigation } from "./top_navigation";
+
+const VERSION_CHECKED_KEY = "GOWVP_VERSION_CHECKED_SESSION";
 
 // 菜单数据（从app_sidebar.tsx复制）
 function useNavigationData() {
@@ -11,7 +20,7 @@ function useNavigationData() {
     user: {
       name: t("app_name"),
       email: t("app_title"),
-      avatar: "./assets/imgs/bg.webp",
+      avatar: "./assets/imgs/bg.avif",
     },
     projects: [
       {
@@ -45,6 +54,37 @@ function useNavigationData() {
 
 export default function Page() {
   const navigationData = useNavigationData();
+  const [versionInfo, setVersionInfo] = useState<CheckVersionResponse | null>(
+    null,
+  );
+
+  // 每次登录仅检查一次版本（使用 sessionStorage）
+  useEffect(() => {
+    const hasChecked = sessionStorage.getItem(VERSION_CHECKED_KEY);
+    if (hasChecked) {
+      return;
+    }
+
+    // 标记已检查
+    sessionStorage.setItem(VERSION_CHECKED_KEY, "true");
+
+    const checkForUpdates = async () => {
+      try {
+        const result = await checkVersion();
+        logger.info("版本检查结果:", result);
+
+        // 如果有新版本且该版本未被忽略，则显示更新弹窗
+        if (result.has_new_version && !isVersionIgnored(result.new_version)) {
+          setVersionInfo(result);
+        }
+      } catch (error) {
+        // 版本检查失败不做任何提示，静默处理
+        logger.error("版本检查失败:", error);
+      }
+    };
+
+    checkForUpdates();
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -70,6 +110,14 @@ export default function Page() {
           </div>
         </div>
       </div>
+
+      {/* 全局版本更新弹窗 */}
+      {versionInfo && (
+        <VersionUpdateModal
+          versionInfo={versionInfo}
+          onClose={() => setVersionInfo(null)}
+        />
+      )}
     </div>
   );
 }

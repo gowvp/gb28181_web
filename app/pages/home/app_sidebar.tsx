@@ -28,7 +28,7 @@ const data = {
     name: "gowvp",
     email: "GB/T28181",
     // TODO: add avatar
-    avatar: "./assets/imgs/bg.webp",
+    avatar: "./assets/imgs/bg.avif",
   },
   teams: [
     {

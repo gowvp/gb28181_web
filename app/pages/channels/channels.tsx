@@ -132,12 +132,12 @@ function ChannelCard({
         onClick={onClick}
       >
         <img
-          src={snapshotUrl || "./assets/imgs/bg.webp"}
+          src={snapshotUrl || "./assets/imgs/bg.avif"}
           alt="通道预览"
           className="aspect-[4/3] object-cover"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = "./assets/imgs/bg.webp";
+            target.src = "./assets/imgs/bg.avif";
           }}
         />
 

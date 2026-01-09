@@ -152,7 +152,7 @@ export default function ZonesPage() {
         });
       }
     },
-    [activeZoneIndex]
+    [activeZoneIndex],
   );
 
   // 更新区域标签
@@ -171,7 +171,7 @@ export default function ZonesPage() {
         });
       }
     },
-    [activeZoneIndex]
+    [activeZoneIndex],
   );
 
   // 删除区域
@@ -185,7 +185,7 @@ export default function ZonesPage() {
         setActiveZoneIndex(activeZoneIndex - 1);
       }
     },
-    [activeZoneIndex]
+    [activeZoneIndex],
   );
 
   // 添加新区域 - 进入编辑模式

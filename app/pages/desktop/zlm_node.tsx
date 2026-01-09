@@ -76,7 +76,7 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
         </div>
       </div>
       <img
-        src={"./assets/imgs/zlm.webp"}
+        src={"./assets/imgs/zlm.avif"}
         alt="直播预览"
         className=" object-contain "
       />

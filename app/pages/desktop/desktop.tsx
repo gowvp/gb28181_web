@@ -17,6 +17,7 @@ import {
   FindMediaServers,
   findMediaServersKey,
 } from "~/service/api/media/media";
+import { checkVersion, checkVersionKey } from "~/service/api/version/version";
 import { ErrorHandle } from "~/service/config/error";
 import { EditForm } from "./media/edit";
 
@@ -60,7 +61,9 @@ const ZLMNode = ({ data }: { data: any }) => {
   // 根据流媒体类型切换展示图标，避免配置与视觉提示不一致
   const mediaType = data.item?.type || "zlm";
   const mediaImage =
-    mediaType === "zlm" ? "./assets/imgs/zlm.webp" : "./assets/imgs/lalmax.png";
+    mediaType === "zlm"
+      ? "./assets/imgs/zlm.avif"
+      : "./assets/imgs/lalmax.avif";
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
@@ -191,19 +194,25 @@ const ZLMNode = ({ data }: { data: any }) => {
   );
 };
 
-const GoWVPNode = () => {
+const GoWVPNode = ({ data }: { data: { version?: string } }) => {
   const { t } = useTranslation("desktop");
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
       <div className="flex flex-col items-center">
-        {/* 图片 */}
-        <div className="flex justify-cent">
+        {/* 图片和版本号 */}
+        <div className="flex justify-center relative">
           <img
-            src={"./assets/imgs/logo.png"}
+            src={"./assets/imgs/logo.avif"}
             alt="GoWVP"
-            className="w-36 object-contain"
+            className="w-24 object-contain"
           />
+          {/* 版本号 - 绝对定位在图片右下角 */}
+          {data.version && (
+            <span className="absolute -bottom-1 -right-2 text-[10px] text-gray-400 font-mono">
+              {data.version}
+            </span>
+          )}
         </div>
 
         {/* 功能小模块 - 垂直排列 */}
@@ -328,6 +337,7 @@ const getInitialNodes = (t: any): Node[] => [
     data: {
       name: "GOWVP",
       value: 0,
+      version: "",
     },
   },
   {
@@ -461,10 +471,37 @@ export default function DesktopView() {
     },
   });
 
+  // 获取当前版本号
+  const { data: versionData } = useQuery({
+    queryKey: [checkVersionKey],
+    queryFn: checkVersion,
+    staleTime: 5 * 60 * 1000, // 5 分钟内不重复请求
+  });
+
   // 当语言切换时，重新生成节点数据
   useEffect(() => {
     setNodes(getInitialNodes(t));
   }, [t]);
+
+  // 更新 GoWVP 节点版本号
+  useEffect(() => {
+    if (!versionData?.current_version) return;
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === "gowvp") {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              version: versionData.current_version,
+            },
+          };
+        }
+        return node;
+      }),
+    );
+  }, [versionData]);
 
   // 更新 ZLM 节点数据
   useEffect(() => {

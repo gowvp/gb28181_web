@@ -93,7 +93,7 @@ export default function AlertsView() {
     getNextPageParam: (lastPage, allPages) => {
       const totalFetched = allPages.reduce(
         (sum, page) => sum + page.items.length,
-        0
+        0,
       );
       if (totalFetched < lastPage.total) {
         return allPages.length + 1;

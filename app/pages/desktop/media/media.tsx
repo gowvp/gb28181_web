@@ -79,7 +79,7 @@ export function MediaServerCard() {
             </button>
           </div>
           <img
-            src={"./assets/imgs/zlm.webp"}
+            src={"./assets/imgs/zlm.avif"}
             alt="直播预览"
             className=" object-contain "
           />

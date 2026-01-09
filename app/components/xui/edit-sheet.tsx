@@ -109,13 +109,13 @@ export function EditSheet({
     }
   };
 
-  return (
-    <Sheet
-      open={open}
-      onOpenChange={(newOpen) => {
-        setOpen(newOpen);
-      }}
-    >
+  // 渲染触发按钮，如果 trigger 显式传入 null 则不渲染任何触发器
+  // 这支持仅通过 ref.edit() 方式打开抽屉的场景
+  const renderTrigger = () => {
+    if (trigger === null) {
+      return null;
+    }
+    return (
       <SheetTrigger asChild>
         {trigger || (
           <ShadcnButton>
@@ -124,6 +124,17 @@ export function EditSheet({
           </ShadcnButton>
         )}
       </SheetTrigger>
+    );
+  };
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(newOpen) => {
+        setOpen(newOpen);
+      }}
+    >
+      {renderTrigger()}
 
       <SheetContent>
         <SheetHeader className="pb-6">

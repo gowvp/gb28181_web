@@ -48,7 +48,7 @@ export const TooltipNode = forwardRef<HTMLDivElement, TooltipNodeProps>(
         </BaseNode>
       </TooltipContext.Provider>
     );
-  }
+  },
 );
 
 TooltipNode.displayName = "TooltipNode";
@@ -76,7 +76,7 @@ export const TooltipContent = forwardRef<HTMLDivElement, TooltipContentProps>(
         </NodeToolbar>
       </div>
     );
-  }
+  },
 );
 
 TooltipContent.displayName = "TooltipContent";
