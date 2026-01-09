@@ -1,6 +1,6 @@
 import { Outlet } from "@tanstack/react-router";
 import { Bell, Cctv, Home, MonitorUp, Waypoints } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import VersionUpdateModal, {
   isVersionIgnored,
@@ -55,23 +55,34 @@ function useNavigationData() {
 export default function Page() {
   const navigationData = useNavigationData();
   const [versionInfo, setVersionInfo] = useState<CheckVersionResponse | null>(
-    null,
+    null
   );
+  // 防止竞态条件：确保组件卸载后不再更新状态
+  const isMountedRef = useRef(true);
 
   // 每次登录仅检查一次版本（使用 sessionStorage）
   useEffect(() => {
+    isMountedRef.current = true;
+
     const hasChecked = sessionStorage.getItem(VERSION_CHECKED_KEY);
     if (hasChecked) {
       return;
     }
 
-    // 标记已检查
-    sessionStorage.setItem(VERSION_CHECKED_KEY, "true");
-
     const checkForUpdates = async () => {
       try {
         const result = await checkVersion();
+
+        // 组件已卸载时不更新状态
+        if (!isMountedRef.current) {
+          logger.info("版本检查完成，但组件已卸载，跳过状态更新");
+          return;
+        }
+
         logger.info("版本检查结果:", result);
+
+        // 请求成功后才标记为已检查
+        sessionStorage.setItem(VERSION_CHECKED_KEY, "true");
 
         // 如果有新版本且该版本未被忽略，则显示更新弹窗
         if (result.has_new_version && !isVersionIgnored(result.new_version)) {
@@ -79,11 +90,16 @@ export default function Page() {
         }
       } catch (error) {
         // 版本检查失败不做任何提示，静默处理
+        // 注意：失败时不标记 sessionStorage，下次会重试
         logger.error("版本检查失败:", error);
       }
     };
 
     checkForUpdates();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   return (
