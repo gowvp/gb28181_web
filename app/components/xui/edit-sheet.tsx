@@ -94,8 +94,8 @@ export function EditSheet({
             }
           }
           // 递归处理子元素
-          if (child.props?.children) {
-            traverse(child.props.children);
+          if ((child.props as { children?: React.ReactNode })?.children) {
+            traverse((child.props as { children?: React.ReactNode }).children);
           }
         }
       });
