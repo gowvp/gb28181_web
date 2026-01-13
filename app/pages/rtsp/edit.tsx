@@ -1,13 +1,145 @@
-import { Form, Input, InputNumber, Radio } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import { Form, Input, InputNumber, Radio, Select } from "antd";
 import { SquarePlus } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "~/components/ui/button";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
-import { AddProxy, EditProxy } from "~/service/api/rtsp/rtsp";
+import { AddChannel, EditChannel } from "~/service/api/channel/channel";
+import type {
+  AddChannelInput,
+  EditChannelInput,
+} from "~/service/api/channel/state";
+import { FindDevices, findDevicesKey } from "~/service/api/device/device";
+
+// 适配旧的接口格式
+async function AddProxy(data: {
+  app: string;
+  stream: string;
+  source_url: string;
+  transport: number;
+  timeout_s: number;
+  enabled: boolean;
+  device_id?: string; // 设备 ID，空串表示新建设备
+  device_name?: string; // 设备名称
+}) {
+  const input: AddChannelInput = {
+    type: "RTSP",
+    name: data.source_url,
+    app: data.app || "pull",
+    stream: data.stream || `stream_${Date.now()}`,
+    config: {
+      source_url: data.source_url,
+      transport: data.transport,
+      timeout_s: data.timeout_s,
+      enabled: data.enabled,
+    },
+  };
+
+  // device_id 为空串时表示创建新设备，使用 device_name
+  // device_id 有值时表示选择已有设备
+  if (data.device_id) {
+    input.device_id = data.device_id;
+  } else if (data.device_name) {
+    input.device_name = data.device_name;
+  }
+
+  return await AddChannel(input);
+}
+
+async function EditProxy(
+  id: string,
+  data: {
+    app?: string;
+    stream?: string;
+    source_url?: string;
+    transport?: number;
+    timeout_s?: number;
+    enabled?: boolean;
+    name?: string;
+  }
+) {
+  const input: EditChannelInput = {
+    name: data.name,
+    app: data.app,
+    stream: data.stream,
+    config: {
+      source_url: data.source_url,
+      transport: data.transport,
+      timeout_s: data.timeout_s,
+      enabled: data.enabled,
+    },
+  };
+  return await EditChannel(id, input);
+}
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
   const [form] = Form.useForm();
+  const [searchKey, setSearchKey] = useState("");
+
+  // 查询所有设备列表
+  const { data: devicesData } = useQuery({
+    queryKey: [findDevicesKey, "all", searchKey],
+    queryFn: () => FindDevices({ page: 1, size: 50, key: searchKey }),
+  });
+
+  // 根据 ID 前缀判断设备类型：gb/ch 是国标，on/pr 是 ONVIF
+  const isGBOrOnvifDevice = (id: string) => {
+    const prefix = id.substring(0, 2).toLowerCase();
+    return ["gb", "ch", "on", "pr"].includes(prefix);
+  };
+
+  // 将设备列表转换为 Select 选项，国标和 ONVIF 设备禁用
+  const deviceOptions =
+    devicesData?.data.items?.map((device) => {
+      const isDisabled = isGBOrOnvifDevice(device.id);
+      const deviceType = isDisabled
+        ? ["gb", "ch"].includes(device.id.substring(0, 2).toLowerCase())
+          ? "GB28181"
+          : "ONVIF"
+        : device.type || "RTSP";
+      const displayName = device.name || device.ext.name || device.device_id;
+      return {
+        value: device.id, // 设备 ID
+        label: displayName, // 设备名称
+        disabled: isDisabled,
+        type: deviceType,
+      };
+    }) || [];
+
+  // 支持输入新设备名称（创建新设备）
+  // 当有搜索词且不匹配现有设备时，显示创建新设备选项
+  // 新设备用空串作为 value，label 为输入的名称
+  const hasExactMatch = deviceOptions.some(
+    (opt) => opt.label === searchKey && !opt.disabled
+  );
+  const allOptions =
+    searchKey && !hasExactMatch
+      ? [
+          {
+            value: "", // 空串表示新建设备
+            label: searchKey, // 输入的名称
+            displayLabel: `+ 创建新设备: ${searchKey}`,
+            disabled: false,
+            type: "NEW",
+          },
+          ...deviceOptions.map((opt) => ({ ...opt, displayLabel: opt.label })),
+        ]
+      : deviceOptions.map((opt) => ({ ...opt, displayLabel: opt.label }));
+
+  // 处理选择变化，设置 device_id 和 device_name
+  const handleSelectChange = (
+    value: string,
+    option?: { label: string } | { label: string }[]
+  ) => {
+    const opt = Array.isArray(option) ? option[0] : option;
+    form.setFieldsValue({
+      device_id: value, // 空串或设备 ID
+      device_name: opt?.label || searchKey, // 设备名称
+    });
+    setSearchKey("");
+  };
 
   return (
     <EditSheet
@@ -33,6 +165,12 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       <Form.Item name="id" hidden>
         <Input />
       </Form.Item>
+      <Form.Item name="device_id" hidden>
+        <Input />
+      </Form.Item>
+      <Form.Item name="device_name" hidden>
+        <Input />
+      </Form.Item>
 
       <Form.Item name="app" hidden initialValue="pull">
         <Input />
@@ -42,6 +180,45 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         <Input />
       </Form.Item>
 
+      {/* 第一步：设备选择 + 是否启用 */}
+      <Form.Item
+        label="设备"
+        name="device_selector"
+        rules={[{ required: true, message: "请选择或输入设备名称" }]}
+        tooltip="选择已有 RTSP 设备或输入新设备名称进行创建，国标/ONVIF 设备不可选"
+      >
+        <Select
+          showSearch
+          placeholder="搜索或输入新设备名称"
+          allowClear
+          filterOption={false}
+          onSearch={setSearchKey}
+          onChange={handleSelectChange}
+        >
+          {allOptions.map((opt) => (
+            <Select.Option
+              key={opt.value || `new-${opt.label}`}
+              value={opt.value}
+              label={opt.label}
+              disabled={opt.disabled}
+            >
+              {opt.displayLabel}
+              {opt.disabled && (
+                <span className="text-gray-400 ml-2">({opt.type})</span>
+              )}
+            </Select.Option>
+          ))}
+        </Select>
+      </Form.Item>
+
+      <Form.Item label={t("enabled")} name="enabled" initialValue={true}>
+        <Radio.Group size="middle">
+          <Radio.Button value={true}>{t("enable")}</Radio.Button>
+          <Radio.Button value={false}>{t("disable")}</Radio.Button>
+        </Radio.Group>
+      </Form.Item>
+
+      {/* 第二步：拉流地址 + 拉流方式 + 超时 */}
       <Form.Item
         label={t("source_url")}
         name="source_url"
@@ -80,13 +257,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           style={{ width: "100%" }}
           placeholder={t("input_timeout")}
         />
-      </Form.Item>
-
-      <Form.Item label={t("enabled")} name="enabled" initialValue={true}>
-        <Radio.Group size="middle">
-          <Radio.Button value={true}>{t("enable")}</Radio.Button>
-          <Radio.Button value={false}>{t("disable")}</Radio.Button>
-        </Radio.Group>
       </Form.Item>
     </EditSheet>
   );

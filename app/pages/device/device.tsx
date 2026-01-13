@@ -57,9 +57,12 @@ export default function DeviceView() {
       key: "address",
       minWidth: 180,
       render(_value, record) {
-        return (
-          <span className="lowercase">{`${record.transport}://${record.address}`}</span>
-        );
+        if (`${record.transport}${record.address}`.length > 1) {
+          return (
+            <span className="lowercase">{`${record.transport}://${record.address}`}</span>
+          );
+        }
+        return "-";
       },
     },
     {
@@ -79,8 +82,8 @@ export default function DeviceView() {
         return record.stream_mode === 0
           ? t("common:udp")
           : record.stream_mode === 1
-            ? t("common:tcp_passive")
-            : t("common:tcp_active");
+          ? t("common:tcp_passive")
+          : t("common:tcp_active");
       },
     },
     {
@@ -141,10 +144,17 @@ export default function DeviceView() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              navigate({
-                to: `/channels`,
-                search: { device_id: record.device_id },
-              });
+              // 根据设备类型跳转到不同页面
+              if (record.type === "RTMP") {
+                navigate({ to: "/rtmps", search: { did: record.id } });
+              } else if (record.type === "RTSP") {
+                navigate({ to: "/rtsps", search: { did: record.id } });
+              } else {
+                navigate({
+                  to: "/channels",
+                  search: { device_id: record.device_id },
+                });
+              }
             }}
           >
             <Folder className="h-4 w-4 mr-1" />

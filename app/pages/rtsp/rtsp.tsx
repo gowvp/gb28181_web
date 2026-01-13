@@ -1,6 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
+import { useSearch } from "@tanstack/react-router";
 import type { ColumnsType } from "antd/es/table";
 import { Edit, SquarePlay } from "lucide-react";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import PlayDrawer, {
   type PlayDrawerRef,
@@ -13,12 +15,22 @@ import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
 import type { EditSheetImpl } from "~/components/xui/edit-sheet";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
-import { DelProxy, FindProxys, findProxysKey } from "~/service/api/rtsp/rtsp";
-import type { RTSPItem } from "~/service/api/rtsp/state";
+import {
+  DelChannel,
+  FindChannels,
+  findChannelsKey,
+} from "~/service/api/channel/channel";
+import type { ChannelItem } from "~/service/api/channel/state";
+import { FindDevices, findDevicesKey } from "~/service/api/device/device";
 import { EditForm } from "./edit";
+
+// 适配旧的 RTSPItem 类型
+type RTSPItem = ChannelItem;
 
 export default function RTSPView() {
   const { t } = useTranslation("common");
+  // 从 URL 获取 did 参数，用于过滤特定设备下的通道
+  const searchParams = useSearch({ strict: false }) as { did?: string };
 
   // =============== 状态定义 ===============
 
@@ -27,7 +39,30 @@ export default function RTSPView() {
   const playRef = useRef<PlayDrawerRef>(null);
   const tableRef = useRef<TableQueryRef<RTSPItem>>(null);
 
-  // =============== 查询与操作 ===============
+  // 查询 RTSP 类型设备列表，用于显示设备名称
+  const { data: devicesData } = useQuery({
+    queryKey: [findDevicesKey, "RTSP"],
+    queryFn: () => FindDevices({ page: 1, size: 100, type: "RTSP" }),
+  });
+
+  // 建立 did -> deviceName 映射
+  const deviceNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    devicesData?.data.items?.forEach((device) => {
+      map.set(device.id, device.name || device.ext.name || device.device_id);
+    });
+    return map;
+  }, [devicesData]);
+
+  // =============== 查询包装函数 ===============
+  // 添加 type=RTSP 参数进行过滤，如果有 did 参数则同时过滤设备
+  const fetchRTSPs = async (params: object) => {
+    const filters: Record<string, unknown> = { ...params, type: "RTSP" };
+    if (searchParams.did) {
+      filters.did = searchParams.did;
+    }
+    return await FindChannels(filters);
+  };
 
   // =============== 表格列定义 ===============
   const columns: ColumnsType<RTSPItem> = [
@@ -35,6 +70,12 @@ export default function RTSPView() {
       title: t("remark"),
       dataIndex: "name",
       key: "name",
+    },
+    {
+      title: t("device"),
+      key: "device_name",
+      render: (_: unknown, record: RTSPItem) =>
+        deviceNameMap.get(record.did) || "-",
     },
     {
       title: t("app_name"),
@@ -48,40 +89,35 @@ export default function RTSPView() {
     },
     {
       title: t("pull_status"),
-      dataIndex: "status",
       key: "status",
-      render: (value: string) => {
-        let color = "";
-        let text = "";
-        if (value === "STOPPED") {
-          color = "bg-orange-300";
-          text = "NO";
-        } else if (value === "PUSHING") {
-          color = "bg-green-300";
-          text = "OK";
-        }
+      render: (_: unknown, record: RTSPItem) => {
+        const isOnline = record.is_online;
+        const color = isOnline ? "bg-green-300" : "bg-orange-300";
+        const text = isOnline ? t("pulling") : t("not_pulling");
+        const shortText = isOnline ? "ON" : "OFF";
 
-        return text ? (
-          <Badge variant="secondary" className={`${color} text-white`}>
-            {text}
+        return (
+          <Badge
+            variant="secondary"
+            className={`${color} text-white`}
+            title={text}
+          >
+            {shortText}
           </Badge>
-        ) : (
-          <span></span>
         );
       },
     },
     {
       title: t("media_server"),
-      dataIndex: "media_server_id",
       key: "media_server_id",
-      render: (value: string) => value || "-",
+      render: (_: unknown, record: RTSPItem) =>
+        record.config?.media_server_id || "-",
     },
     {
       title: t("proxy_method"),
-      dataIndex: "transport",
       key: "transport",
-      render: (value: number) => {
-        return value === 0 ? "TCP" : "UDP";
+      render: (_: unknown, record: RTSPItem) => {
+        return record.config?.transport === 0 ? "TCP" : "UDP";
       },
     },
     {
@@ -117,10 +153,11 @@ export default function RTSPView() {
                 id: record.id,
                 app: record.app,
                 stream: record.stream,
-                transport: record.transport,
-                enabled: record.enabled,
-                timeout_s: record.timeout_s,
-                source_url: record.source_url,
+                name: record.name,
+                transport: record.config?.transport,
+                enabled: record.config?.enabled,
+                timeout_s: record.config?.timeout_s,
+                source_url: record.config?.source_url,
               })
             }
           >
@@ -128,12 +165,10 @@ export default function RTSPView() {
             {t("edit")}
           </Button>
 
-          {/* todo: 删除 loading 状态 */}
           <XButtonDelete
             onConfirm={() => {
               tableRef.current?.delMutate(record.id);
             }}
-            // isLoading={tableRef.current?.delIsPending}
           />
         </div>
       ),
@@ -142,13 +177,11 @@ export default function RTSPView() {
 
   // 搜索防抖
   const debouncedFilters = useDebounce((key: string) => {
-    tableRef.current?.setFilters((prev: any) => ({ ...prev, page: 1, key }));
+    tableRef.current?.setFilters((prev: object) => ({ ...prev, page: 1, key }));
   }, 500);
 
   return (
     <>
-      {/* <XHeader items={[{ title: "拉流代理", url: "rtsps" }]} /> */}
-
       <div className="w-full bg-white p-4 rounded-lg">
         {/* 搜索和添加区域 */}
         <div className="flex justify-end items-center py-4">
@@ -168,9 +201,9 @@ export default function RTSPView() {
 
         <TableQuery
           ref={tableRef}
-          queryKey={findProxysKey}
-          fetchFn={FindProxys}
-          deleteFn={DelProxy}
+          queryKey={findChannelsKey}
+          fetchFn={fetchRTSPs}
+          deleteFn={DelChannel}
           columns={columns}
         />
 

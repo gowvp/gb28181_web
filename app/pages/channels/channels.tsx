@@ -236,7 +236,7 @@ function DeviceCard({
             <Cctv
               className={cn(
                 "h-6 w-6",
-                device.is_online ? "text-gray-600" : "text-red-500",
+                device.is_online ? "text-gray-600" : "text-red-500"
               )}
             />
             <div>

@@ -1,8 +1,12 @@
-import { GET, POST } from "~/service/config/http";
+import { DELETE, GET, POST, PUT } from "~/service/config/http";
 import type {
+  AddChannelInput,
+  AddChannelResponse,
   AddZoneInput,
   AddZoneResponse,
   DisableAIResponse,
+  EditChannelInput,
+  EditChannelResponse,
   EnableAIResponse,
   FindChannelsResponse,
   GetZonesResponse,
@@ -17,7 +21,7 @@ export async function Play(id: string) {
 export async function RefreshSnapshot(
   id: string,
   url: string, // rtsp 播放地址
-  within_seconds: number, // 多少秒以内生成的快照，建议 300 秒
+  within_seconds: number // 多少秒以内生成的快照，建议 300 秒
 ) {
   return await POST<RefreshSnapshotResponse>(`/channels/${id}/snapshot`, {
     url,
@@ -28,6 +32,23 @@ export async function RefreshSnapshot(
 export const findChannelsKey = "findChannels";
 export async function FindChannels(data: object) {
   return await GET<FindChannelsResponse>(`/channels`, data);
+}
+
+// AddChannel 添加 RTMP/RTSP 通道
+export async function AddChannel(data: AddChannelInput) {
+  return await POST<AddChannelResponse>(`/channels`, data);
+}
+
+// EditChannel 编辑通道
+export async function EditChannel(id: string, data: EditChannelInput) {
+  if (id === "") id = "unknown";
+  return await PUT<EditChannelResponse>(`/channels/${id}`, data);
+}
+
+// DelChannel 删除 RTMP/RTSP 通道
+export async function DelChannel(id: string) {
+  if (id === "") id = "unknown";
+  return await DELETE<void>(`/channels/${id}`);
 }
 
 // 区域管理 API

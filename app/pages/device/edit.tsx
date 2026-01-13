@@ -9,15 +9,19 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
   const [form] = Form.useForm();
 
-  // 使用 Form.useWatch 监听 type 字段，自动响应变化
+  // 使用 Form.useWatch 监听字段
   const deviceType = Form.useWatch("type", form);
+  const deviceId = Form.useWatch("id", form);
   const isOnvif = deviceType === "ONVIF";
+
+  // 动态标题：编辑时显示 ID
+  const title = deviceId ? `${t("device_edit")} ${deviceId}` : t("device_edit");
 
   return (
     <EditSheet
       form={form}
       ref={ref}
-      title={t("device_edit")}
+      title={title}
       description={t("device_edit_desc")}
       onSuccess={{
         add: onAddSuccess,
@@ -34,10 +38,15 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         </Button>
       }
     >
-      <Form.Item name="id" label={t("id")}>
-        <Input disabled />
+      {/* 隐藏字段 */}
+      <Form.Item name="id" hidden>
+        <Input />
+      </Form.Item>
+      <Form.Item hidden name="type" initialValue="GB28181">
+        <Input />
       </Form.Item>
 
+      {/* 第一步：国标编码 + 名称 */}
       <Form.Item
         label={t("device_code")}
         name="device_id"
@@ -47,17 +56,18 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
             ? []
             : [
                 { required: true, message: t("input_required") },
-                { min: 18, max: 20, message: t("device_code_length") },
+                { min: 1, max: 20, message: t("device_code_length") },
               ]
         }
       >
-        <Input placeholder={t("input_device_code")} />
+        <Input placeholder={t("input_device_code")} maxLength={20} showCount />
       </Form.Item>
 
       <Form.Item label={t("name")} name="name">
         <Input placeholder={t("input_device_name")} />
       </Form.Item>
 
+      {/* 第二步：密码 + 收流模式 (GB28181) 或 IP + 端口 (ONVIF) */}
       <Form.Item hidden={!isOnvif} label={t("ip")} name="ip" required={isOnvif}>
         <Input placeholder={"192.168.1.2"} />
       </Form.Item>
@@ -99,10 +109,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           <Radio.Button value={1}>{t("tcp_passive")}</Radio.Button>
           <Radio.Button value={2}>{t("tcp_active")}</Radio.Button>
         </Radio.Group>
-      </Form.Item>
-
-      <Form.Item hidden name="type" initialValue="GB28181">
-        <Input />
       </Form.Item>
     </EditSheet>
   );

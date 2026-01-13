@@ -53,6 +53,33 @@ export type ChannelItem = {
   is_online: boolean;
   name: string;
   ptztype: number;
+  type: string; // 通道类型 (GB28181/ONVIF/RTMP/RTSP)
+  app: string; // 应用名 (RTMP/RTSP)
+  stream: string; // 流 ID (RTMP/RTSP)
+  config: StreamConfig; // 流配置 (RTMP/RTSP)
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * 流配置（用于 RTMP 推流和 RTSP 拉流代理）
+ */
+export type StreamConfig = {
+  // RTMP 推流配置
+  is_auth_disabled?: boolean; // 是否禁用推流鉴权
+  pushed_at?: string; // 最后推流时间
+  stopped_at?: string; // 最后停止时间
+  media_server_id?: string; // 媒体服务器 ID
+
+  // RTSP 拉流配置
+  source_url?: string; // 原始 URL
+  transport?: number; // 拉流方式 (0:tcp, 1:udp)
+  timeout_s?: number; // 超时时间
+  enabled_audio?: boolean; // 是否启用音频
+  enabled_remove_none_reader?: boolean; // 无人观看时删除
+  enabled_disabled_none_reader?: boolean; // 无人观看时禁用
+  stream_key?: string; // ZLM 返回的 key
+  enabled?: boolean; // 是否启用
 };
 
 export type Ext = {
@@ -134,3 +161,47 @@ export type DisableAIResponse = {
   /** 消息 */
   message: string;
 };
+
+/**
+ * 添加通道请求参数 (RTMP/RTSP)
+ */
+export type AddChannelInput = {
+  /** 通道类型 (RTMP/RTSP) */
+  type: "RTMP" | "RTSP";
+  /** 通道名称 */
+  name: string;
+  /** 可选，关联的父设备 ID */
+  device_id?: string;
+  /** 可选，device_id 不存在时用于创建新设备 */
+  device_name?: string;
+  /** 应用名 */
+  app: string;
+  /** 流 ID */
+  stream: string;
+  /** 流配置 */
+  config?: StreamConfig;
+};
+
+/**
+ * 添加通道响应
+ */
+export type AddChannelResponse = ChannelItem;
+
+/**
+ * 编辑通道请求参数
+ */
+export type EditChannelInput = {
+  /** 通道名称 */
+  name?: string;
+  /** 应用名 */
+  app?: string;
+  /** 流 ID */
+  stream?: string;
+  /** 流配置 */
+  config?: StreamConfig;
+};
+
+/**
+ * 编辑通道响应
+ */
+export type EditChannelResponse = ChannelItem;

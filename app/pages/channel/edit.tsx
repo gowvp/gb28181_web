@@ -3,7 +3,7 @@ import { SquarePlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "~/components/ui/button";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
-import { AddRTMP, EditRTMP } from "~/service/api/rtmp/rtmp";
+import { AddChannel, EditChannel } from "~/service/api/channel/channel";
 
 export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
@@ -20,8 +20,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         edit: onEditSuccess,
       }}
       mutation={{
-        add: AddRTMP,
-        edit: EditRTMP,
+        add: (data) => AddChannel({ ...data, type: "RTMP" }),
+        edit: EditChannel,
       }}
       trigger={
         <Button className="mx-3">
