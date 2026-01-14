@@ -180,8 +180,10 @@ export default function RTMPView() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                // 构造推流地址
-                const pushAddr = `rtmp://your-server:1935/${record.app}/${record.stream}`;
+                const pushAddr = record.config?.push_addr;
+                if (!pushAddr) {
+                  return;
+                }
                 copy2Clipboard(pushAddr, {
                   title: "推流地址已复制",
                   description: pushAddr,

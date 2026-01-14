@@ -70,6 +70,7 @@ export type StreamConfig = {
   pushed_at?: string; // 最后推流时间
   stopped_at?: string; // 最后停止时间
   media_server_id?: string; // 媒体服务器 ID
+  push_addr?: string; // 推流地址（动态生成，不持久化）
 
   // RTSP 拉流配置
   source_url?: string; // 原始 URL

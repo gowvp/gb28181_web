@@ -110,35 +110,54 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
 
   // 支持输入新设备名称（创建新设备）
   // 当有搜索词且不匹配现有设备时，显示创建新设备选项
-  // 新设备用空串作为 value，label 为输入的名称
+  // 新设备用空串作为 value，label 为输入的名称，只能有一个空串 value
   const hasExactMatch = deviceOptions.some(
     (opt) => opt.label === searchKey && !opt.disabled
   );
-  const allOptions =
-    searchKey && !hasExactMatch
-      ? [
-          {
-            value: "", // 空串表示新建设备
-            label: searchKey, // 输入的名称
-            displayLabel: `+ 创建新设备: ${searchKey}`,
-            disabled: false,
-            type: "NEW",
-          },
-          ...deviceOptions.map((opt) => ({ ...opt, displayLabel: opt.label })),
-        ]
-      : deviceOptions.map((opt) => ({ ...opt, displayLabel: opt.label }));
+
+  // 构建选项列表：如果有搜索词且无精确匹配，在最前面添加创建新设备选项
+  const allOptions = (() => {
+    const baseOptions = deviceOptions.map((opt) => ({
+      ...opt,
+      isNew: false,
+    }));
+
+    if (searchKey && !hasExactMatch) {
+      return [
+        {
+          value: "", // 空串表示新建设备，只有一个
+          label: searchKey, // 直接显示输入的名称
+          disabled: false,
+          type: "NEW",
+          isNew: true,
+        },
+        ...baseOptions,
+      ];
+    }
+    return baseOptions;
+  })();
 
   // 处理选择变化，设置 device_id 和 device_name
   const handleSelectChange = (
     value: string,
-    option?: { label: string } | { label: string }[]
+    option?:
+      | { label: string; isNew?: boolean }
+      | { label: string; isNew?: boolean }[]
   ) => {
     const opt = Array.isArray(option) ? option[0] : option;
+    const isNewDevice = opt?.isNew || value === "";
+    const deviceName = opt?.label || searchKey;
+
     form.setFieldsValue({
       device_id: value, // 空串或设备 ID
-      device_name: opt?.label || searchKey, // 设备名称
+      device_name: deviceName, // 设备名称
+      device_selector: isNewDevice ? deviceName : value, // 保持选择器显示正确的值
     });
-    setSearchKey("");
+
+    // 创建新设备时不清空 searchKey，保持输入框显示
+    if (!isNewDevice) {
+      setSearchKey("");
+    }
   };
 
   return (
@@ -194,18 +213,21 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           filterOption={false}
           onSearch={setSearchKey}
           onChange={handleSelectChange}
+          optionLabelProp="label"
         >
           {allOptions.map((opt) => (
             <Select.Option
-              key={opt.value || `new-${opt.label}`}
+              key={opt.isNew ? "new-device" : opt.value}
               value={opt.value}
               label={opt.label}
               disabled={opt.disabled}
+              isNew={opt.isNew}
             >
-              {opt.displayLabel}
+              {opt.label}
               {opt.disabled && (
                 <span className="text-gray-400 ml-2">({opt.type})</span>
               )}
+              {opt.isNew && <span className="text-blue-500 ml-2">(新建)</span>}
             </Select.Option>
           ))}
         </Select>
