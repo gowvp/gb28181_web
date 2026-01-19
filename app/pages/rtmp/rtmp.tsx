@@ -93,10 +93,9 @@ export default function RTMPView() {
       title: t("push_status"),
       key: "status",
       render: (_: unknown, record: RTMPItem) => {
-        const isOnline = record.is_online;
-        const color = isOnline ? "bg-green-300" : "bg-orange-300";
-        const text = isOnline ? t("pushing") : t("not_pushing");
-        const shortText = isOnline ? "ON" : "OFF";
+        const isBusy = record.is_online;
+        const color = isBusy ? "bg-green-300" : "bg-slate-300";
+        const text = isBusy ? t("pushing") : t("not_pushing");
 
         return (
           <Badge
@@ -104,16 +103,10 @@ export default function RTMPView() {
             className={`${color} text-white`}
             title={text}
           >
-            {shortText}
+            {text}
           </Badge>
         );
       },
-    },
-    {
-      title: t("media_server"),
-      key: "media_server_id",
-      render: (_: unknown, record: RTMPItem) =>
-        record.config?.media_server_id || "-",
     },
     {
       title: t("push_time"),
@@ -147,7 +140,7 @@ export default function RTMPView() {
         <div className="flex gap-0">
           <Button
             onClick={() => {
-              playRef.current?.open(record, { hideSidebar: true });
+              playRef.current?.open(record);
             }}
             variant="ghost"
             size="sm"
@@ -162,9 +155,11 @@ export default function RTMPView() {
             onClick={() =>
               editFromRef.current?.edit({
                 id: record.id,
+                name: record.name,
+                did: record.did,
                 app: record.app,
                 stream: record.stream,
-                is_auth_disabled: record.config?.is_auth_disabled,
+                config: record.config,
               })
             }
           >

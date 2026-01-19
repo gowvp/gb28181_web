@@ -55,7 +55,7 @@ function useNavigationData() {
 export default function Page() {
   const navigationData = useNavigationData();
   const [versionInfo, setVersionInfo] = useState<CheckVersionResponse | null>(
-    null
+    null,
   );
   // 防止竞态条件：确保组件卸载后不再更新状态
   const isMountedRef = useRef(true);
@@ -103,7 +103,7 @@ export default function Page() {
   }, []);
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col h-screen overflow-hidden">
       {/* 顶部导航菜单 */}
       <TopNavigation
         items={navigationData.projects}
@@ -111,9 +111,9 @@ export default function Page() {
       />
 
       {/* 主内容区域 */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div
-          className="min-w-0 h-full"
+          className="min-w-0 flex-1 flex flex-col h-full overflow-hidden"
           style={{
             background:
               "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)",
@@ -121,7 +121,7 @@ export default function Page() {
         >
           {/* 子页面容器 - 80%宽度居中，小屏幕全宽 */}
           {/* <div className="w-full max-w-none sm:w-4/5 sm:mx-auto px-4 sm:px-6 lg:px-4"> */}
-          <div className="w-full max-w-none px-1 lg:px-16">
+          <div className="w-full max-w-none flex-1 h-full min-h-0 px-1 lg:px-16 overflow-auto">
             <Outlet />
           </div>
         </div>

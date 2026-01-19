@@ -21,7 +21,7 @@ export async function Play(id: string) {
 export async function RefreshSnapshot(
   id: string,
   url: string, // rtsp 播放地址
-  within_seconds: number // 多少秒以内生成的快照，建议 300 秒
+  within_seconds: number, // 多少秒以内生成的快照，建议 300 秒
 ) {
   return await POST<RefreshSnapshotResponse>(`/channels/${id}/snapshot`, {
     url,

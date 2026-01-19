@@ -12,22 +12,21 @@ import type {
 } from "~/service/api/channel/state";
 import { FindDevices, findDevicesKey } from "~/service/api/device/device";
 
-// 适配旧的接口格式
+// RTSP 通道添加（app/stream 由后端自动设置：app=pull, stream=channel.id）
 async function AddProxy(data: {
-  app: string;
-  stream: string;
   source_url: string;
   transport: number;
   timeout_s: number;
   enabled: boolean;
+  name?: string; // 备注（可选）
   device_id?: string; // 设备 ID，空串表示新建设备
   device_name?: string; // 设备名称
 }) {
   const input: AddChannelInput = {
     type: "RTSP",
-    name: data.source_url,
-    app: data.app || "pull",
-    stream: data.stream || `stream_${Date.now()}`,
+    // 如果用户填了备注则用备注，否则用 RTSP URL 作为默认名称
+    name: data.name || data.source_url,
+    // app/stream 由后端固定：app=pull, stream=channel.id
     config: {
       source_url: data.source_url,
       transport: data.transport,
@@ -47,11 +46,10 @@ async function AddProxy(data: {
   return await AddChannel(input);
 }
 
+// RTSP 通道编辑（仅支持修改 URL、传输方式、超时、启用状态和备注）
 async function EditProxy(
   id: string,
   data: {
-    app?: string;
-    stream?: string;
     source_url?: string;
     transport?: number;
     timeout_s?: number;
@@ -61,8 +59,6 @@ async function EditProxy(
 ) {
   const input: EditChannelInput = {
     name: data.name,
-    app: data.app,
-    stream: data.stream,
     config: {
       source_url: data.source_url,
       transport: data.transport,
@@ -166,6 +162,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       ref={ref}
       title={t("pull_info")}
       description={t("pull_info_desc")}
+      fieldsPerStep={3}
       onSuccess={{
         add: onAddSuccess,
         edit: onEditSuccess,
@@ -188,14 +185,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         <Input />
       </Form.Item>
       <Form.Item name="device_name" hidden>
-        <Input />
-      </Form.Item>
-
-      <Form.Item name="app" hidden initialValue="pull">
-        <Input />
-      </Form.Item>
-
-      <Form.Item name="stream" hidden initialValue="">
         <Input />
       </Form.Item>
 
@@ -240,7 +229,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         </Radio.Group>
       </Form.Item>
 
-      {/* 第二步：拉流地址 + 拉流方式 + 超时 */}
+      {/* 第二步：拉流地址 + 备注 */}
       <Form.Item
         label={t("source_url")}
         name="source_url"
@@ -250,6 +239,10 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         ]}
       >
         <Input placeholder="rtsp://..." />
+      </Form.Item>
+
+      <Form.Item label={t("remark")} name="name">
+        <Input placeholder={t("optional")} />
       </Form.Item>
 
       <Form.Item

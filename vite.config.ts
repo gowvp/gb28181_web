@@ -20,8 +20,9 @@ export default defineConfig(({ mode }) => {
           gzipSize: true,
         }),
     ].filter(Boolean),
-    // 使用相对路径，支持部署到任意子目录（如 /web, /www 等）
-    base: "./",
+    // 使用绝对路径 /web/，确保页面刷新时静态资源能正确加载
+    // 如需部署到其他路径，请同步修改后端的 staticPrefix
+    base: "/web/",
     resolve: {
       alias: {
         "~": fileURLToPath(new URL("./app", import.meta.url)),
@@ -55,10 +56,22 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        // 所有 API 请求统一使用 /api 前缀
+        // 前端调用 /api/xxx，代理到后端的 /xxx
         "/api": {
           target: "http://127.0.0.1:15123",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
+        },
+        // 录像 m3u8 播放列表（不走 /api 前缀，直接代理）
+        "/recordings/channels": {
+          target: "http://127.0.0.1:15123",
+          changeOrigin: true,
+        },
+        // 录像静态文件
+        "/static/recordings": {
+          target: "http://127.0.0.1:15123",
+          changeOrigin: true,
         },
       },
     },

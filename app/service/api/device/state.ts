@@ -43,6 +43,10 @@ export type ChannelItem = {
   ptztype: number;
   is_online: boolean;
   is_playing: boolean; // 是否播放中
+  type: string; // 通道类型 (GB28181/ONVIF/RTMP/RTSP)
+  app: string; // 应用名 (RTMP/RTSP)
+  stream: string; // 流 ID (RTMP/RTSP)
+  has_recording: boolean; // 是否存在录像（查询时动态填充）
   ext: Ext;
   created_at: string;
   updated_at: string;

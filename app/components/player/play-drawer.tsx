@@ -84,8 +84,9 @@ export default function PlayDrawer({
         setShowSidebar(true);
       }
 
-      // 只有当 item.is_online 为 true 或者没有这个属性（默认在线，如rtmp/rtsp）时才自动播放
-      if (item.is_online !== false) {
+      // RTSP 类型通道需要触发播放请求才能启动拉流代理，无论 is_online 状态
+      // 其他类型仅在线时才触发播放
+      if (item.type === "RTSP" || item.is_online !== false) {
         playMutate(item.id);
       }
       setOpen(true);

@@ -4438,10 +4438,12 @@ __metadata:
     clsx: "npm:^2.1.1"
     copy-to-clipboard: "npm:^3.3.3"
     cross-env: "npm:^7.0.3"
+    hls.js: "npm:^1.6.15"
     i18next: "npm:^25.6.3"
     i18next-browser-languagedetector: "npm:^8.2.0"
     konva: "npm:^10.0.12"
     lucide-react: "npm:^0.475.0"
+    mp4box: "npm:^2.3.0"
     next-themes: "npm:^0.4.4"
     node-forge: "npm:^1.3.3"
     react: "npm:^19.2.0"
@@ -4519,6 +4521,13 @@ __metadata:
   version: 4.2.11
   resolution: "graceful-fs@npm:4.2.11"
   checksum: 10c0/386d011a553e02bc594ac2ca0bd6d9e4c22d7fa8cfbfc448a6d148c59ea881b092db9dbe3547ae4b88e55f1b01f7c4a2ecc53b310c042793e63aa44cf6c257f2
+  languageName: node
+  linkType: hard
+
+"hls.js@npm:^1.6.15":
+  version: 1.6.15
+  resolution: "hls.js@npm:1.6.15"
+  checksum: 10c0/a3558909506b9d93420b395b1d9508df364f911ebc19b315f98bd4c1b94973ed996a95fe8662756a3fca96b762af741d13df81987bc68322f473acacbecbc6d9
   languageName: node
   linkType: hard
 
@@ -5046,6 +5055,13 @@ __metadata:
   bin:
     mkdirp: dist/cjs/src/bin.js
   checksum: 10c0/9f2b975e9246351f5e3a40dcfac99fcd0baa31fbfab615fe059fb11e51f10e4803c63de1f384c54d656e4db31d000e4767e9ef076a22e12a641357602e31d57d
+  languageName: node
+  linkType: hard
+
+"mp4box@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "mp4box@npm:2.3.0"
+  checksum: 10c0/f561f9d0a9bc00c986bcc2b8015eea01c6328db083d919fc0a9d92d7a691eebde904ee6f89b07cf2e7247bc2c3c36ea3184651cd8db73fa84ac577963f2a9bc4
   languageName: node
   linkType: hard
 

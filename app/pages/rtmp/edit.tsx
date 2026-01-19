@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Form, Input, Radio, Select } from "antd";
 import { SquarePlus } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "~/components/ui/button";
-import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
+import { EditSheet, type EditSheetImpl, type PFormProps } from "~/components/xui/edit-sheet";
 import { AddChannel, EditChannel } from "~/service/api/channel/channel";
 import type {
   AddChannelInput,
@@ -12,19 +12,18 @@ import type {
 } from "~/service/api/channel/state";
 import { FindDevices, findDevicesKey } from "~/service/api/device/device";
 
-// 适配旧的接口格式
+// RTMP 通道添加（app/stream 由后端自动设置，不需要前端传入）
 async function AddRTMP(data: {
-  app: string;
-  stream: string;
+  name?: string; // 备注（可选）
   is_auth_disabled: boolean;
   device_id?: string; // 设备 ID，空串表示新建设备
   device_name?: string; // 设备名称
 }) {
   const input: AddChannelInput = {
     type: "RTMP",
-    name: `${data.app}/${data.stream}`,
-    app: data.app,
-    stream: data.stream,
+    // 如果用户填了备注则用备注，否则由后端生成默认名称
+    name: data.name || data.device_name || "RTMP 通道",
+    // app/stream 由后端固定：app=push, stream=channel.id
     config: {
       is_auth_disabled: data.is_auth_disabled,
     },
@@ -41,13 +40,13 @@ async function AddRTMP(data: {
   return await AddChannel(input);
 }
 
+// RTMP 通道编辑（仅支持修改鉴权和备注）
 async function EditRTMP(
   id: string,
-  data: { app?: string; stream?: string; is_auth_disabled?: boolean }
+  data: { name?: string; is_auth_disabled?: boolean },
 ) {
   const input: EditChannelInput = {
-    app: data.app,
-    stream: data.stream,
+    name: data.name,
     config: {
       is_auth_disabled: data.is_auth_disabled,
     },
@@ -59,6 +58,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   const { t } = useTranslation("common");
   const [form] = Form.useForm();
   const [searchKey, setSearchKey] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // 查询所有设备列表
   const { data: devicesData } = useQuery({
@@ -94,7 +94,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
   // 当有搜索词且不匹配现有设备时，显示创建新设备选项
   // 新设备用空串作为 value，label 为输入的名称，只能有一个空串 value
   const hasExactMatch = deviceOptions.some(
-    (opt) => opt.label === searchKey && !opt.disabled
+    (opt) => opt.label === searchKey && !opt.disabled,
   );
 
   // 构建选项列表：如果有搜索词且无精确匹配，在最前面添加创建新设备选项
@@ -124,7 +124,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     value: string,
     option?:
       | { label: string; isNew?: boolean }
-      | { label: string; isNew?: boolean }[]
+      | { label: string; isNew?: boolean }[],
   ) => {
     const opt = Array.isArray(option) ? option[0] : option;
     const isNewDevice = opt?.isNew || value === "";
@@ -142,10 +142,59 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
     }
   };
 
+  const originalRef = React.useRef<EditSheetImpl | null>(null);
+  // 保存待编辑数据，用于设备列表加载完成后回显
+  const pendingEditData = React.useRef<any>(null);
+
+  // 当设备列表加载完成后，检查是否有待回显的数据
+  React.useEffect(() => {
+    if (pendingEditData.current && deviceOptions.length > 0) {
+      const values = pendingEditData.current;
+      const deviceName = deviceOptions.find(opt => opt.value === values.did)?.label || values.did || "";
+      form.setFieldsValue({
+        device_selector: deviceName,
+      });
+      pendingEditData.current = null;
+    }
+  }, [deviceOptions, form]);
+
+  // 暴露给父组件的方法
+  React.useImperativeHandle(ref, () => ({
+    edit: (values: any) => {
+      // 编辑模式时回显设备和备注
+      if (values?.id) {
+        setIsEditMode(true);
+        // 先设置基础字段
+        form.setFieldsValue({
+          id: values.id,
+          name: values.name || "",
+          is_auth_disabled: values.config?.is_auth_disabled ?? false,
+          device_id: values.did || "",
+        });
+        // 如果设备列表已加载，直接回显设备名称；否则保存待回显数据
+        if (deviceOptions.length > 0) {
+          const deviceName = deviceOptions.find(opt => opt.value === values.did)?.label || values.did || "";
+          form.setFieldsValue({ device_selector: deviceName });
+        } else {
+          pendingEditData.current = values;
+          // 先用 did 作为临时显示
+          form.setFieldsValue({ device_selector: values.did || "" });
+        }
+        // 调用原始的 edit 方法打开弹窗
+        originalRef.current?.edit(values);
+      } else {
+        setIsEditMode(false);
+        form.resetFields();
+        pendingEditData.current = null;
+        originalRef.current?.edit(values);
+      }
+    },
+  }));
+
   return (
     <EditSheet
       form={form}
-      ref={ref}
+      ref={originalRef}
       title={t("push_info")}
       description={t("push_info_desc")}
       onSuccess={{
@@ -156,6 +205,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         add: AddRTMP,
         edit: EditRTMP,
       }}
+      fieldsPerStep={3}
       trigger={
         <Button className="mx-3">
           <SquarePlus />
@@ -173,11 +223,11 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         <Input />
       </Form.Item>
 
-      {/* 第一步：设备选择 + 推流鉴权 */}
+      {/* 设备选择（编辑时禁用） */}
       <Form.Item
-        label="设备"
+        label={t("device")}
         name="device_selector"
-        rules={[{ required: true, message: "请选择或输入设备名称" }]}
+        rules={[{ required: !isEditMode, message: "请选择或输入设备名称" }]}
         tooltip="选择已有 RTMP 设备或输入新设备名称进行创建，国标/ONVIF 设备不可选"
       >
         <Select
@@ -188,6 +238,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           onSearch={setSearchKey}
           onChange={handleSelectChange}
           optionLabelProp="label"
+          disabled={isEditMode}
         >
           {allOptions.map((opt) => (
             <Select.Option
@@ -207,6 +258,12 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         </Select>
       </Form.Item>
 
+      {/* 备注 */}
+      <Form.Item label={t("remark")} name="name">
+        <Input placeholder={t("optional")} />
+      </Form.Item>
+
+      {/* 推流鉴权 */}
       <Form.Item
         label={t("push_auth")}
         name="is_auth_disabled"
@@ -217,30 +274,6 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           <Radio.Button value={false}>{t("enable")}</Radio.Button>
           <Radio.Button value={true}>{t("disable")}</Radio.Button>
         </Radio.Group>
-      </Form.Item>
-
-      {/* 第二步：应用名 + 流 ID */}
-      <Form.Item
-        label={t("app")}
-        name="app"
-        initialValue="live"
-        rules={[
-          { required: true, message: t("input_required") },
-          { min: 2, max: 20, message: t("app_name_length") },
-        ]}
-      >
-        <Input placeholder={t("input_app_name")} />
-      </Form.Item>
-
-      <Form.Item
-        label={t("stream")}
-        name="stream"
-        rules={[
-          { required: true, message: t("input_required") },
-          { min: 2, max: 20, message: t("stream_id_length") },
-        ]}
-      >
-        <Input placeholder={t("input_stream_id")} />
       </Form.Item>
     </EditSheet>
   );

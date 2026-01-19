@@ -206,8 +206,9 @@ export default function DeviceView() {
   // const [isShowFilter, setIsShowFilter] = useState(true);
 
   const options: CheckboxGroupProps<string>["options"] = [
-    { label: t("common:client_side"), value: "/nchannels" },
-    { label: t("common:management_side"), value: "/devices" },
+    { label: t("common:preview"), value: "/nchannels" },
+    { label: t("common:recordings"), value: "/playback" },
+    { label: t("common:management"), value: "/devices" },
   ];
 
   const discoverRef = useRef<any>(null);

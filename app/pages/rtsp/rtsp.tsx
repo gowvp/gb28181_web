@@ -91,10 +91,9 @@ export default function RTSPView() {
       title: t("pull_status"),
       key: "status",
       render: (_: unknown, record: RTSPItem) => {
-        const isOnline = record.is_online;
-        const color = isOnline ? "bg-green-300" : "bg-orange-300";
-        const text = isOnline ? t("pulling") : t("not_pulling");
-        const shortText = isOnline ? "ON" : "OFF";
+        const isBusy = record.is_online;
+        const color = isBusy ? "bg-green-300" : "bg-slate-300";
+        const text = isBusy ? t("pulling") : t("not_pulling");
 
         return (
           <Badge
@@ -102,16 +101,10 @@ export default function RTSPView() {
             className={`${color} text-white`}
             title={text}
           >
-            {shortText}
+            {text}
           </Badge>
         );
       },
-    },
-    {
-      title: t("media_server"),
-      key: "media_server_id",
-      render: (_: unknown, record: RTSPItem) =>
-        record.config?.media_server_id || "-",
     },
     {
       title: t("proxy_method"),
@@ -136,7 +129,7 @@ export default function RTSPView() {
         <div className="flex gap-0">
           <Button
             onClick={() => {
-              playRef.current?.open(record, { hideSidebar: true });
+              playRef.current?.open(record);
             }}
             variant="ghost"
             size="sm"
@@ -158,6 +151,9 @@ export default function RTSPView() {
                 enabled: record.config?.enabled,
                 timeout_s: record.config?.timeout_s,
                 source_url: record.config?.source_url,
+                // 设备信息：did 是设备 ID，device_selector 用于表单显示
+                device_id: record.did,
+                device_selector: record.did,
               })
             }
           >

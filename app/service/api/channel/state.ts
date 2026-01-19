@@ -56,6 +56,7 @@ export type ChannelItem = {
   type: string; // 通道类型 (GB28181/ONVIF/RTMP/RTSP)
   app: string; // 应用名 (RTMP/RTSP)
   stream: string; // 流 ID (RTMP/RTSP)
+  has_recording?: boolean; // 是否存在录像（查询时动态填充）
   config: StreamConfig; // 流配置 (RTMP/RTSP)
   created_at: string;
   updated_at: string;
@@ -165,6 +166,7 @@ export type DisableAIResponse = {
 
 /**
  * 添加通道请求参数 (RTMP/RTSP)
+ * app 和 stream 由后端自动设置：RTMP=push, RTSP=pull，stream=channel.id
  */
 export type AddChannelInput = {
   /** 通道类型 (RTMP/RTSP) */
@@ -175,10 +177,6 @@ export type AddChannelInput = {
   device_id?: string;
   /** 可选，device_id 不存在时用于创建新设备 */
   device_name?: string;
-  /** 应用名 */
-  app: string;
-  /** 流 ID */
-  stream: string;
   /** 流配置 */
   config?: StreamConfig;
 };

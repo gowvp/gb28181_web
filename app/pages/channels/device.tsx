@@ -72,7 +72,7 @@ export default function DeviceDetailView({
 
   // AI 检测开关状态，初始值从 channelExt 获取
   const [detectEnabled, setDetectEnabled] = useState(
-    channelExt?.enabled_ai ?? false,
+    channelExt?.enabled_ai ?? false
   );
 
   // 当 channelExt 变化时同步状态，确保切换通道时状态正确
@@ -223,10 +223,14 @@ export default function DeviceDetailView({
                   name: item.name,
                   ptztype: item.ptztype,
                   is_online: item.is_online,
+                  is_playing: false,
+                  type: item.type || "",
+                  app: item.app || "",
+                  stream: item.stream || "",
+                  has_recording: item.has_recording || false,
                   ext: item.ext,
                   created_at: "",
                   updated_at: "",
-                  is_playing: false,
                 }}
                 onClick={() => {
                   // 处理通道点击事件

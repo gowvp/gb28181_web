@@ -6,7 +6,8 @@ import {
   Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+// TanStack Router Devtools 已禁用，如需启用请取消注释
+// import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { App as AntdApp, ConfigProvider } from "antd";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
@@ -30,6 +31,8 @@ import RtspView from "~/pages/rtsp/rtsp";
 import AlertsView from "~/pages/alerts/alerts";
 import WallView from "~/pages/wall/wall";
 import ZonesView from "~/pages/zones/zones";
+import RecordingsView from "~/pages/recordings/recordings";
+import RecordingDetailView from "~/pages/recordings/detail";
 
 // 创建 QueryClient
 const queryClient = new QueryClient({
@@ -61,7 +64,7 @@ const rootRoute = createRootRoute({
         </ConfigProvider>
       </QueryClientProvider>
       <Toaster />
-      <TanStackRouterDevtools />
+      {/* TanStack Router Devtools 已禁用 */}
     </I18nextProvider>
   ),
 });
@@ -188,6 +191,28 @@ const zonesRoute = createRoute({
   }),
 });
 
+// 录像搜索参数类型
+type RecordingsSearch = {
+  cid?: string;
+  date?: string;
+};
+
+const recordingsRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/playback",
+  component: RecordingsView,
+});
+
+const recordingDetailRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: "/playback/detail",
+  component: RecordingDetailView,
+  validateSearch: (search: Record<string, unknown>): RecordingsSearch => ({
+    cid: typeof search.cid === "string" ? search.cid : undefined,
+    date: typeof search.date === "string" ? search.date : undefined,
+  }),
+});
+
 // 构建路由树
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -203,6 +228,8 @@ const routeTree = rootRoute.addChildren([
     gbSipRoute,
     wallRoute,
     zonesRoute,
+    recordingsRoute,
+    recordingDetailRoute,
   ]),
 ]);
 
@@ -226,6 +253,7 @@ function getBasepath(): string {
     "/gb",
     "/wall",
     "/zones",
+    "/playback",
   ];
   if (knownRoutes.some((route) => pathname.startsWith(route))) return "";
   return match[1];

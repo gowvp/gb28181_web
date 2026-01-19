@@ -56,7 +56,7 @@ function renderMarkdown(text: string): React.ReactNode {
       elements.push(
         <h3 key={i} className="text-base font-semibold mt-3 mb-1">
           {line.slice(4)}
-        </h3>
+        </h3>,
       );
       continue;
     }
@@ -64,7 +64,7 @@ function renderMarkdown(text: string): React.ReactNode {
       elements.push(
         <h2 key={i} className="text-lg font-semibold mt-3 mb-1">
           {line.slice(3)}
-        </h2>
+        </h2>,
       );
       continue;
     }
@@ -72,7 +72,7 @@ function renderMarkdown(text: string): React.ReactNode {
       elements.push(
         <h1 key={i} className="text-xl font-bold mt-3 mb-1">
           {line.slice(2)}
-        </h1>
+        </h1>,
       );
       continue;
     }
@@ -90,7 +90,7 @@ function renderMarkdown(text: string): React.ReactNode {
         <div key={i} className="flex gap-2 py-0.5">
           <span className="text-gray-400">•</span>
           <span>{renderInlineMarkdown(content)}</span>
-        </div>
+        </div>,
       );
       continue;
     }
@@ -100,7 +100,7 @@ function renderMarkdown(text: string): React.ReactNode {
         <div key={i} className="flex gap-2 py-0.5">
           <span className="text-gray-400">•</span>
           <span>{renderInlineMarkdown(line.slice(2))}</span>
-        </div>
+        </div>,
       );
       continue;
     }
@@ -115,7 +115,7 @@ function renderMarkdown(text: string): React.ReactNode {
     elements.push(
       <p key={i} className="py-0.5">
         {renderInlineMarkdown(line)}
-      </p>
+      </p>,
     );
   }
 
@@ -142,7 +142,7 @@ function renderInlineMarkdown(text: string): React.ReactNode {
       parts.push(
         <strong key={key++} className="font-semibold">
           {boldMatch[1]}
-        </strong>
+        </strong>,
       );
       remaining = remaining.slice(boldMatch.index! + boldMatch[0].length);
     } else if (codeMatch) {
@@ -155,7 +155,7 @@ function renderInlineMarkdown(text: string): React.ReactNode {
           className="px-1 py-0.5 bg-gray-100 rounded text-xs font-mono"
         >
           {codeMatch[1]}
-        </code>
+        </code>,
       );
       remaining = remaining.slice(codeMatch.index! + codeMatch[0].length);
     } else {
