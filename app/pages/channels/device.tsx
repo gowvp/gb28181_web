@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2, ScanSearch, Settings2 } from "lucide-react";
+import { ChevronDown, Loader2, ScanSearch, Settings2, Video } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -10,6 +10,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "~/components/ui/drawer";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import ToolTips from "~/components/xui/tips";
 import {
@@ -17,6 +23,8 @@ import {
   EnableAI,
   FindChannels,
   findChannelsKey,
+  type RecordMode,
+  SetRecordMode,
 } from "~/service/api/channel/channel";
 import type { Ext } from "~/service/api/channel/state";
 import { GetDevice, getDeviceKey } from "~/service/api/device/device";
@@ -75,10 +83,16 @@ export default function DeviceDetailView({
     channelExt?.enabled_ai ?? false
   );
 
+  // 录像模式状态，初始值从 channelExt 获取，空值默认为 always
+  const [recordMode, setRecordMode] = useState<RecordMode>(
+    channelExt?.record_mode || "always"
+  );
+
   // 当 channelExt 变化时同步状态，确保切换通道时状态正确
   useEffect(() => {
     setDetectEnabled(channelExt?.enabled_ai ?? false);
-  }, [channelExt?.enabled_ai]);
+    setRecordMode(channelExt?.record_mode || "always");
+  }, [channelExt?.enabled_ai, channelExt?.record_mode]);
 
   // 启用 AI 检测
   const { mutate: enableAIMutate, isPending: enablePending } = useMutation({
@@ -104,6 +118,18 @@ export default function DeviceDetailView({
     },
   });
 
+  // 设置录像模式
+  const { mutate: setRecordModeMutate, isPending: recordModePending } = useMutation({
+    mutationFn: (mode: RecordMode) => SetRecordMode(channelId!, mode),
+    onSuccess: (data) => {
+      setRecordMode(data.data.record_mode);
+      toast.success(t("common:record_mode_set_success"));
+    },
+    onError: (error) => {
+      ErrorHandle(error);
+    },
+  });
+
   const isAIPending = enablePending || disablePending;
 
   // 切换 AI 检测状态
@@ -118,10 +144,10 @@ export default function DeviceDetailView({
 
   return (
     <div className="w-[300px]">
-      {/* 检测和区域设置按钮 */}
+      {/* AI分析、录像设置和区域设置按钮 */}
       {channelId && (
         <>
-          <div className="flex gap-2 p-4 pb-3">
+          <div className="flex gap-2 p-4 pb-3 flex-wrap">
             <ToolTips
               tips={
                 detectEnabled
@@ -140,9 +166,49 @@ export default function DeviceDetailView({
                 ) : (
                   <ScanSearch className="w-4 h-4 mr-1" />
                 )}
-                {t("common:detection")}
+                {t("common:ai_analysis")}
               </Button>
             </ToolTips>
+
+            {/* 录像设置下拉按钮 */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={recordModePending}
+                >
+                  {recordModePending ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Video className="w-4 h-4 mr-1" />
+                  )}
+                  {t(`common:record_mode_${recordMode}`)}
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => setRecordModeMutate("always")}
+                  className={recordMode === "always" ? "bg-accent" : ""}
+                >
+                  {t("common:record_mode_always")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setRecordModeMutate("ai")}
+                  className={recordMode === "ai" ? "bg-accent" : ""}
+                >
+                  {t("common:record_mode_ai")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setRecordModeMutate("none")}
+                  className={recordMode === "none" ? "bg-accent" : ""}
+                >
+                  {t("common:record_mode_none")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <ToolTips tips={t("common:zone_settings")}>
               <Button size="sm" variant="outline" onClick={onZoneSettings}>
                 <Settings2 className="w-4 h-4 mr-1" />

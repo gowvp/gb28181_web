@@ -12,9 +12,11 @@ import type {
 } from "~/service/api/channel/state";
 import { FindDevices, findDevicesKey } from "~/service/api/device/device";
 
-// RTMP 通道添加（app/stream 由后端自动设置，不需要前端传入）
+// RTMP 通道添加（支持自定义 app/stream，不填则由后端自动设置）
 async function AddRTMP(data: {
   name?: string; // 备注（可选）
+  app?: string; // 应用名（可选，不填默认 push）
+  stream?: string; // 流 ID（可选，不填默认 channel.id）
   is_auth_disabled: boolean;
   device_id?: string; // 设备 ID，空串表示新建设备
   device_name?: string; // 设备名称
@@ -23,7 +25,9 @@ async function AddRTMP(data: {
     type: "RTMP",
     // 如果用户填了备注则用备注，否则由后端生成默认名称
     name: data.name || data.device_name || "RTMP 通道",
-    // app/stream 由后端固定：app=push, stream=channel.id
+    // 自定义 app/stream，空则由后端设置默认值
+    app: data.app || undefined,
+    stream: data.stream || undefined,
     config: {
       is_auth_disabled: data.is_auth_disabled,
     },
@@ -40,13 +44,15 @@ async function AddRTMP(data: {
   return await AddChannel(input);
 }
 
-// RTMP 通道编辑（仅支持修改鉴权和备注）
+// RTMP 通道编辑（支持修改鉴权、备注、app、stream）
 async function EditRTMP(
   id: string,
-  data: { name?: string; is_auth_disabled?: boolean },
+  data: { name?: string; app?: string; stream?: string; is_auth_disabled?: boolean },
 ) {
   const input: EditChannelInput = {
     name: data.name,
+    app: data.app,
+    stream: data.stream,
     config: {
       is_auth_disabled: data.is_auth_disabled,
     },
@@ -168,6 +174,8 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         form.setFieldsValue({
           id: values.id,
           name: values.name || "",
+          app: values.app || "",
+          stream: values.stream || "",
           is_auth_disabled: values.config?.is_auth_disabled ?? false,
           device_id: values.did || "",
         });
@@ -260,7 +268,28 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
 
       {/* 备注 */}
       <Form.Item label={t("remark")} name="name">
-        <Input placeholder={t("optional")} />
+        <Input placeholder={t("remark_placeholder")} />
+      </Form.Item>
+
+      {/* 应用名 */}
+      <Form.Item
+        label={t("app_name")}
+        name="app"
+        tooltip={t("app_tooltip")}
+        rules={[
+          { pattern: /^(?!rtp$)/i, message: t("app_validation_msg") },
+        ]}
+      >
+        <Input placeholder={t("app_placeholder")} />
+      </Form.Item>
+
+      {/* 流 ID */}
+      <Form.Item
+        label={t("stream_id")}
+        name="stream"
+        tooltip={t("stream_tooltip")}
+      >
+        <Input placeholder={t("stream_placeholder")} />
       </Form.Item>
 
       {/* 推流鉴权 */}

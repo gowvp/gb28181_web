@@ -69,3 +69,16 @@ export async function EnableAI(channelId: string) {
 export async function DisableAI(channelId: string) {
   return await POST<DisableAIResponse>(`/channels/${channelId}/ai/disable`);
 }
+
+// 录像模式管理 API
+export type RecordMode = "always" | "ai" | "none";
+
+export type SetRecordModeResponse = {
+  id: string;
+  record_mode: RecordMode;
+  message: string;
+};
+
+export async function SetRecordMode(channelId: string, mode: RecordMode) {
+  return await POST<SetRecordModeResponse>(`/channels/${channelId}/record_mode`, { mode });
+}

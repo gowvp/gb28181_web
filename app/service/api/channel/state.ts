@@ -92,6 +92,8 @@ export type Ext = {
   gb_version: string;
   /** 是否启用 AI 检测 */
   enabled_ai?: boolean;
+  /** 录像模式：always-一直录制，ai-按AI触发录制，none-不录制 */
+  record_mode?: "always" | "ai" | "none";
 };
 
 export type RefreshSnapshotResponse = {
@@ -166,7 +168,10 @@ export type DisableAIResponse = {
 
 /**
  * 添加通道请求参数 (RTMP/RTSP)
- * app 和 stream 由后端自动设置：RTMP=push, RTSP=pull，stream=channel.id
+ * 支持自定义 app 和 stream，不填则由后端自动设置默认值
+ * RTMP 默认：app=push, stream=channel.id
+ * RTSP 默认：app=pull, stream=channel.id
+ * 注意：app 不能为 rtp（GB28181 专用）
  */
 export type AddChannelInput = {
   /** 通道类型 (RTMP/RTSP) */
@@ -177,6 +182,10 @@ export type AddChannelInput = {
   device_id?: string;
   /** 可选，device_id 不存在时用于创建新设备 */
   device_name?: string;
+  /** 应用名（可选，RTMP 默认 push，RTSP 默认 pull） */
+  app?: string;
+  /** 流 ID（可选，默认为通道 ID） */
+  stream?: string;
   /** 流配置 */
   config?: StreamConfig;
 };

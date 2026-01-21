@@ -84,6 +84,12 @@
   "view_more": "View More",
   "play": "Play",
   "remark": "Remark",
+  "remark_placeholder": "Give it a simple and memorable name",
+  "app_tooltip": "Custom app name, leave blank defaults to push. Note: cannot use rtp (GB28181 exclusive)",
+  "app_validation_msg": "app cannot be rtp (GB28181 exclusive)",
+  "app_placeholder": "Leave blank defaults to: push",
+  "stream_tooltip": "Custom stream ID, leave blank defaults to channel ID",
+  "stream_placeholder": "Leave blank defaults to: Channel ID",
   "stream_id": "Stream ID",
   "pull_status": "Pull Status",
   "push_status": "Push Status",
@@ -271,5 +277,10 @@
   "all_day": "All Day",
   "morning": "Morning",
   "afternoon": "Afternoon",
-  "evening": "Evening"
+  "evening": "Evening",
+  "ai_analysis": "AI Analysis",
+  "record_mode_always": "Always Record",
+  "record_mode_ai": "AI Record",
+  "record_mode_none": "No Record",
+  "record_mode_set_success": "Recording mode set successfully"
 }

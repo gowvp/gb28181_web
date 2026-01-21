@@ -84,6 +84,12 @@
   "view_more": "查看更多",
   "play": "播放",
   "remark": "备注",
+  "remark_placeholder": "起个简单好记的名字",
+  "app_tooltip": "自定义应用名，留空默认为 push。注意：不能使用 rtp（GB28181 专用）",
+  "app_validation_msg": "app 不能为 rtp（GB28181 专用）",
+  "app_placeholder": "留空默认: push",
+  "stream_tooltip": "自定义流 ID，留空默认为通道 ID",
+  "stream_placeholder": "留空默认: 通道ID",
   "stream_id": "流 ID",
   "pull_status": "拉流状态",
   "push_status": "推流状态",
@@ -270,5 +276,10 @@
   "all_day": "全天",
   "morning": "上午",
   "afternoon": "下午",
-  "evening": "晚上"
+  "evening": "晚上",
+  "ai_analysis": "AI 分析",
+  "record_mode_always": "全录制",
+  "record_mode_ai": "AI录制",
+  "record_mode_none": "不录制",
+  "record_mode_set_success": "录像模式设置成功"
 }
