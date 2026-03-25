@@ -293,7 +293,7 @@ function DeviceCard({
                 </span>
               </span>
 
-              <Link to="/channels" search={{ device_id: device.device_id }}>
+              <Link to="/channels" search={{ did: device.id }}>
                 <Button
                   variant="outlined"
                   size="middle"

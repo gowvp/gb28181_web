@@ -152,7 +152,7 @@ export default function DeviceView() {
               } else {
                 navigate({
                   to: "/channels",
-                  search: { device_id: record.device_id },
+                  search: { did: record.id },
                 });
               }
             }}

@@ -3,14 +3,12 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   return {
     plugins: [
       react(),
-      tsconfigPaths(),
       tailwindcss(),
       // 生成包分析报告（运行 yarn build 后查看 stats.html）
       mode === "production" &&
@@ -29,27 +27,47 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      rollupOptions: {
+      rolldownOptions: {
         output: {
-          // 手动分割代码块，优化加载性能
-          manualChunks: {
-            // React 核心
-            "vendor-react": ["react", "react-dom"],
-            // 路由和数据获取
-            "vendor-router": [
-              "@tanstack/react-router",
-              "@tanstack/react-query",
+          // Vite 8 使用 Rolldown 的 codeSplitting 替代 manualChunks
+          codeSplitting: {
+            groups: [
+              {
+                name: "vendor-react",
+                test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+                priority: 100,
+              },
+              {
+                name: "vendor-antd",
+                test: /[\\/]node_modules[\\/](antd|@ant-design)[\\/]/,
+                priority: 90,
+              },
+              {
+                name: "vendor-router",
+                test: /[\\/]node_modules[\\/]@tanstack[\\/](react-router|react-query)[\\/]/,
+                priority: 80,
+              },
+              {
+                name: "vendor-charts",
+                test: /[\\/]node_modules[\\/]recharts[\\/]/,
+                priority: 70,
+              },
+              {
+                name: "vendor-flow",
+                test: /[\\/]node_modules[\\/]@xyflow[\\/]/,
+                priority: 70,
+              },
+              {
+                name: "vendor-canvas",
+                test: /[\\/]node_modules[\\/](konva|react-konva)[\\/]/,
+                priority: 70,
+              },
+              {
+                name: "vendor-i18n",
+                test: /[\\/]node_modules[\\/](i18next|react-i18next)[\\/]/,
+                priority: 70,
+              },
             ],
-            // Ant Design（最大的包，单独分割）
-            "vendor-antd": ["antd", "@ant-design/icons"],
-            // 图表库
-            "vendor-charts": ["recharts"],
-            // 流程图
-            "vendor-flow": ["@xyflow/react"],
-            // Canvas 绑画
-            "vendor-canvas": ["konva", "react-konva"],
-            // 国际化
-            "vendor-i18n": ["i18next", "react-i18next"],
           },
         },
       },

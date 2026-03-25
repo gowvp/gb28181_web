@@ -43,6 +43,13 @@ function Player({ ref }: PlayerProps) {
       loadingTimeout: 10,
       heartTimeout: 10,
       videoBuffer: 0.6,
+      loadingTimeoutReplayTimes: 66666,
+      loadingTimeoutReplay:true,
+      heartTimeoutReplayTimes:66666,
+      heartTimeoutReplay:true,
+      hotKey:true,
+      keepScreenOn:true,
+
       isResize: true,
       isFlv: true, // 启用 flv 协议解析
       operateBtns: {

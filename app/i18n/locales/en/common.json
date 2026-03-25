@@ -279,8 +279,13 @@
   "afternoon": "Afternoon",
   "evening": "Evening",
   "ai_analysis": "AI Analysis",
+  "record_mode": "Record Mode",
   "record_mode_always": "Always Record",
   "record_mode_ai": "AI Record",
   "record_mode_none": "No Record",
-  "record_mode_set_success": "Recording mode set successfully"
+  "record_mode_set_success": "Recording mode set successfully",
+  "record_short_ai": "AI",
+  "record_short_always": "All",
+  "record_short_none": "Off",
+  "action": "Action"
 }

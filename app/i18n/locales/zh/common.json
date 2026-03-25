@@ -278,8 +278,13 @@
   "afternoon": "下午",
   "evening": "晚上",
   "ai_analysis": "AI 分析",
+  "record_mode": "录像模式",
   "record_mode_always": "全录制",
   "record_mode_ai": "AI录制",
   "record_mode_none": "不录制",
-  "record_mode_set_success": "录像模式设置成功"
+  "record_mode_set_success": "录像模式设置成功",
+  "record_short_ai": "AI",
+  "record_short_always": "全时",
+  "record_short_none": "无",
+  "action": "操作"
 }

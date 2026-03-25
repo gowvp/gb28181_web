@@ -1,7 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
+import { Radio } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { RefreshCcw, SquarePlay } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import useDebounce from "~/components/util/debounce";
@@ -9,13 +12,53 @@ import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import { toastSuccess } from "~/components/xui/toast";
 import { cn } from "~/lib/utils";
 import ChannelDetailView from "~/pages/channels/detail";
-import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
+import {
+  FindChannels,
+  findChannelsKey,
+  type RecordMode,
+  SetRecordMode,
+} from "~/service/api/channel/channel";
 import type { ChannelItem } from "~/service/api/channel/state";
 import { RefreshCatalog } from "~/service/api/device/device";
 import { ErrorHandle } from "~/service/config/error";
 
+/**
+ * 录像模式 RadioButton - 独立组件避免整表重渲染
+ */
+function RecordModeRadio({ record }: { record: ChannelItem }) {
+  const { t } = useTranslation("common");
+  const currentMode = record.ext?.record_mode || "always";
+  const [mode, setMode] = useState<RecordMode>(currentMode);
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (newMode: RecordMode) => SetRecordMode(record.id, newMode),
+    onSuccess: (data) => {
+      setMode(data.data.record_mode);
+      toast.success(t("record_mode_set_success"));
+    },
+    onError: ErrorHandle,
+  });
+
+  return (
+    <Radio.Group
+      size="small"
+      value={mode}
+      onChange={(e) => mutate(e.target.value)}
+      disabled={isPending}
+      optionType="button"
+      buttonStyle="solid"
+      options={[
+        { label: t("record_short_always"), value: "always" },
+        { label: t("record_short_ai"), value: "ai" },
+        { label: t("record_short_none"), value: "none" },
+      ]}
+    />
+  );
+}
+
 export default function ChannelsView() {
   // =============== 状态定义 ===============
+  const { t } = useTranslation("common");
 
   // refs
   // const editFromRef = useRef<EditSheetImpl>(null);
@@ -23,7 +66,7 @@ export default function ChannelsView() {
   const tableRef = useRef<TableQueryRef<ChannelItem>>(null);
 
   const params = new URLSearchParams(window.location.search);
-  const device_id = params.get("device_id");
+  const did = params.get("did");
 
   // =============== 表格列定义 ===============
   const columns: ColumnsType<ChannelItem> = [
@@ -108,13 +151,18 @@ export default function ChannelsView() {
     //   },
     // },
     {
-      title: "操作",
+      title: t("record_mode"),
+      key: "record_mode",
+      width: 140,
+      render: (_, record) => <RecordModeRadio record={record} />,
+    },
+    {
+      title: t("action"),
       key: "action",
       render: (_, record) => (
         <div className="flex gap-0">
           <Button
             onClick={() => {
-              // 将 channel/state 的 ChannelItem 转换为 device/state 的 ChannelItem 格式
               detailRef.current?.open({
                 id: record.id,
                 did: record.did,
@@ -133,24 +181,8 @@ export default function ChannelsView() {
             size="sm"
           >
             <SquarePlay className="h-4 w-4 mr-1" />
-            播放
+            {t("play")}
           </Button>
-
-          {/* <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              editFromRef.current?.edit({
-                id: record.id,
-                app: record.app,
-                stream: record.stream,
-                is_auth_disabled: record.is_auth_disabled,
-              })
-            }
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            编辑
-          </Button> */}
         </div>
       ),
     },
@@ -182,7 +214,7 @@ export default function ChannelsView() {
             // variant="ghost"
             size="sm"
             onClick={() => {
-              if (device_id) refreshCatalogMutate(device_id);
+              if (did) refreshCatalogMutate(did);
             }}
             disabled={refreshCatalogIsPending}
           >
@@ -217,7 +249,7 @@ export default function ChannelsView() {
           queryKey={findChannelsKey}
           fetchFn={FindChannels}
           columns={columns}
-          defaultFilters={{ page: 1, size: 10, device_id: device_id ?? "" }}
+          defaultFilters={{ page: 1, size: 10, did: did ?? "" }}
         />
 
         {/* 播放器 */}

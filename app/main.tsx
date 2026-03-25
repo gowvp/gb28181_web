@@ -122,7 +122,7 @@ const alertsRoute = createRoute({
 
 // 搜索参数类型定义
 type ChannelsSearch = {
-  device_id?: string;
+  did?: string;
 };
 
 type ZonesSearch = {
@@ -159,8 +159,7 @@ const channelsRoute = createRoute({
   path: "/channels",
   component: ChannelView,
   validateSearch: (search: Record<string, unknown>): ChannelsSearch => ({
-    device_id:
-      typeof search.device_id === "string" ? search.device_id : undefined,
+    did: typeof search.did === "string" ? search.did : undefined,
   }),
 });
 
