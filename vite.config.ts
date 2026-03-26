@@ -77,18 +77,18 @@ export default defineConfig(({ mode }) => {
         // 所有 API 请求统一使用 /api 前缀
         // 前端调用 /api/xxx，代理到后端的 /xxx
         "/api": {
-          target: "http://192.168.3.103:15123",
+          target: "http://127.0.0.1:15123",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
         // 录像 m3u8 播放列表（不走 /api 前缀，直接代理）
         "/recordings/channels": {
-          target: "http://192.168.3.103:15123",
+          target: "http://127.0.0.1:15123",
           changeOrigin: true,
         },
         // 录像静态文件
         "/static/recordings": {
-          target: "http://192.168.3.103:15123",
+          target: "http://127.0.0.1:15123",
           changeOrigin: true,
         },
       },
