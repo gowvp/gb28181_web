@@ -1,76 +1,53 @@
-/**
- * MP4 顺序播放器组件
- *
- * 使用原生 video 标签顺序播放 MP4 文件列表
- * 解决国标设备 G.711 音频无法通过 HLS.js/MSE 播放的问题
- * 浏览器原生 video 标签可以播放含有不支持音频编码的视频（只是没有声音）
- */
-
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
-// ==================== 类型定义 ====================
-
 export interface VideoSegment {
-  /** 唯一标识 */
   id: number | string;
-  /** MP4 文件 URL */
   url: string;
-  /** 时长（秒） */
   duration: number;
-  /** 开始时间戳（毫秒） */
   startTime: number;
+  endTime?: number;
 }
 
 export interface Mp4PlayerRef {
-  /** 开始播放 */
   play: () => void;
-  /** 暂停播放 */
   pause: () => void;
-  /** 继续播放 */
   resume: () => void;
-  /** 停止播放 */
   stop: () => void;
-  /** 跳转到指定时间（秒，相对于整个播放列表） */
-  seek: (time: number) => void;
-  /** 设置播放速率 */
+  seek: (time: number, autoPlay?: boolean) => void;
   setPlaybackRate: (rate: number) => void;
-  /** 获取当前播放时间（秒，相对于整个播放列表） */
   getCurrentTime: () => number;
-  /** 获取总时长（秒） */
   getDuration: () => number;
-  /** 是否正在播放 */
   isPlaying: () => boolean;
-  /** 设置静音 */
   setMuted: (muted: boolean) => void;
+  setVolume: (volume: number) => void;
+  getVolume: () => number;
 }
 
 export interface Mp4PlayerProps {
-  /** 视频片段列表 */
   segments: VideoSegment[];
-  /** 时间更新回调（毫秒） */
-  onTimeUpdate?: (timeMs: number) => void;
-  /** 总时长变化回调（毫秒） */
+  onTimeUpdate?: (timeSeconds: number) => void;
   onDurationChange?: (durationMs: number) => void;
-  /** 播放状态变化回调 */
   onPlayStateChange?: (playing: boolean) => void;
-  /** 错误回调 */
   onError?: (error: Error) => void;
-  /** 播放结束回调 */
+  onSegmentError?: (segment: VideoSegment, error: Error) => void;
   onEnded?: () => void;
-  /** 自定义样式类名 */
   className?: string;
-  /** 是否自动播放 */
   autoPlay?: boolean;
+  controls?: boolean;
 }
 
-// ==================== 组件实现 ====================
+type PendingSeek = {
+  offsetSeconds: number;
+  autoPlay: boolean;
+};
 
 const Mp4Player = forwardRef<Mp4PlayerRef, Mp4PlayerProps>(
   (
@@ -80,205 +57,317 @@ const Mp4Player = forwardRef<Mp4PlayerRef, Mp4PlayerProps>(
       onDurationChange,
       onPlayStateChange,
       onError,
+      onSegmentError,
       onEnded,
       className = "",
       autoPlay = false,
+      controls = false,
     },
-    ref
+    ref,
   ) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [playbackRate, setPlaybackRateState] = useState(1);
-    // 累计已播放的时长（用于计算总进度）
+    const currentIndexRef = useRef(0);
     const accumulatedTimeRef = useRef(0);
+    const pendingSeekRef = useRef<PendingSeek | null>(null);
+    const isPlayingRef = useRef(false);
+    const playbackRateRef = useRef(1);
+    const mutedRef = useRef(false);
+    const volumeRef = useRef(1);
+    const onTimeUpdateRef = useRef(onTimeUpdate);
+    const onDurationChangeRef = useRef(onDurationChange);
+    const onPlayStateChangeRef = useRef(onPlayStateChange);
+    const onErrorRef = useRef(onError);
+    const onSegmentErrorRef = useRef(onSegmentError);
+    const onEndedRef = useRef(onEnded);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isPlayingState, setIsPlayingState] = useState(false);
 
-    // 计算总时长
-    const totalDuration = segments.reduce((sum, seg) => sum + seg.duration, 0);
-
-    // 通知总时长变化
     useEffect(() => {
-      onDurationChange?.(totalDuration * 1000);
-    }, [totalDuration, onDurationChange]);
+      onTimeUpdateRef.current = onTimeUpdate;
+    }, [onTimeUpdate]);
 
-    // 计算指定索引之前的累计时长
-    const getAccumulatedTime = useCallback(
-      (index: number) => {
-        let time = 0;
-        for (let i = 0; i < index && i < segments.length; i++) {
-          time += segments[i].duration;
-        }
-        return time;
-      },
-      [segments]
+    useEffect(() => {
+      onDurationChangeRef.current = onDurationChange;
+    }, [onDurationChange]);
+
+    useEffect(() => {
+      onPlayStateChangeRef.current = onPlayStateChange;
+    }, [onPlayStateChange]);
+
+    useEffect(() => {
+      onErrorRef.current = onError;
+    }, [onError]);
+
+    useEffect(() => {
+      onSegmentErrorRef.current = onSegmentError;
+    }, [onSegmentError]);
+
+    useEffect(() => {
+      onEndedRef.current = onEnded;
+    }, [onEnded]);
+
+    const emitPlayState = useCallback((playing: boolean) => {
+      onPlayStateChangeRef.current?.(playing);
+    }, []);
+
+    const emitError = useCallback((error: Error) => {
+      onErrorRef.current?.(error);
+    }, []);
+
+    const emitSegmentError = useCallback((segment: VideoSegment, error: Error) => {
+      onSegmentErrorRef.current?.(segment, error);
+    }, []);
+
+    const emitEnded = useCallback(() => {
+      onEndedRef.current?.();
+    }, []);
+
+    const totalDuration = useMemo(
+      () => segments.reduce((sum, segment) => sum + Math.max(segment.duration, 0), 0),
+      [segments],
     );
 
-    // 播放当前片段
-    const playCurrentSegment = useCallback(() => {
-      if (!videoRef.current || segments.length === 0) return;
-      if (currentIndex >= segments.length) {
-        setIsPlaying(false);
-        onPlayStateChange?.(false);
-        onEnded?.();
+    const segmentsSignature = useMemo(
+      () =>
+        segments
+          .map((segment) => `${segment.id}:${segment.url}:${segment.duration}:${segment.startTime}:${segment.endTime ?? ""}`)
+          .join("|"),
+      [segments],
+    );
+
+    useEffect(() => {
+      onDurationChangeRef.current?.(totalDuration * 1000);
+    }, [totalDuration]);
+
+    const getAccumulatedTime = useCallback(
+      (index: number) => {
+        let sum = 0;
+        for (let i = 0; i < index && i < segments.length; i += 1) {
+          sum += Math.max(segments[i].duration, 0);
+        }
+        return sum;
+      },
+      [segments],
+    );
+
+    const syncMediaState = useCallback(() => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.playbackRate = playbackRateRef.current;
+      video.muted = mutedRef.current;
+      video.volume = volumeRef.current;
+    }, []);
+
+    const applyPendingSeek = useCallback(() => {
+      const video = videoRef.current;
+      const pending = pendingSeekRef.current;
+      const segment = segments[currentIndexRef.current];
+      if (!video || !pending || !segment || video.readyState < 1) {
         return;
       }
 
-      const segment = segments[currentIndex];
-      accumulatedTimeRef.current = getAccumulatedTime(currentIndex);
+      syncMediaState();
 
-      videoRef.current.src = segment.url;
-      videoRef.current.playbackRate = playbackRate;
-      videoRef.current
+      const mediaDuration = Number.isFinite(video.duration) && video.duration > 0
+        ? video.duration
+        : Math.max(segment.duration, 0);
+      const clampedOffset = Math.min(Math.max(pending.offsetSeconds, 0), mediaDuration || 0);
+
+      try {
+        video.currentTime = Number.isFinite(clampedOffset) ? clampedOffset : 0;
+      } catch {
+        video.currentTime = 0;
+      }
+
+      pendingSeekRef.current = null;
+
+      if (pending.autoPlay) {
+        video
+          .play()
+          .then(() => {
+            isPlayingRef.current = true;
+            setIsPlayingState(true);
+            emitPlayState(true);
+          })
+          .catch((error: unknown) => {
+            emitError(toError(error));
+          });
+      }
+    }, [emitError, emitPlayState, segments, syncMediaState]);
+
+    const loadSegment = useCallback(
+      (index: number, offsetSeconds = 0, autoPlayNext = false) => {
+        const video = videoRef.current;
+        const segment = segments[index];
+        if (!video || !segment) return;
+
+        currentIndexRef.current = index;
+        setCurrentIndex(index);
+        accumulatedTimeRef.current = getAccumulatedTime(index);
+        pendingSeekRef.current = {
+          offsetSeconds,
+          autoPlay: autoPlayNext,
+        };
+
+        syncMediaState();
+
+        if (video.src !== resolveUrl(segment.url)) {
+          video.src = segment.url;
+          video.load();
+          return;
+        }
+
+        applyPendingSeek();
+      },
+      [applyPendingSeek, getAccumulatedTime, segments, syncMediaState],
+    );
+
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video) return;
+
+      if (segments.length === 0) {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        currentIndexRef.current = 0;
+        accumulatedTimeRef.current = 0;
+        pendingSeekRef.current = null;
+        isPlayingRef.current = false;
+        setCurrentIndex(0);
+        setIsPlayingState(false);
+        emitPlayState(false);
+        return;
+      }
+
+      const previousIndex = Math.min(currentIndexRef.current, segments.length - 1);
+      loadSegment(previousIndex, 0, autoPlay && previousIndex === 0);
+    }, [autoPlay, emitPlayState, loadSegment, segments.length, segmentsSignature]);
+
+    const play = useCallback(() => {
+      const video = videoRef.current;
+      if (!video || segments.length === 0) return;
+
+      syncMediaState();
+
+      if (!video.src) {
+        loadSegment(0, 0, true);
+        return;
+      }
+
+      video
         .play()
         .then(() => {
-          setIsPlaying(true);
-          onPlayStateChange?.(true);
+          isPlayingRef.current = true;
+          setIsPlayingState(true);
+          emitPlayState(true);
         })
-        .catch((e) => {
-          onError?.(e);
+        .catch((error: unknown) => {
+          emitError(toError(error));
         });
-    }, [
-      currentIndex,
-      segments,
-      playbackRate,
-      getAccumulatedTime,
-      onPlayStateChange,
-      onEnded,
-      onError,
-    ]);
+    }, [emitError, emitPlayState, loadSegment, segments.length, syncMediaState]);
 
-    // 自动播放
-    useEffect(() => {
-      if (autoPlay && segments.length > 0) {
-        playCurrentSegment();
-      }
-    }, [autoPlay, segments.length]); // 只在初始化时触发
-
-    // 处理视频结束，播放下一个
-    const handleEnded = useCallback(() => {
-      if (currentIndex < segments.length - 1) {
-        setCurrentIndex((prev) => prev + 1);
-      } else {
-        setIsPlaying(false);
-        onPlayStateChange?.(false);
-        onEnded?.();
-      }
-    }, [currentIndex, segments.length, onPlayStateChange, onEnded]);
-
-    // 当索引变化时播放新片段
-    useEffect(() => {
-      if (isPlaying && currentIndex < segments.length) {
-        playCurrentSegment();
-      }
-    }, [currentIndex]); // 仅监听索引变化
-
-    // 时间更新
-    const handleTimeUpdate = useCallback(() => {
-      if (videoRef.current) {
-        const currentTime =
-          accumulatedTimeRef.current + videoRef.current.currentTime;
-        onTimeUpdate?.(currentTime * 1000);
-      }
-    }, [onTimeUpdate]);
-
-    // 播放
-    const play = useCallback(() => {
-      if (segments.length === 0) return;
-      if (currentIndex >= segments.length) {
-        setCurrentIndex(0);
-      }
-      playCurrentSegment();
-    }, [segments.length, currentIndex, playCurrentSegment]);
-
-    // 暂停
     const pause = useCallback(() => {
       videoRef.current?.pause();
-      setIsPlaying(false);
-      onPlayStateChange?.(false);
-    }, [onPlayStateChange]);
+      isPlayingRef.current = false;
+      setIsPlayingState(false);
+      emitPlayState(false);
+    }, [emitPlayState]);
 
-    // 继续
     const resume = useCallback(() => {
-      videoRef.current
-        ?.play()
-        .then(() => {
-          setIsPlaying(true);
-          onPlayStateChange?.(true);
-        })
-        .catch(console.error);
-    }, [onPlayStateChange]);
+      const video = videoRef.current;
+      if (!video || segments.length === 0) return;
 
-    // 停止
-    const stop = useCallback(() => {
-      if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.src = "";
+      syncMediaState();
+
+      if (!video.src) {
+        loadSegment(currentIndexRef.current, 0, true);
+        return;
       }
-      setCurrentIndex(0);
-      setIsPlaying(false);
-      accumulatedTimeRef.current = 0;
-      onPlayStateChange?.(false);
-    }, [onPlayStateChange]);
 
-    // 跳转（相对于整个播放列表的时间）
+      video
+        .play()
+        .then(() => {
+          isPlayingRef.current = true;
+          setIsPlayingState(true);
+          emitPlayState(true);
+        })
+        .catch((error: unknown) => {
+          emitError(toError(error));
+        });
+    }, [emitError, emitPlayState, loadSegment, segments.length, syncMediaState]);
+
+    const stop = useCallback(() => {
+      const video = videoRef.current;
+      if (!video) return;
+      video.pause();
+      isPlayingRef.current = false;
+      setIsPlayingState(false);
+      emitPlayState(false);
+      if (segments.length > 0) {
+        loadSegment(0, 0, false);
+      } else {
+        video.removeAttribute("src");
+        video.load();
+      }
+    }, [emitPlayState, loadSegment, segments.length]);
+
     const seek = useCallback(
-      (time: number) => {
+      (time: number, autoPlayNext = false) => {
+        if (segments.length === 0) return;
+
+        const safeTime = Math.min(Math.max(time, 0), totalDuration);
         let accumulated = 0;
-        for (let i = 0; i < segments.length; i++) {
-          if (time < accumulated + segments[i].duration) {
-            // 找到目标片段
-            const offsetInSegment = time - accumulated;
-            if (i !== currentIndex) {
-              setCurrentIndex(i);
-              accumulatedTimeRef.current = accumulated;
-              // 等待视频加载后再 seek
-              setTimeout(() => {
-                if (videoRef.current) {
-                  videoRef.current.currentTime = offsetInSegment;
-                }
-              }, 100);
-            } else if (videoRef.current) {
-              videoRef.current.currentTime = offsetInSegment;
+
+        for (let index = 0; index < segments.length; index += 1) {
+          const segment = segments[index];
+          const nextAccumulated = accumulated + Math.max(segment.duration, 0);
+          const isLast = index === segments.length - 1;
+          if (safeTime < nextAccumulated || isLast) {
+            const offsetSeconds = Math.max(safeTime - accumulated, 0);
+            loadSegment(index, offsetSeconds, autoPlayNext);
+            if (index === currentIndexRef.current && videoRef.current?.readyState) {
+              applyPendingSeek();
             }
             return;
           }
-          accumulated += segments[i].duration;
+          accumulated = nextAccumulated;
         }
       },
-      [segments, currentIndex]
+      [applyPendingSeek, loadSegment, segments, totalDuration],
     );
 
-    // 设置播放速率
     const setPlaybackRate = useCallback((rate: number) => {
-      setPlaybackRateState(rate);
+      playbackRateRef.current = Number.isFinite(rate) && rate > 0 ? rate : 1;
       if (videoRef.current) {
-        videoRef.current.playbackRate = rate;
+        videoRef.current.playbackRate = playbackRateRef.current;
       }
     }, []);
 
-    // 获取当前时间
     const getCurrentTime = useCallback(() => {
       return accumulatedTimeRef.current + (videoRef.current?.currentTime ?? 0);
     }, []);
 
-    // 获取总时长
-    const getDuration = useCallback(() => {
-      return totalDuration;
-    }, [totalDuration]);
+    const getDuration = useCallback(() => totalDuration, [totalDuration]);
 
-    // 是否正在播放
-    const getIsPlaying = useCallback(() => {
-      return isPlaying;
-    }, [isPlaying]);
+    const isPlaying = useCallback(() => isPlayingRef.current, []);
 
-    // 设置静音
     const setMuted = useCallback((muted: boolean) => {
+      mutedRef.current = muted;
       if (videoRef.current) {
         videoRef.current.muted = muted;
       }
     }, []);
 
-    // 暴露方法
+    const setVolume = useCallback((volume: number) => {
+      volumeRef.current = Math.min(Math.max(volume, 0), 1);
+      if (videoRef.current) {
+        videoRef.current.volume = volumeRef.current;
+      }
+    }, []);
+
+    const getVolume = useCallback(() => volumeRef.current, []);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -290,28 +379,54 @@ const Mp4Player = forwardRef<Mp4PlayerRef, Mp4PlayerProps>(
         setPlaybackRate,
         getCurrentTime,
         getDuration,
-        isPlaying: getIsPlaying,
+        isPlaying,
         setMuted,
+        setVolume,
+        getVolume,
       }),
-      [
-        play,
-        pause,
-        resume,
-        stop,
-        seek,
-        setPlaybackRate,
-        getCurrentTime,
-        getDuration,
-        getIsPlaying,
-        setMuted,
-      ]
+      [getCurrentTime, getDuration, getVolume, isPlaying, pause, play, resume, seek, setMuted, setPlaybackRate, setVolume, stop],
     );
 
-    const handleError = useCallback(() => {
-      if (videoRef.current?.error) {
-        onError?.(new Error(videoRef.current.error.message || "Video error"));
+    const handleLoadedMetadata = useCallback(() => {
+      applyPendingSeek();
+    }, [applyPendingSeek]);
+
+    const handleTimeUpdate = useCallback(() => {
+      onTimeUpdateRef.current?.(getCurrentTime());
+    }, [getCurrentTime]);
+
+    const handleEnded = useCallback(() => {
+      if (currentIndexRef.current < segments.length - 1) {
+        loadSegment(currentIndexRef.current + 1, 0, true);
+        return;
       }
-    }, [onError]);
+
+      isPlayingRef.current = false;
+      setIsPlayingState(false);
+      emitPlayState(false);
+      emitEnded();
+    }, [emitEnded, emitPlayState, loadSegment, segments.length]);
+
+    const handleError = useCallback(() => {
+      const video = videoRef.current;
+      const currentSegment = segments[currentIndexRef.current];
+      const baseMessage = video?.error?.message || "Video error";
+      const error = new Error(
+        currentSegment
+          ? `片段播放失败: ${currentSegment.url} - ${baseMessage}`
+          : baseMessage,
+      );
+
+      if (currentSegment) {
+        emitSegmentError(currentSegment, error);
+      }
+
+      if (currentIndexRef.current < segments.length - 1) {
+        loadSegment(currentIndexRef.current + 1, 0, isPlayingRef.current);
+      }
+
+      emitError(error);
+    }, [emitError, emitSegmentError, loadSegment, segments]);
 
     return (
       <video
@@ -319,22 +434,40 @@ const Mp4Player = forwardRef<Mp4PlayerRef, Mp4PlayerProps>(
         className={className}
         style={{ width: "100%", height: "100%", backgroundColor: "#000" }}
         playsInline
+        controls={controls}
+        preload="metadata"
+        onLoadedMetadata={handleLoadedMetadata}
+        onCanPlay={applyPendingSeek}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
         onError={handleError}
         onPlay={() => {
-          setIsPlaying(true);
-          onPlayStateChange?.(true);
+          isPlayingRef.current = true;
+          setIsPlayingState(true);
+          emitPlayState(true);
         }}
         onPause={() => {
-          setIsPlaying(false);
-          onPlayStateChange?.(false);
+          if (!videoRef.current?.ended) {
+            isPlayingRef.current = false;
+            setIsPlayingState(false);
+            emitPlayState(false);
+          }
         }}
+        data-playing={isPlayingState ? "true" : "false"}
       />
     );
-  }
+  },
 );
 
 Mp4Player.displayName = "Mp4Player";
+
+function resolveUrl(url: string): string {
+  if (typeof window === "undefined") return url;
+  return new URL(url, window.location.href).href;
+}
+
+function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
 
 export default Mp4Player;
