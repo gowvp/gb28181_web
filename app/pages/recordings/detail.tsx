@@ -1,31 +1,25 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Button, DatePicker, Segmented, Select } from "antd";
+import { Button, DatePicker, Select } from "antd";
 import dayjs from "dayjs";
 import {
   ArrowLeft,
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Maximize2,
-  Minimize2,
+  Expand,
   Pause,
   Play,
-  RotateCcw,
-  RotateCw,
-  Video,
+  Shrink,
+  SkipBack,
+  SkipForward,
   Volume2,
   VolumeX,
-  X,
 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useTranslation } from "react-i18next";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Mp4Player, { type Mp4PlayerRef } from "~/components/mp4-player";
+import DayPlaybackTimeline from "~/components/timeline/day-playback-timeline";
+import { cn } from "~/lib/utils";
 import {
   FindDevicesChannels,
   findDevicesChannelsKey,
@@ -34,132 +28,104 @@ import {
   FindRecordings,
   findRecordingsKey,
   GetMonthly,
-  GetRecordingMp4Url,
   monthlyKey,
 } from "~/service/api/recording/recording";
 import type { Recording } from "~/service/api/recording/state";
-import { cn } from "~/lib/utils";
+import {
+  buildMergedTimeRanges,
+  buildPlaybackSegments,
+  continuousSecondsToAbsoluteMs,
+  formatBytes,
+  formatDuration,
+  getSegmentsTotalDuration,
+  locateSegmentByAbsoluteMs,
+  normalizeRecordings,
+} from "./time-mapping";
 
 const PAGE_SIZE = 30;
 
-/**
- * 录像详情页面
- * 默认显示网格视图，鼠标悬停自动播放预览，点击弹窗放大观看
- * 使用分页懒加载优化性能
- */
+type SegmentIssue = {
+  url: string;
+  startMs: number;
+  endMs: number;
+  rawMessage: string;
+};
+
 export default function RecordingDetailView() {
-  const { t } = useTranslation("common");
   const navigate = useNavigate();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<Mp4PlayerRef>(null);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
 
-  // 从 URL 获取参数
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialChannelId = urlParams.get("cid") || "";
-  const initialDateStr = urlParams.get("date");
-  const initialDate = initialDateStr
-    ? new Date(initialDateStr + "T00:00:00")
-    : new Date();
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialChannelId = searchParams.get("cid") || "";
+  const initialDateStr = searchParams.get("date") || formatDateForUrl(new Date());
+  const initialDate = new Date(`${initialDateStr}T00:00:00`);
 
-  // 时间段筛选选项：全天、上午、下午、晚上
-  type TimePeriod = "all" | "morning" | "afternoon" | "evening";
-
-  // 状态
   const [channelId, setChannelId] = useState(initialChannelId);
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null);
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>("all");
+  const [currentAbsoluteMs, setCurrentAbsoluteMs] = useState<number | null>(null);
+  const [currentContinuousSec, setCurrentContinuousSec] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(0.8);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [playerError, setPlayerError] = useState<string | null>(null);
+  const [segmentIssues, setSegmentIssues] = useState<SegmentIssue[]>([]);
+  const [hideSegmentIssueNotice, setHideSegmentIssueNotice] = useState(false);
 
-  // 根据时间段计算当天的时间范围
-  const { startTime, endTime } = useMemo(() => {
+  const { dayStartMs, dayEndMs } = useMemo(() => {
     const start = new Date(selectedDate);
+    start.setHours(0, 0, 0, 0);
     const end = new Date(selectedDate);
+    end.setHours(23, 59, 59, 999);
+    return {
+      dayStartMs: start.getTime(),
+      dayEndMs: end.getTime(),
+    };
+  }, [selectedDate]);
 
-    switch (timePeriod) {
-      case "morning": // 06:00 - 12:00
-        start.setHours(6, 0, 0, 0);
-        end.setHours(11, 59, 59, 999);
-        break;
-      case "afternoon": // 12:00 - 18:00
-        start.setHours(12, 0, 0, 0);
-        end.setHours(17, 59, 59, 999);
-        break;
-      case "evening": // 18:00 - 24:00 (次日 06:00)
-        start.setHours(18, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        break;
-      default: // all: 00:00 - 23:59
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
+  const updateUrl = useCallback((nextChannelId: string, nextDate: Date) => {
+    const params = new URLSearchParams(window.location.search);
+    if (nextChannelId) {
+      params.set("cid", nextChannelId);
+    } else {
+      params.delete("cid");
     }
-    return { startTime: start.getTime(), endTime: end.getTime() };
-  }, [selectedDate, timePeriod]);
+    params.set("date", formatDateForUrl(nextDate));
+    window.history.replaceState(null, "", `?${params.toString()}`);
+  }, []);
 
-  // 查询所有通道
   const { data: channelsData } = useQuery({
     queryKey: [findDevicesChannelsKey],
     queryFn: () => FindDevicesChannels({ page: 1, size: 100 }),
   });
 
-  // 扁平化所有通道列表
   const allChannels = useMemo(() => {
     if (!channelsData?.data?.items) return [];
-    const channels: { id: string; name: string; deviceName: string }[] = [];
+    const channels: Array<{ id: string; name: string; deviceName: string }> = [];
     for (const device of channelsData.data.items) {
-      if (device.children) {
-        for (const ch of device.children) {
-          channels.push({
-            id: ch.id,
-            name: ch.name || ch.channel_id || ch.id,
-            deviceName: device.name || device.device_id,
-          });
-        }
+      for (const channel of device.children || []) {
+        channels.push({
+          id: channel.id,
+          name: channel.name || channel.channel_id || channel.id,
+          deviceName: device.name || device.device_id,
+        });
       }
     }
     return channels;
   }, [channelsData]);
 
-  // 分页查询录像列表
-  const {
-    data: recordingsData,
-    isLoading: isLoadingRecordings,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: [findRecordingsKey, channelId, startTime, endTime],
-    queryFn: ({ pageParam = 1 }) =>
-      FindRecordings({
-        cid: channelId,
-        start_ms: startTime,
-        end_ms: endTime,
-        page: pageParam,
-        size: PAGE_SIZE,
-      }),
-    getNextPageParam: (lastPage, allPages) => {
-      const total = lastPage.data?.total || 0;
-      const loadedCount = allPages.reduce(
-        (acc, page) => acc + (page.data?.items?.length || 0),
-        0
-      );
-      if (loadedCount < total) {
-        return allPages.length + 1;
-      }
-      return undefined;
-    },
-    initialPageParam: 1,
-    enabled: !!channelId,
-  });
+  useEffect(() => {
+    if (!channelId && allChannels.length > 0) {
+      setChannelId(allChannels[0].id);
+      updateUrl(allChannels[0].id, selectedDate);
+    }
+  }, [allChannels, channelId, selectedDate, updateUrl]);
 
-  // 查询月度统计（用于日历标记）
   const { data: monthlyData } = useQuery({
-    queryKey: [
-      monthlyKey,
-      channelId,
-      selectedDate.getFullYear(),
-      selectedDate.getMonth() + 1,
-    ],
+    queryKey: [monthlyKey, channelId, selectedDate.getFullYear(), selectedDate.getMonth() + 1],
     queryFn: () =>
       GetMonthly({
         cid: channelId,
@@ -169,740 +135,568 @@ export default function RecordingDetailView() {
     enabled: !!channelId,
   });
 
-  // 合并所有页的录像数据
-  const recordings = useMemo(() => {
-    if (!recordingsData?.pages) return [];
-    return recordingsData.pages.flatMap((page) => page.data?.items || []);
-  }, [recordingsData]);
-
-  // 总数量
-  const totalCount = recordingsData?.pages?.[0]?.data?.total || 0;
-
-  // 解析月度统计
-  const recordingDates = useMemo(() => {
-    const data = monthlyData?.data;
-    if (!data?.has_video) return [];
-
-    const dates: string[] = [];
-    const bitmap = data.has_video;
-    for (let i = 0; i < bitmap.length; i++) {
-      if (bitmap[i] === "1") {
-        const day = (i + 1).toString().padStart(2, "0");
-        const month = data.month.toString().padStart(2, "0");
-        dates.push(`${data.year}-${month}-${day}`);
-      }
-    }
-    return dates;
+  const monthRecordingDays = useMemo(() => {
+    const bitmap = monthlyData?.data?.has_video || "";
+    return bitmap.split("").filter((bit) => bit === "1").length;
   }, [monthlyData]);
 
-  // 今天是否有录像
-  const todayHasRecording = useMemo(() => {
-    const today = dayjs().format("YYYY-MM-DD");
-    return recordingDates.includes(today);
-  }, [recordingDates]);
+  const {
+    data: recordingsResult,
+    isLoading,
+    isFetching,
+  } = useQuery({
+    queryKey: [findRecordingsKey, "full-day", channelId, dayStartMs, dayEndMs],
+    queryFn: () => fetchAllRecordings(channelId, dayStartMs, dayEndMs),
+    enabled: !!channelId,
+  });
 
-  // 默认展开日期选择器（今天没有录像时）
-  useEffect(() => {
-    if (!isLoadingRecordings && recordings.length === 0 && !todayHasRecording) {
-      setDatePickerOpen(true);
-    }
-  }, [isLoadingRecordings, recordings.length, todayHasRecording]);
-
-  // 无限滚动加载
-  useEffect(() => {
-    if (!loadMoreRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(loadMoreRef.current);
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  // 切换通道
-  const handleChannelChange = useCallback((value: string) => {
-    setChannelId(value);
-    const params = new URLSearchParams(window.location.search);
-    params.set("cid", value);
-    window.history.replaceState(null, "", `?${params.toString()}`);
-  }, []);
-
-  // 处理日期变更
-  const handleDateChange = useCallback((date: dayjs.Dayjs | null) => {
-    if (!date) return;
-    const newDate = date.toDate();
-    setSelectedDate(newDate);
-    setDatePickerOpen(false);
-    const params = new URLSearchParams(window.location.search);
-    params.set("date", formatDateForUrl(newDate));
-    window.history.replaceState(null, "", `?${params.toString()}`);
-  }, []);
-
-  // 日期导航
-  const goToPrevDay = useCallback(() => {
-    const prev = new Date(selectedDate);
-    prev.setDate(prev.getDate() - 1);
-    handleDateChange(dayjs(prev));
-  }, [selectedDate, handleDateChange]);
-
-  const goToNextDay = useCallback(() => {
-    const next = new Date(selectedDate);
-    next.setDate(next.getDate() + 1);
-    handleDateChange(dayjs(next));
-  }, [selectedDate, handleDateChange]);
-
-  // 返回录像列表
-  const handleBack = useCallback(() => {
-    navigate({ to: "/playback" });
-  }, [navigate]);
-
-  // 格式化时间显示（显示时分秒）
-  const formatTime = (ms: number) => {
-    if (!ms || Number.isNaN(ms)) return "--:--:--";
-    const date = new Date(ms);
-    if (Number.isNaN(date.getTime())) return "--:--:--";
-    return date.toLocaleTimeString("zh-CN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  };
-
-  // 格式化时长
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  return (
-    <div className="h-full bg-gray-50 flex flex-col overflow-hidden">
-      {/* 顶部工具栏 */}
-      <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3 sticky top-0 z-10">
-        <Button
-          type="text"
-          icon={<ArrowLeft className="w-4 h-4" />}
-          onClick={handleBack}
-        />
-
-        {/* 通道切换 */}
-        <Select
-          value={channelId || undefined}
-          onChange={handleChannelChange}
-          placeholder={t("select_channel")}
-          className="w-64"
-          showSearch
-          optionFilterProp="label"
-          options={allChannels.map((ch) => ({
-            value: ch.id,
-            label: ch.name,
-            desc: ch.deviceName,
-          }))}
-          optionRender={(option) => (
-            <div className="flex flex-col py-1">
-              <span className="font-medium">{option.label}</span>
-              <span className="text-xs text-gray-400">{option.data.desc}</span>
-            </div>
-          )}
-        />
-
-        {/* 时间段快速筛选 */}
-        <Segmented
-          value={timePeriod}
-          onChange={(value) => setTimePeriod(value as TimePeriod)}
-          options={[
-            { label: t("all_day"), value: "all" },
-            { label: t("morning"), value: "morning" },
-            { label: t("afternoon"), value: "afternoon" },
-            { label: t("evening"), value: "evening" },
-          ]}
-          size="small"
-        />
-
-        <div className="flex-1" />
-
-        {/* 录像数量 */}
-        {totalCount > 0 && (
-          <span className="text-sm text-gray-500">
-            {recordings.length}/{totalCount} {t("segments")}
-          </span>
-        )}
-
-        {/* 日期导航 */}
-        <div className="flex items-center gap-1">
-          <Button
-            type="text"
-            icon={<ChevronLeft className="w-4 h-4" />}
-            onClick={goToPrevDay}
-          />
-          <DatePicker
-            value={dayjs(selectedDate)}
-            onChange={handleDateChange}
-            open={datePickerOpen}
-            onOpenChange={setDatePickerOpen}
-            allowClear={false}
-            format="YYYY-MM-DD"
-            suffixIcon={<Calendar className="w-4 h-4" />}
-            cellRender={(current) => {
-              if (typeof current === "number" || typeof current === "string")
-                return current;
-              const d = current as dayjs.Dayjs;
-              const dateStr = d.format("YYYY-MM-DD");
-              const hasRecording = recordingDates.includes(dateStr);
-              return (
-                <div className="ant-picker-cell-inner relative">
-                  {d.date()}
-                  {hasRecording && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                  )}
-                </div>
-              );
-            }}
-          />
-          <Button
-            type="text"
-            icon={<ChevronRight className="w-4 h-4" />}
-            onClick={goToNextDay}
-          />
-        </div>
-      </div>
-
-      {/* 主内容区域 - 网格视图 */}
-      <div ref={containerRef} className="flex-1 overflow-auto p-4 sm:p-6">
-        {isLoadingRecordings ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4">
-            {Array(12)
-              .fill(0)
-              .map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-lg overflow-hidden shadow-sm animate-pulse"
-                >
-                  <div className="aspect-video bg-gray-200" />
-                  <div className="px-2 py-1.5 space-y-1">
-                    <div className="h-3 bg-gray-200 rounded w-3/4" />
-                  </div>
-                </div>
-              ))}
-          </div>
-        ) : recordings.length > 0 ? (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4">
-              {recordings.map((record) => (
-                <RecordingCard
-                  key={record.id}
-                  record={record}
-                  onClick={() => setSelectedRecording(record)}
-                  formatTime={formatTime}
-                  formatDuration={formatDuration}
-                />
-              ))}
-            </div>
-            {/* 加载更多触发器 */}
-            <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
-              {isFetchingNextPage && (
-                <div className="flex items-center gap-2 text-gray-500">
-                  <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
-                  <span className="text-sm">加载中...</span>
-                </div>
-              )}
-              {!hasNextPage && recordings.length > 0 && (
-                <span className="text-sm text-gray-400">已加载全部 {totalCount} 条录像</span>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full min-h-64 text-gray-500">
-            <Video className="w-16 h-16 mb-4 text-gray-300" />
-            <span className="text-lg">{t("no_recording")}</span>
-            <span className="text-sm mt-2">{dayjs(selectedDate).format("YYYY-MM-DD")}</span>
-          </div>
-        )}
-      </div>
-
-      {/* 视频播放弹窗 */}
-      {selectedRecording && (
-        <VideoPlayerModal
-          recording={selectedRecording}
-          onClose={() => setSelectedRecording(null)}
-          formatTime={formatTime}
-          formatDuration={formatDuration}
-        />
-      )}
-    </div>
+  const recordings = useMemo(
+    () => normalizeRecordings(recordingsResult?.items || []),
+    [recordingsResult],
   );
-}
-
-/**
- * 录像卡片组件 - 支持懒加载和悬停预览
- */
-function RecordingCard({
-  record,
-  onClick,
-  formatTime,
-  formatDuration,
-}: {
-  record: Recording;
-  onClick: () => void;
-  formatTime: (ms: number) => string;
-  formatDuration: (s: number) => string;
-}) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLVideoElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  const videoUrl = GetRecordingMp4Url(record.path);
-
-  // 懒加载：只有卡片进入视口时才加载视频
-  useEffect(() => {
-    if (!cardRef.current) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1, rootMargin: "100px" }
-    );
-
-    observer.observe(cardRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  // 处理鼠标进入 - 开始播放预览
-  const handleMouseEnter = useCallback(() => {
-    setIsHovering(true);
-    if (previewRef.current && !hasError && isLoaded) {
-      previewRef.current.currentTime = 0;
-      previewRef.current.play().catch(() => {
-        setHasError(true);
-      });
-    }
-  }, [hasError, isLoaded]);
-
-  // 处理鼠标离开 - 暂停预览
-  const handleMouseLeave = useCallback(() => {
-    setIsHovering(false);
-    if (previewRef.current) {
-      previewRef.current.pause();
-      previewRef.current.currentTime = 0;
-    }
-  }, []);
-
-  return (
-    <div
-      ref={cardRef}
-      className="bg-white rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
-      onClick={onClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* 视频预览区域 */}
-      <div className="aspect-video bg-gray-900 relative overflow-hidden">
-        {isVisible ? (
-          <>
-            {/* 视频预览 */}
-            <video
-              ref={previewRef}
-              src={videoUrl}
-              className="w-full h-full object-contain"
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              onLoadedData={() => setIsLoaded(true)}
-              onError={() => setHasError(true)}
-            />
-
-            {/* 加载中状态 */}
-            {!isLoaded && !hasError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                <div className="w-6 h-6 border-2 border-gray-600 border-t-white rounded-full animate-spin" />
-              </div>
-            )}
-
-            {/* 错误状态 */}
-            {hasError && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-                <Video className="w-8 h-8 text-gray-500" />
-              </div>
-            )}
-          </>
-        ) : (
-          // 占位符
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-            <Video className="w-8 h-8 text-gray-600" />
-          </div>
-        )}
-
-        {/* 时长标签 */}
-        <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
-          {formatDuration(record.duration)}
-        </div>
-      </div>
-
-      {/* 信息区域 - 更紧凑 */}
-      <div className="px-2 py-1.5">
-        <div className="text-xs text-gray-700">
-          {formatTime(record.started_at)} - {formatTime(record.ended_at)}
-        </div>
-      </div>
-    </div>
+  const timeRanges = useMemo(() => buildMergedTimeRanges(recordings), [recordings]);
+  const segments = useMemo(() => buildPlaybackSegments(recordings), [recordings]);
+  const totalPlayableSeconds = useMemo(() => getSegmentsTotalDuration(segments), [segments]);
+  const failedSegmentUrls = useMemo(
+    () => segmentIssues.map((issue) => issue.url),
+    [segmentIssues],
   );
-}
+  const latestSegmentIssue = segmentIssues.length > 0 ? segmentIssues[segmentIssues.length - 1] : null;
+  const failedTimeRanges = useMemo(
+    () =>
+      buildMergedTimeRanges(
+        segments
+          .filter((segment) => failedSegmentUrls.includes(segment.url))
+          .map((segment) => ({
+            startMs: segment.startTime,
+            endMs: segment.endTime ?? segment.startTime + segment.duration * 1000,
+          })),
+      ),
+    [failedSegmentUrls, segments],
+  );
+  const totalSizeBytes = useMemo(
+    () => recordings.reduce((sum, record) => sum + (record.size || 0), 0),
+    [recordings],
+  );
+  const mergedCoverageSeconds = useMemo(
+    () => timeRanges.reduce((sum, range) => sum + Math.max(range.endMs - range.startMs, 0) / 1000, 0),
+    [timeRanges],
+  );
 
-/**
- * 视频播放弹窗组件
- * 支持 0.5/1/2/3 倍速、全屏、暂停/播放、键盘快捷键
- */
-function VideoPlayerModal({
-  recording,
-  onClose,
-  formatTime,
-  formatDuration,
-}: {
-  recording: Recording;
-  onClose: () => void;
-  formatTime: (ms: number) => string;
-  formatDuration: (s: number) => string;
-}) {
-  const { t } = useTranslation("common");
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
-
-  const videoUrl = GetRecordingMp4Url(recording.path);
-  const speedOptions = [0.5, 1, 2, 3];
-
-  // 自动播放
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(console.warn);
-    }
-  }, []);
+    setSegmentIssues([]);
+    setPlayerError(null);
+    setHideSegmentIssueNotice(false);
+  }, [channelId, dayStartMs, dayEndMs]);
 
-  // 时间更新
-  const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+  useEffect(() => {
+    if (segments.length === 0) {
+      setCurrentAbsoluteMs(null);
+      setCurrentContinuousSec(0);
+      setPlayerError(null);
+      setIsPlaying(false);
+      return;
     }
-  }, []);
 
-  // 元数据加载
-  const handleLoadedMetadata = useCallback(() => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
-    }
-  }, []);
+    const currentInRange =
+      currentAbsoluteMs !== null &&
+      currentAbsoluteMs >= dayStartMs &&
+      currentAbsoluteMs <= dayEndMs;
 
-  // 播放/暂停切换
-  const togglePlay = useCallback(() => {
-    if (!videoRef.current) return;
-    if (isPlaying) {
-      videoRef.current.pause();
-    } else {
-      videoRef.current.play().catch(console.warn);
+    if (!currentInRange) {
+      const firstStart = segments[0].startTime;
+      setCurrentAbsoluteMs(firstStart);
+      setCurrentContinuousSec(0);
+      playerRef.current?.seek(0, false);
+      setPlayerError(null);
+      return;
     }
-  }, [isPlaying]);
 
-  // 静音切换
-  const toggleMute = useCallback(() => {
-    if (videoRef.current) {
-      const newMuted = !isMuted;
-      videoRef.current.muted = newMuted;
-      setIsMuted(newMuted);
+    const located = locateSegmentByAbsoluteMs(segments, currentAbsoluteMs);
+    if (located) {
+      setCurrentAbsoluteMs(located.absoluteMs);
+      setCurrentContinuousSec(located.continuousSeconds);
+      playerRef.current?.seek(located.continuousSeconds, false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segments, dayStartMs, dayEndMs]);
+
+  useEffect(() => {
+    playerRef.current?.setPlaybackRate(playbackRate);
+  }, [playbackRate]);
+
+  useEffect(() => {
+    playerRef.current?.setMuted(isMuted);
   }, [isMuted]);
 
-  // 设置倍速
-  const setSpeed = useCallback((speed: number) => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = speed;
-      setPlaybackRate(speed);
-    }
-  }, []);
+  useEffect(() => {
+    playerRef.current?.setVolume(volume);
+  }, [volume]);
 
-  // 后退 5 秒
-  const goBack5Seconds = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5);
-    }
-  }, []);
-
-  // 前进 5 秒
-  const goForward5Seconds = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.min(
-        videoRef.current.duration,
-        videoRef.current.currentTime + 5
-      );
-    }
-  }, []);
-
-  // 进度条点击
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!videoRef.current) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    videoRef.current.currentTime = percent * duration;
-  }, [duration]);
-
-  // 全屏切换
-  const toggleFullscreen = useCallback(() => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
-  }, []);
-
-  // 监听全屏变化
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(Boolean(document.fullscreenElement));
     };
+
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
   }, []);
 
-  // 键盘快捷键
+  const seekToAbsolute = useCallback(
+    (absoluteMs: number, autoPlay = false) => {
+      if (segments.length === 0) return;
+      const located = locateSegmentByAbsoluteMs(segments, absoluteMs);
+      if (!located) return;
+      setCurrentAbsoluteMs(located.absoluteMs);
+      setCurrentContinuousSec(located.continuousSeconds);
+      setPlayerError(null);
+      playerRef.current?.seek(located.continuousSeconds, autoPlay);
+    },
+    [segments],
+  );
+
+  const handlePlayPause = useCallback(() => {
+    const player = playerRef.current;
+    if (!player || segments.length === 0) return;
+
+    if (player.isPlaying()) {
+      player.pause();
+      return;
+    }
+
+    if (player.getCurrentTime() > 0 || currentAbsoluteMs !== null) {
+      player.resume();
+      return;
+    }
+
+    seekToAbsolute(segments[0].startTime, true);
+  }, [currentAbsoluteMs, seekToAbsolute, segments]);
+
+  const skipSeconds = useCallback(
+    (deltaSeconds: number) => {
+      if (segments.length === 0) return;
+      const currentSeconds = playerRef.current?.getCurrentTime() ?? currentContinuousSec;
+      const nextSeconds = clamp(currentSeconds + deltaSeconds, 0, totalPlayableSeconds);
+      seekToAbsolute(continuousSecondsToAbsoluteMs(segments, nextSeconds), isPlaying);
+    },
+    [currentContinuousSec, isPlaying, seekToAbsolute, segments, totalPlayableSeconds],
+  );
+
+  const toggleFullscreen = useCallback(async () => {
+    const container = fullscreenRef.current;
+    if (!container) return;
+
+    if (!document.fullscreenElement) {
+      await container.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  }, []);
+
+  const handleChannelChange = useCallback(
+    (value: string) => {
+      setChannelId(value);
+      setCurrentAbsoluteMs(null);
+      setCurrentContinuousSec(0);
+      updateUrl(value, selectedDate);
+    },
+    [selectedDate, updateUrl],
+  );
+
+  const handleDateChange = useCallback(
+    (value: dayjs.Dayjs | null) => {
+      if (!value) return;
+      const nextDate = value.toDate();
+      nextDate.setHours(0, 0, 0, 0);
+      setSelectedDate(nextDate);
+      setDatePickerOpen(false);
+      setCurrentAbsoluteMs(null);
+      setCurrentContinuousSec(0);
+      updateUrl(channelId, nextDate);
+    },
+    [channelId, updateUrl],
+  );
+
+  const goToPrevDay = useCallback(() => {
+    const nextDate = new Date(selectedDate);
+    nextDate.setDate(nextDate.getDate() - 1);
+    handleDateChange(dayjs(nextDate));
+  }, [handleDateChange, selectedDate]);
+
+  const goToNextDay = useCallback(() => {
+    const nextDate = new Date(selectedDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+    handleDateChange(dayjs(nextDate));
+  }, [handleDateChange, selectedDate]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.code) {
-        case "Space":
-          e.preventDefault();
-          togglePlay();
-          break;
-        case "ArrowLeft":
-          e.preventDefault();
-          goBack5Seconds();
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          goForward5Seconds();
-          break;
-        case "Escape":
-          if (!document.fullscreenElement) {
-            onClose();
-          }
-          break;
-        case "KeyM":
-          toggleMute();
-          break;
-        case "KeyF":
-          toggleFullscreen();
-          break;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableElement(event.target)) return;
+      if (segments.length === 0) return;
+
+      if (event.code === "Space") {
+        event.preventDefault();
+        handlePlayPause();
+      } else if (event.code === "ArrowLeft") {
+        event.preventDefault();
+        skipSeconds(-5);
+      } else if (event.code === "ArrowRight") {
+        event.preventDefault();
+        skipSeconds(5);
       }
     };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [togglePlay, goBack5Seconds, goForward5Seconds, onClose, toggleMute, toggleFullscreen]);
 
-  // 自动隐藏控制栏
-  const resetHideTimer = useCallback(() => {
-    setShowControls(true);
-    if (hideControlsTimer.current) {
-      clearTimeout(hideControlsTimer.current);
-    }
-    hideControlsTimer.current = setTimeout(() => {
-      if (isPlaying) {
-        setShowControls(false);
-      }
-    }, 3000);
-  }, [isPlaying]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handlePlayPause, segments.length, skipSeconds]);
 
-  // 鼠标移动时显示控制栏
-  const handleMouseMove = useCallback(() => {
-    resetHideTimer();
-  }, [resetHideTimer]);
-
-  // 格式化秒数为 mm:ss
-  const formatSeconds = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
-    return `${mins}:${s.toString().padStart(2, "0")}`;
-  };
+  const currentDisplayTime = currentAbsoluteMs
+    ? new Date(currentAbsoluteMs).toLocaleTimeString("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      })
+    : "--:--:--";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div
-        ref={containerRef}
-        className="relative w-full h-full max-w-6xl max-h-[90vh] bg-black flex flex-col"
-        onMouseMove={handleMouseMove}
-      >
-        {/* 关闭按钮 */}
-        <button
-          type="button"
-          onClick={onClose}
-          className={cn(
-            "absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-opacity cursor-pointer",
-            showControls ? "opacity-100" : "opacity-0"
-          )}
-        >
-          <X className="w-6 h-6" />
-        </button>
+    <div className="h-full bg-gray-50 overflow-auto">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 space-y-4">
+        <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="flex items-center gap-2">
+              <Button type="text" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate({ to: "/playback" })} />
+              <span className="text-base font-semibold text-gray-900">录像回放</span>
+            </div>
 
-        {/* 视频 */}
-        <div className="flex-1 flex items-center justify-center">
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="max-w-full max-h-full"
-            playsInline
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onEnded={() => setIsPlaying(false)}
-            onClick={togglePlay}
+            <div className="grid flex-1 gap-3 lg:grid-cols-[minmax(220px,320px)_auto_1fr]">
+              <Select
+                value={channelId || undefined}
+                onChange={handleChannelChange}
+                placeholder="选择通道"
+                showSearch
+                optionFilterProp="label"
+                options={allChannels.map((channel) => ({
+                  value: channel.id,
+                  label: channel.name,
+                  deviceName: channel.deviceName,
+                }))}
+                optionRender={(option) => (
+                  <div className="flex flex-col py-1">
+                    <span className="font-medium text-gray-900">{option.label}</span>
+                    <span className="text-xs text-gray-400">{String(option.data.deviceName || "")}</span>
+                  </div>
+                )}
+              />
+
+              <div className="flex items-center gap-1">
+                <Button type="text" icon={<ChevronLeft className="h-4 w-4" />} onClick={goToPrevDay} />
+                <DatePicker
+                  value={dayjs(selectedDate)}
+                  onChange={handleDateChange}
+                  allowClear={false}
+                  format="YYYY-MM-DD"
+                  open={datePickerOpen}
+                  onOpenChange={setDatePickerOpen}
+                  suffixIcon={<Calendar className="h-4 w-4" />}
+                />
+                <Button type="text" icon={<ChevronRight className="h-4 w-4" />} onClick={goToNextDay} />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                <span>本月有录像 {monthRecordingDays} 天</span>
+                <span>当天片段 {recordings.length} 个</span>
+                <span>可播放 {formatDuration(totalPlayableSeconds)}</span>
+                <span>异常片段 {segmentIssues.length} 个</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div ref={fullscreenRef} className={cn("flex flex-col", isFullscreen && "h-screen bg-white") }>
+            <div className="aspect-video bg-black">
+              {isLoading ? (
+                <div className="flex h-full items-center justify-center text-sm text-gray-300">正在加载当天录像...</div>
+              ) : segments.length > 0 ? (
+                <Mp4Player
+                  ref={playerRef}
+                  segments={segments}
+                  className="h-full w-full"
+                  controls={false}
+                  autoPlay={false}
+                  onTimeUpdate={(seconds) => {
+                    const absoluteMs = continuousSecondsToAbsoluteMs(segments, seconds);
+                    setCurrentContinuousSec(seconds);
+                    setCurrentAbsoluteMs(absoluteMs);
+
+                    if (!hideSegmentIssueNotice && segmentIssues.length > 0 && playerRef.current?.isPlaying()) {
+                      const activeSegment = locateSegmentByAbsoluteMs(segments, absoluteMs);
+                      if (activeSegment && !failedSegmentUrls.includes(activeSegment.segment.url)) {
+                        setHideSegmentIssueNotice(true);
+                      }
+                    }
+                  }}
+                  onPlayStateChange={setIsPlaying}
+                  onEnded={() => setIsPlaying(false)}
+                  onError={(error) => {
+                    if (!error.message.startsWith("片段播放失败:")) {
+                      setPlayerError(getUserFriendlyPlayerMessage(error.message));
+                    }
+                  }}
+                  onSegmentError={(segment, error) => {
+                    setSegmentIssues((previous) => {
+                      if (previous.some((item) => item.url === segment.url)) {
+                        return previous;
+                      }
+                      return [
+                        ...previous,
+                        {
+                          url: segment.url,
+                          startMs: segment.startTime,
+                          endMs: segment.endTime ?? segment.startTime + segment.duration * 1000,
+                          rawMessage: error.message,
+                        },
+                      ];
+                    });
+                    setHideSegmentIssueNotice(false);
+                    setPlayerError(null);
+                  }}
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-300">
+                  <div className="text-lg font-medium text-white/90">当日没有可播放录像</div>
+                  <div className="text-sm text-gray-400">请选择其他日期或切换通道</div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 bg-white px-4 py-3">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="default"
+                    icon={isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    onClick={handlePlayPause}
+                    disabled={segments.length === 0}
+                    className="px-3"
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                    title={isPlaying ? "Pause" : "Play"}
+                  />
+                  <Button
+                    icon={<SkipBack className="h-4 w-4" />}
+                    onClick={() => skipSeconds(-5)}
+                    disabled={segments.length === 0}
+                    className="px-3"
+                    aria-label="Back 5 seconds"
+                    title="Back 5 seconds"
+                  />
+                  <Button
+                    icon={<SkipForward className="h-4 w-4" />}
+                    onClick={() => skipSeconds(5)}
+                    disabled={segments.length === 0}
+                    className="px-3"
+                    aria-label="Forward 5 seconds"
+                    title="Forward 5 seconds"
+                  />
+                  <Button
+                    icon={isMuted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    onClick={() => setIsMuted((value) => !value)}
+                    disabled={segments.length === 0}
+                    className="px-3"
+                    aria-label={isMuted || volume === 0 ? "Unmute" : "Mute"}
+                    title={isMuted || volume === 0 ? "Unmute" : "Mute"}
+                  />
+                  <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2">
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={isMuted ? 0 : volume}
+                      onChange={(event) => {
+                        const nextVolume = Number(event.target.value);
+                        setVolume(nextVolume);
+                        if (nextVolume > 0 && isMuted) {
+                          setIsMuted(false);
+                        }
+                      }}
+                      className="w-28"
+                    />
+                    <span className="w-10 text-right text-sm text-gray-500">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
+                  </div>
+                  <Select
+                    value={playbackRate}
+                    onChange={(value) => setPlaybackRate(Number(value))}
+                    options={[
+                      { value: 0.5, label: "0.5x" },
+                      { value: 1, label: "1x" },
+                      { value: 1.5, label: "1.5x" },
+                      { value: 2, label: "2x" },
+                    ]}
+                    className="w-24"
+                  />
+                  <Button
+                    icon={isFullscreen ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+                    onClick={toggleFullscreen}
+                    className="px-3"
+                    aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                  />
+                </div>
+
+                <div className="grid gap-2 text-sm text-gray-500 sm:grid-cols-2 xl:grid-cols-4">
+                  <InfoBadge label="当前时间" value={currentDisplayTime} />
+                  <InfoBadge label="累计时长" value={formatDuration(currentContinuousSec)} />
+                  <InfoBadge label="录像覆盖" value={formatDuration(mergedCoverageSeconds)} />
+                  <InfoBadge label="文件总量" value={formatBytes(totalSizeBytes)} />
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+                <span>快捷键：Space 播放/暂停</span>
+                <span>← 后退 5 秒</span>
+                <span>→ 前进 5 秒</span>
+                <span>蓝色：正常片段</span>
+                <span>红色：异常片段</span>
+                {isFetching && <span>正在刷新录像数据...</span>}
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <DayPlaybackTimeline
+            dayStartMs={dayStartMs}
+            dayEndMs={dayEndMs}
+            ranges={timeRanges}
+            errorRanges={failedTimeRanges}
+            currentTimeMs={currentAbsoluteMs}
+            onSeek={(absoluteMs) => seekToAbsolute(absoluteMs, isPlaying)}
           />
         </div>
 
-        {/* 控制栏 */}
-        <div
-          className={cn(
-            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity",
-            showControls ? "opacity-100" : "opacity-0"
-          )}
-        >
-          {/* 进度条 */}
-          <div
-            className="h-1 bg-white/30 rounded-full cursor-pointer mb-4 group"
-            onClick={handleProgressClick}
-          >
-            <div
-              className="h-full bg-blue-500 rounded-full relative"
-              style={{ width: `${(currentTime / duration) * 100}%` }}
-            >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+
+        {latestSegmentIssue && !hideSegmentIssueNotice && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+            <div className="font-medium text-red-800">
+              发现 {segmentIssues.length} 个异常片段，已自动跳过
             </div>
-          </div>
-
-          {/* 控制按钮 */}
-          <div className="flex items-center gap-3">
-            {/* 后退 5 秒 */}
-            <button
-              type="button"
-              onClick={goBack5Seconds}
-              className="p-2 text-white hover:text-blue-400 transition-colors cursor-pointer"
-              title="后退 5 秒 (←)"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-
-            {/* 播放/暂停 */}
-            <button
-              type="button"
-              onClick={togglePlay}
-              className="p-2 text-white hover:text-blue-400 transition-colors cursor-pointer"
-              title="播放/暂停 (空格)"
-            >
-              {isPlaying ? (
-                <Pause className="w-6 h-6" />
-              ) : (
-                <Play className="w-6 h-6" />
-              )}
-            </button>
-
-            {/* 前进 5 秒 */}
-            <button
-              type="button"
-              onClick={goForward5Seconds}
-              className="p-2 text-white hover:text-blue-400 transition-colors cursor-pointer"
-              title="前进 5 秒 (→)"
-            >
-              <RotateCw className="w-5 h-5" />
-            </button>
-
-            {/* 静音 */}
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="p-2 text-white hover:text-blue-400 transition-colors cursor-pointer"
-              title="静音 (M)"
-            >
-              {isMuted ? (
-                <VolumeX className="w-5 h-5" />
-              ) : (
-                <Volume2 className="w-5 h-5" />
-              )}
-            </button>
-
-            {/* 时间 */}
-            <span className="text-white text-sm font-mono">
-              {formatSeconds(currentTime)} / {formatSeconds(duration)}
-            </span>
-
-            <div className="flex-1" />
-
-            {/* 倍速选择 */}
-            <div className="flex items-center gap-1">
-              {speedOptions.map((speed) => (
-                <button
-                  key={speed}
-                  type="button"
-                  onClick={() => setSpeed(speed)}
-                  className={cn(
-                    "px-2 py-1 text-sm rounded transition-colors cursor-pointer",
-                    playbackRate === speed
-                      ? "bg-blue-500 text-white"
-                      : "text-white/70 hover:text-white hover:bg-white/20"
-                  )}
-                >
-                  {speed}x
-                </button>
-              ))}
+            <div className="mt-1 text-red-700">
+              对应时间轴已标记为红色，请点击其他蓝色时间段继续播放。
             </div>
-
-            {/* 全屏 */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className="p-2 text-white hover:text-blue-400 transition-colors cursor-pointer"
-              title="全屏 (F)"
-            >
-              {isFullscreen ? (
-                <Minimize2 className="w-5 h-5" />
-              ) : (
-                <Maximize2 className="w-5 h-5" />
-              )}
-            </button>
+            <div className="mt-2 text-xs text-red-600">
+              最近异常时段：{formatClockTime(latestSegmentIssue.startMs)} - {formatClockTime(latestSegmentIssue.endMs)}
+            </div>
+            <details className="mt-2 text-xs text-red-700">
+              <summary className="cursor-pointer select-none">查看技术详情</summary>
+              <div className="mt-2 rounded-lg border border-red-100 bg-white/70 px-2 py-2 break-all text-red-600">
+                {latestSegmentIssue.rawMessage}
+              </div>
+            </details>
           </div>
+        )}
 
-          {/* 录像信息 */}
-          <div className="text-white/60 text-xs mt-2">
-            {formatTime(recording.started_at)} - {formatTime(recording.ended_at)} · {formatDuration(recording.duration)}
+        {!latestSegmentIssue && playerError && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 shadow-sm">
+            {playerError}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-// 辅助函数
+function InfoBadge({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+      <div className="text-xs text-gray-400">{label}</div>
+      <div className="font-medium text-gray-700">{value}</div>
+    </div>
+  );
+}
+
+async function fetchAllRecordings(cid: string, startMs: number, endMs: number) {
+  const items: Recording[] = [];
+  let total = 0;
+
+  for (let page = 1; page <= 500; page += 1) {
+    const response = await FindRecordings({
+      cid,
+      start_ms: startMs,
+      end_ms: endMs,
+      page,
+      size: PAGE_SIZE,
+    });
+
+    const pageItems = response.data?.items || [];
+    total = response.data?.total || total;
+    items.push(...pageItems);
+
+    if (pageItems.length === 0 || items.length >= total || pageItems.length < PAGE_SIZE) {
+      break;
+    }
+  }
+
+  const deduped = Array.from(new Map(items.map((item) => [item.id, item])).values());
+  return {
+    items: deduped,
+    total: total || deduped.length,
+  };
+}
+
 function formatDateForUrl(date: Date): string {
   const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function isEditableElement(target: EventTarget | null): boolean {
+  const element = target as HTMLElement | null;
+  if (!element) return false;
+  const tagName = element.tagName;
+  return (
+    element.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT" ||
+    element.getAttribute("role") === "combobox"
+  );
+}
+
+function getUserFriendlyPlayerMessage(message: string) {
+  if (!message) {
+    return "录像播放失败，请稍后重试或切换到其他时间段。";
+  }
+
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("format error") || normalized.includes("src not supported") || normalized.includes("no supported sources")) {
+    return "当前录像文件格式暂不支持播放，请切换到其他时间段。";
+  }
+
+  if (normalized.includes("network") || normalized.includes("fetch")) {
+    return "录像文件加载失败，请检查网络或稍后重试。";
+  }
+
+  return "录像播放失败，请稍后重试或切换到其他时间段。";
+}
+
+function formatClockTime(value: number) {
+  return new Date(value).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }

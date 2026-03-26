@@ -57,10 +57,9 @@ export function GetHlsPlaylistUrl(
  * @param path 录像文件路径
  * @param token 鉴权 token
  */
-export function GetRecordingMp4Url(path: string, token?: string): string {
+export function GetRecordingMp4Url(path: string, _token?: string): string {
   const relativePath = path.startsWith("/") ? path.slice(1) : path;
-  const baseUrl = `/static/recordings/${relativePath}`;
-  return token ? `${baseUrl}?token=${token}` : baseUrl;
+  return `/static/recordings/${relativePath}`;
 }
 
 /**
