@@ -12,6 +12,7 @@ export interface DayPlaybackTimelineProps {
   currentTimeMs?: number | null;
   onSeek: (absoluteMs: number) => void;
   className?: string;
+  compact?: boolean;
 }
 
 export default function DayPlaybackTimeline({
@@ -22,6 +23,7 @@ export default function DayPlaybackTimeline({
   currentTimeMs,
   onSeek,
   className,
+  compact = false,
 }: DayPlaybackTimelineProps) {
   const overviewRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -187,15 +189,15 @@ export default function DayPlaybackTimeline({
   const overviewWindowWidth = (viewDurationMs / totalDurationMs) * 100;
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn(compact ? "space-y-3" : "space-y-4", className)}>
       <div>
         <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
-          <span>全天概览</span>
+          <span>{compact ? "概览" : "全天概览"}</span>
           <span>{formatDateTime(viewStartMs)} - {formatDateTime(viewEndMs)}</span>
         </div>
         <div
           ref={overviewRef}
-          className="relative h-10 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer overflow-hidden"
+          className={cn("relative rounded-xl border border-gray-200 bg-gray-50 cursor-pointer overflow-hidden", compact ? "h-9" : "h-10")}
           onPointerDown={handleOverviewClick}
         >
           {ranges.map((range, index) => renderRangeBlock(range, index, dayStartMs, totalDurationMs, "overview-normal"))}
@@ -217,13 +219,13 @@ export default function DayPlaybackTimeline({
       </div>
 
       <div>
-        <div className="mb-2 flex items-center justify-between text-xs text-gray-500">
-          <span>点击、拖动定位，滚轮缩放，Shift + 滚轮平移</span>
+        <div className="mb-2 flex items-center justify-between text-xs text-gray-500 gap-3">
+          <span>{compact ? "拖动定位" : "点击、拖动定位，滚轮缩放，Shift + 滚轮平移"}</span>
           <span>{hoverMs ? formatDateTime(hoverMs) : currentTimeMs ? formatDateTime(currentTimeMs) : "--:--:--"}</span>
         </div>
         <div
           ref={trackRef}
-          className="relative h-28 rounded-2xl border border-gray-200 bg-white cursor-pointer overflow-hidden"
+          className={cn("relative rounded-2xl border border-gray-200 bg-white cursor-pointer overflow-hidden touch-none select-none", compact ? "h-24" : "h-28")}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -233,27 +235,27 @@ export default function DayPlaybackTimeline({
           }}
           onDoubleClick={(event) => seekFromClientX(event.clientX)}
         >
-          <div className="absolute inset-x-0 top-8 bottom-8 bg-gray-50" />
+          <div className={cn("absolute inset-x-0 bg-gray-50", compact ? "top-7 bottom-7" : "top-8 bottom-8")} />
 
           {ticks.map((tick) => {
             const left = ((tick - viewStartMs) / viewDurationMs) * 100;
             return (
               <div key={tick} className="absolute top-0 bottom-0" style={{ left: `${left}%` }}>
-                <div className="h-6 -translate-x-1/2 text-[11px] text-gray-500">{formatAxisTime(tick, viewDurationMs)}</div>
+                <div className={cn("-translate-x-1/2 text-gray-500", compact ? "h-5 text-[10px]" : "h-6 text-[11px]")}>{formatAxisTime(tick, viewDurationMs)}</div>
                 <div className="absolute top-6 bottom-0 border-l border-dashed border-gray-200" />
               </div>
             );
           })}
 
-          {visibleRanges.map((range, index) => renderRangeBlock(range, index, viewStartMs, viewDurationMs, "detail-normal"))}
-          {visibleErrorRanges.map((range, index) => renderRangeBlock(range, index, viewStartMs, viewDurationMs, "detail-error"))}
+          {visibleRanges.map((range, index) => renderRangeBlock(range, index, viewStartMs, viewDurationMs, "detail-normal", compact))}
+          {visibleErrorRanges.map((range, index) => renderRangeBlock(range, index, viewStartMs, viewDurationMs, "detail-error", compact))}
 
           {currentRatio !== null && currentRatio >= 0 && currentRatio <= 1 && (
             <div
               className="absolute top-0 bottom-0 z-20 w-0.5 bg-red-500"
               style={{ left: `${currentRatio * 100}%` }}
             >
-              <div className="absolute -left-1.5 top-0 h-3 w-3 rounded-full border-2 border-white bg-red-500 shadow" />
+              <div className={cn("absolute top-0 rounded-full border-2 border-white bg-red-500 shadow", compact ? "-left-1 h-2.5 w-2.5" : "-left-1.5 h-3 w-3")} />
             </div>
           )}
         </div>
@@ -277,6 +279,7 @@ function renderRangeBlock(
   baseStartMs: number,
   durationMs: number,
   variant: "overview-normal" | "overview-error" | "detail-normal" | "detail-error",
+  compact = false,
 ) {
   const left = ((range.startMs - baseStartMs) / durationMs) * 100;
   const width = ((range.endMs - range.startMs) / durationMs) * 100;
@@ -284,8 +287,8 @@ function renderRangeBlock(
   const className = {
     "overview-normal": "absolute top-1.5 bottom-1.5 rounded-lg bg-blue-300",
     "overview-error": "absolute top-1.5 bottom-1.5 z-10 rounded-lg bg-red-400",
-    "detail-normal": "absolute top-10 bottom-10 rounded-lg border border-blue-300 bg-blue-200",
-    "detail-error": "absolute top-10 bottom-10 z-10 rounded-lg border border-red-400 bg-red-300/90",
+    "detail-normal": cn("absolute rounded-lg border border-blue-300 bg-blue-200", compact ? "top-8 bottom-8" : "top-10 bottom-10"),
+    "detail-error": cn("absolute z-10 rounded-lg border border-red-400 bg-red-300/90", compact ? "top-8 bottom-8" : "top-10 bottom-10"),
   }[variant];
 
   const minWidth = variant.startsWith("overview") ? 0.2 : 0.5;
