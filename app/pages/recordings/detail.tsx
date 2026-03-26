@@ -74,6 +74,7 @@ export default function RecordingDetailView() {
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [segmentIssues, setSegmentIssues] = useState<SegmentIssue[]>([]);
   const [hideSegmentIssueNotice, setHideSegmentIssueNotice] = useState(false);
+  const isMobileViewport = useIsMobileViewport();
 
   const { dayStartMs, dayEndMs } = useMemo(() => {
     const start = new Date(selectedDate);
@@ -475,7 +476,21 @@ export default function RecordingDetailView() {
               )}
             </div>
 
-            <div className="border-t border-gray-200 bg-white px-4 py-3">
+            {isMobileViewport && (
+              <div className="border-t border-gray-200 bg-white px-3 py-3 sm:px-4">
+                <DayPlaybackTimeline
+                  dayStartMs={dayStartMs}
+                  dayEndMs={dayEndMs}
+                  ranges={timeRanges}
+                  errorRanges={failedTimeRanges}
+                  currentTimeMs={currentAbsoluteMs}
+                  onSeek={(absoluteMs) => seekToAbsolute(absoluteMs, isPlaying)}
+                  compact
+                />
+              </div>
+            )}
+
+            <div className="border-t border-gray-200 bg-white px-3 py-3 sm:px-4">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
@@ -525,7 +540,7 @@ export default function RecordingDetailView() {
                           setIsMuted(false);
                         }
                       }}
-                      className="w-28"
+                      className="w-24 sm:w-28"
                     />
                     <span className="w-10 text-right text-sm text-gray-500">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
                   </div>
@@ -549,20 +564,21 @@ export default function RecordingDetailView() {
                   />
                 </div>
 
-                <div className="grid gap-2 text-sm text-gray-500 sm:grid-cols-2 xl:grid-cols-4">
-                  <InfoBadge label="当前时间" value={currentDisplayTime} />
-                  <InfoBadge label="累计时长" value={formatDuration(currentContinuousSec)} />
-                  <InfoBadge label="录像覆盖" value={formatDuration(mergedCoverageSeconds)} />
-                  <InfoBadge label="文件总量" value={formatBytes(totalSizeBytes)} />
+                <div className="grid grid-cols-2 gap-2 text-sm text-gray-500 xl:grid-cols-4">
+                  <InfoBadge label="当前时间" value={currentDisplayTime} compact={isMobileViewport} />
+                  <InfoBadge label="累计时长" value={formatDuration(currentContinuousSec)} compact={isMobileViewport} />
+                  <InfoBadge label="录像覆盖" value={formatDuration(mergedCoverageSeconds)} compact={isMobileViewport} />
+                  <InfoBadge label="文件总量" value={formatBytes(totalSizeBytes)} compact={isMobileViewport} />
                 </div>
               </div>
 
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                <span>快捷键：Space 播放/暂停</span>
-                <span>← 后退 5 秒</span>
-                <span>→ 前进 5 秒</span>
+                {!isMobileViewport && <span>快捷键：Space 播放/暂停</span>}
+                {!isMobileViewport && <span>← 后退 5 秒</span>}
+                {!isMobileViewport && <span>→ 前进 5 秒</span>}
                 <span>蓝色：正常片段</span>
                 <span>红色：异常片段</span>
+                {isMobileViewport && <span>拖动时间轴可快速定位</span>}
                 {isFetching && <span>正在刷新录像数据...</span>}
               </div>
 
@@ -570,17 +586,18 @@ export default function RecordingDetailView() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-          <DayPlaybackTimeline
-            dayStartMs={dayStartMs}
-            dayEndMs={dayEndMs}
-            ranges={timeRanges}
-            errorRanges={failedTimeRanges}
-            currentTimeMs={currentAbsoluteMs}
-            onSeek={(absoluteMs) => seekToAbsolute(absoluteMs, isPlaying)}
-          />
-        </div>
-
+        {!isMobileViewport && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <DayPlaybackTimeline
+              dayStartMs={dayStartMs}
+              dayEndMs={dayEndMs}
+              ranges={timeRanges}
+              errorRanges={failedTimeRanges}
+              currentTimeMs={currentAbsoluteMs}
+              onSeek={(absoluteMs) => seekToAbsolute(absoluteMs, isPlaying)}
+            />
+          </div>
+        )}
 
         {latestSegmentIssue && !hideSegmentIssueNotice && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
@@ -612,13 +629,46 @@ export default function RecordingDetailView() {
   );
 }
 
-function InfoBadge({ label, value }: { label: string; value: string }) {
+function InfoBadge({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+    <div className={cn("rounded-xl border border-gray-200 bg-gray-50", compact ? "px-3 py-2" : "px-3 py-2.5")}>
       <div className="text-xs text-gray-400">{label}</div>
-      <div className="font-medium text-gray-700">{value}</div>
+      <div className={cn("font-medium text-gray-700", compact ? "text-sm" : "text-base")}>{value}</div>
     </div>
   );
+}
+
+function useIsMobileViewport() {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 767px)").matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
+  return isMobile;
 }
 
 async function fetchAllRecordings(cid: string, startMs: number, endMs: number) {
