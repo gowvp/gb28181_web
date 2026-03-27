@@ -1,5 +1,6 @@
 import { GET } from "~/service/config/http";
 import type { FindEventsParams, FindEventsResponse } from "./state";
+import { todo } from "node:test";
 
 export const findEventsKey = "findEvents";
 
@@ -15,5 +16,9 @@ export async function FindEvents(params: FindEventsParams) {
  * 直接使用当前页面的 origin 拼接图片路径
  */
 export function GetEventImageUrl(imagePath: string): string {
+  if (imagePath.startsWith("http")) {
+    return imagePath;
+  }
+  // TODO: 待增加鉴权
   return `${window.location.origin}/events/image/${imagePath}`;
 }

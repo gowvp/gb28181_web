@@ -7,6 +7,7 @@ import type {
   TimelineParams,
   TimelineResponse,
 } from "./state";
+import { getToken } from "../user/user";
 
 export const findRecordingsKey = "findRecordings";
 export const timelineKey = "recordingsTimeline";
@@ -46,7 +47,7 @@ export function GetHlsPlaylistUrl(
   cid: string,
   startMs: number,
   endMs: number,
-  token?: string
+  token?: string,
 ): string {
   const baseUrl = `/recordings/channels/${cid}/index.m3u8?start_ms=${startMs}&end_ms=${endMs}`;
   return token ? `${baseUrl}&token=${token}` : baseUrl;
@@ -57,9 +58,17 @@ export function GetHlsPlaylistUrl(
  * @param path 录像文件路径
  * @param token 鉴权 token
  */
-export function GetRecordingMp4Url(path: string, _token?: string): string {
-  const relativePath = path.startsWith("/") ? path.slice(1) : path;
-  return `/static/recordings/${relativePath}`;
+export function GetRecordingMp4Url(path: string): string {
+  let baseURL = path;
+  if (!path.startsWith("http")) {
+    const relativePath = path.startsWith("/") ? path.slice(1) : path;
+    baseURL = `/static/recordings/${relativePath}`;
+  }
+  // baseurl 可能存在 query 参数，需要拼接 token
+  const url = new URL(baseURL);
+  const queryParams = url.searchParams;
+  queryParams.set("token", "Bearer " + (getToken() || ""));
+  return url.toString();
 }
 
 /**
