@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router";
 import {
   ChevronsUpDown,
   Github,
@@ -208,7 +208,7 @@ function TopNavUser({
             setIsLoggingOut(true);
             setTimeout(() => {
               localStorage.removeItem("token");
-              navigate({ to: "/" });
+              navigate("/");
               setIsLoggingOut(false);
             }, 400);
           }}

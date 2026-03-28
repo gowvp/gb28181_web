@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
 import { Cctv, Monitor, Wifi } from "lucide-react";
@@ -50,7 +50,7 @@ export default function ChannelsView() {
             value="/nchannels"
             options={options}
             onChange={(e) => {
-              navigate({ to: e.target.value });
+              navigate(e.target.value);
             }}
             block
             optionType="button"
@@ -293,7 +293,7 @@ function DeviceCard({
                 </span>
               </span>
 
-              <Link to="/channels" search={{ did: device.id }}>
+              <Link to={`/channels?did=${encodeURIComponent(device.id)}`}>
                 <Button
                   variant="outlined"
                   size="middle"

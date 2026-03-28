@@ -1,6 +1,5 @@
 import { GET } from "~/service/config/http";
 import type { FindEventsParams, FindEventsResponse } from "./state";
-import { todo } from "node:test";
 
 export const findEventsKey = "findEvents";
 

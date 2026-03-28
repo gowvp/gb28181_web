@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => {
               },
               {
                 name: "vendor-router",
-                test: /[\\/]node_modules[\\/]@tanstack[\\/](react-router|react-query)[\\/]/,
+                test: /[\\/]node_modules[\\/](react-router|@tanstack[\\/]react-query)[\\/]/,
                 priority: 80,
               },
               {

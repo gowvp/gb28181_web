@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router";
 import { Button as AntButton, Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
 import type { ColumnsType } from "antd/es/table";
@@ -146,14 +146,11 @@ export default function DeviceView() {
             onClick={() => {
               // 根据设备类型跳转到不同页面
               if (record.type === "RTMP") {
-                navigate({ to: "/rtmps", search: { did: record.id } });
+                navigate(`/rtmps?did=${encodeURIComponent(record.id)}`);
               } else if (record.type === "RTSP") {
-                navigate({ to: "/rtsps", search: { did: record.id } });
+                navigate(`/rtsps?did=${encodeURIComponent(record.id)}`);
               } else {
-                navigate({
-                  to: "/channels",
-                  search: { did: record.id },
-                });
+                navigate(`/channels?did=${encodeURIComponent(record.id)}`);
               }
             }}
           >
@@ -222,7 +219,7 @@ export default function DeviceView() {
               value="/devices"
               options={options}
               onChange={(e) => {
-                navigate({ to: e.target.value });
+                navigate(e.target.value);
               }}
               block
               optionType="button"

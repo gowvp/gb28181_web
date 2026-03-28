@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import { Button, DatePicker, Select } from "antd";
 import dayjs from "dayjs";
 import {
@@ -370,7 +370,7 @@ export default function RecordingDetailView() {
         <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex items-center gap-2">
-              <Button type="text" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate({ to: "/playback" })} />
+              <Button type="text" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate("/playback")} />
               <span className="text-base font-semibold text-gray-900">录像回放</span>
             </div>
 

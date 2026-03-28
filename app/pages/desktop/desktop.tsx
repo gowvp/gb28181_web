@@ -8,7 +8,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import { Tooltip } from "antd";
 import { Cctv, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -28,7 +28,7 @@ const SimpleNode = ({ data }: { data: any }) => {
 
   const handleClick = useCallback(() => {
     if (data.path) {
-      navigate({ to: data.path });
+      navigate(data.path);
     }
   }, [data.path, navigate]);
 

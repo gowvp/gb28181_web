@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import { ChevronsUpDown, Github, LogOut, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -107,7 +107,7 @@ export function NavUser({
                 setIsLoggingOut(true);
                 setTimeout(() => {
                   localStorage.removeItem("token");
-                  navigate({ to: "/" });
+                  navigate("/");
                   setIsLoggingOut(false);
                 }, 400);
               }}

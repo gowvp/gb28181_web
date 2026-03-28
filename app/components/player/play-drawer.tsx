@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import { Bug, ChevronDown, Copy } from "lucide-react";
 import * as React from "react";
 import { useRef, useState } from "react";
@@ -254,10 +254,7 @@ export default function PlayDrawer({
                 onZoneSettings={() => {
                   if (!currentChannelId) return;
                   onOpenChange(false);
-                  navigate({
-                    to: "/zones",
-                    search: { cid: currentChannelId },
-                  });
+                  navigate(`/zones?cid=${encodeURIComponent(currentChannelId)}`);
                 }}
               />
             </div>

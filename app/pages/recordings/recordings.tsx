@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "react-router";
 import { Button, Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
 import { Cctv, Monitor, Video, Wifi } from "lucide-react";
@@ -48,7 +48,7 @@ export default function RecordingsView() {
             value="/playback"
             options={options}
             onChange={(e) => {
-              navigate({ to: e.target.value });
+              navigate(e.target.value);
             }}
             block
             optionType="button"
@@ -115,10 +115,7 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
     const dateStr = `${today.getFullYear()}-${(today.getMonth() + 1)
       .toString()
       .padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`;
-    navigate({
-      to: "/playback/detail",
-      search: { cid: channel.id, date: dateStr },
-    });
+    navigate(`/playback/detail?cid=${encodeURIComponent(channel.id)}&date=${encodeURIComponent(dateStr)}`);
   };
 
   return (
@@ -257,7 +254,7 @@ function RecordingDeviceCard({ device }: { device: DeviceWithChannelsItem }) {
                 </span>
               </span>
 
-              <Link to="/channels" search={{ did: device.id }}>
+              <Link to={`/channels?did=${encodeURIComponent(device.id)}`}>
                 <Button
                   variant="outlined"
                   size="middle"

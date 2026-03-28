@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import {
   type Node,
   type NodeProps,
@@ -44,7 +44,7 @@ export function NumNode({ id, data }: NodeProps<NumNode>) {
 
   const handleClick = useCallback(() => {
     if (data.path) {
-      navigate({ to: data.path });
+      navigate(data.path);
     }
   }, [data.path, navigate]);
 

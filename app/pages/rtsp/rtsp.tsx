@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useSearch } from "@tanstack/react-router";
+import { useSearchParams } from "react-router";
 import type { ColumnsType } from "antd/es/table";
 import { Edit, SquarePlay } from "lucide-react";
 import { useMemo, useRef } from "react";
@@ -30,7 +30,8 @@ type RTSPItem = ChannelItem;
 export default function RTSPView() {
   const { t } = useTranslation("common");
   // 从 URL 获取 did 参数，用于过滤特定设备下的通道
-  const searchParams = useSearch({ strict: false }) as { did?: string };
+  const [urlSearchParams] = useSearchParams();
+  const searchParams = { did: urlSearchParams.get("did") || undefined };
 
   // =============== 状态定义 ===============
 

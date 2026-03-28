@@ -4,7 +4,7 @@ import {
   LockOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import type { FormProps } from "antd";
 import { Form, Input, message } from "antd";
 import React, { useState } from "react";
@@ -72,7 +72,7 @@ export default function LoginView() {
       });
 
       message.success("登录成功！");
-      navigate({ to: "/desktop" });
+      navigate("/desktop");
     } catch (error) {
       ErrorHandle(error);
       console.log("🚀 ~ onFinish ~ error:", error);
