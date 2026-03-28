@@ -3,16 +3,33 @@ import {
   Background,
   Controls,
   Handle,
+  Panel,
   Position,
   ReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Tooltip } from "antd";
-import { Cctv, Settings } from "lucide-react";
+import {
+  Bell,
+  Cctv,
+  ChevronUp,
+  Github,
+  Home,
+  Languages,
+  Layers,
+  LogOut,
+  Map as MapIcon,
+  MonitorUp,
+  Settings,
+  Sparkles,
+  Waypoints,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import FloorPlanEditor from "./floor_plan";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   FindMediaServers,
   findMediaServersKey,
@@ -21,7 +38,8 @@ import { checkVersion, checkVersionKey } from "~/service/api/version/version";
 import { ErrorHandle } from "~/service/config/error";
 import { EditForm } from "./media/edit";
 
-// 简单的节点组件
+// ── 节点组件 ──────────────────────────
+
 const SimpleNode = ({ data }: { data: any }) => {
   const navigate = useNavigate();
   const { t } = useTranslation("desktop");
@@ -58,7 +76,6 @@ const ZLMNode = ({ data }: { data: any }) => {
   const editRef = useRef<any>(null);
   const queryClient = useQueryClient();
   const { t } = useTranslation("desktop");
-  // 根据流媒体类型切换展示图标，避免配置与视觉提示不一致
   const mediaType = data.item?.type || "zlm";
   const mediaImage =
     mediaType === "zlm"
@@ -68,23 +85,21 @@ const ZLMNode = ({ data }: { data: any }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
       <div className="relative">
-        {/* 状态指示灯 */}
         <div className="absolute top-1 left-1">
           <div className="relative">
             <div
               className={`absolute w-2 h-2 rounded-full ${
                 data.item?.status ? "bg-green-500" : "bg-red-500"
               } animate-ping`}
-            ></div>
+            />
             <div
               className={`w-2 h-2 rounded-full ${
                 data.item?.status ? "bg-green-500" : "bg-red-500"
               }`}
-            ></div>
+            />
           </div>
         </div>
 
-        {/* 设置按钮 - 右上角 */}
         <div className="absolute top-1 right-1">
           <Tooltip
             title={
@@ -107,7 +122,6 @@ const ZLMNode = ({ data }: { data: any }) => {
           </Tooltip>
         </div>
 
-        {/* 图片 */}
         <div className="flex justify-center mb-4">
           <img
             src={mediaImage}
@@ -116,7 +130,6 @@ const ZLMNode = ({ data }: { data: any }) => {
           />
         </div>
 
-        {/* 端口小模块 - 垂直排列 */}
         <div className="space-y-3">
           <div className="relative flex items-center p-2 bg-purple-50 rounded border-l-4 border-purple-500">
             <Handle
@@ -200,14 +213,12 @@ const GoWVPNode = ({ data }: { data: { version?: string } }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
       <div className="flex flex-col items-center">
-        {/* 图片和版本号 */}
         <div className="flex justify-center relative">
           <img
             src={"./assets/imgs/logo.avif"}
             alt="GoWVP"
             className="w-24 object-contain"
           />
-          {/* 版本号 - 绝对定位在图片右下角 */}
           {data.version && (
             <span className="absolute -bottom-1 -right-2 text-[10px] text-gray-400 font-mono">
               {data.version}
@@ -215,7 +226,6 @@ const GoWVPNode = ({ data }: { data: { version?: string } }) => {
           )}
         </div>
 
-        {/* 功能小模块 - 垂直排列 */}
         <div className="space-y-3 w-full">
           <div className="relative flex items-center p-2 bg-red-50 rounded border-r-4 border-red-500">
             <Handle
@@ -291,16 +301,13 @@ const ClientNode = () => {
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-32 relative">
-      {/* 连接点 */}
       <Handle
         type="source"
         position={Position.Left}
         id="output"
         style={{ background: "#f5222d", width: 8, height: 8, top: "50%" }}
       />
-
       <div className="flex flex-col items-center">
-        {/* 图片 */}
         <div className="flex justify-center mb-4">
           <img
             src={"./assets/imgs/chrome.png"}
@@ -308,8 +315,6 @@ const ClientNode = () => {
             className="w-10 h-10 object-contain"
           />
         </div>
-
-        {/* 端口信息 */}
         <div className="text-xs text-center">
           <div className="p-2 bg-gray-50 rounded">
             <div className="font-medium">{t("web_management")}</div>
@@ -320,7 +325,6 @@ const ClientNode = () => {
   );
 };
 
-// 节点类型映射
 const nodeTypes = {
   ipc: SimpleNode,
   zlm: ZLMNode,
@@ -328,55 +332,47 @@ const nodeTypes = {
   client: ClientNode,
 };
 
-// 初始节点数据生成函数
 const getInitialNodes = (t: any): Node[] => [
   {
     id: "gowvp",
     type: "gowvp",
-    position: { x: 350, y: 100 }, // GoWVP往下移，靠近ZLM
-    data: {
-      name: "GOWVP",
-      value: 0,
-      version: "",
-    },
+    position: { x: 350, y: 100 },
+    data: { name: "GOWVP", value: 0, version: "" },
   },
   {
     id: "client",
     type: "client",
-    position: { x: 650, y: 150 }, // Client往下移
-    data: {
-      name: "client",
-      value: 0,
-    },
+    position: { x: 650, y: 150 },
+    data: { name: "client", value: 0 },
   },
   {
     id: "rtmp",
     type: "ipc",
-    position: { x: 50, y: 480 }, // RTMP往下移
+    position: { x: 50, y: 480 },
     data: { name: t("desktop:rtmp_push"), value: 0, path: "/rtmps" },
   },
   {
     id: "rtsp",
     type: "ipc",
-    position: { x: 50, y: 580 }, // RTSP往下移
+    position: { x: 50, y: 580 },
     data: { name: t("desktop:rtsp_pull"), value: 0, path: "/rtsps" },
   },
   {
     id: "gb28181",
     type: "ipc",
-    position: { x: 50, y: 250 }, // GB28181移到中间位置
+    position: { x: 50, y: 250 },
     data: { name: "GB/T28181", value: 0, path: "/nchannels" },
   },
   {
     id: "onvif",
     type: "ipc",
-    position: { x: 50, y: 150 }, // ONVIF在GB28181上方
+    position: { x: 50, y: 150 },
     data: { name: "ONVIF", value: 0, path: "/nchannels" },
   },
   {
     id: "zlm",
     type: "zlm",
-    position: { x: 350, y: 420 }, // ZLM往上移，靠近GoWVP
+    position: { x: 350, y: 420 },
     data: {
       name: "zlm",
       value: 0,
@@ -389,76 +385,21 @@ const getInitialNodes = (t: any): Node[] => [
   },
 ];
 
-// 初始边数据
 const initialEdges: Edge[] = [
-  {
-    id: "rtmp->zlm",
-    source: "rtmp",
-    target: "zlm",
-    sourceHandle: "output",
-    targetHandle: "rtmp-input",
-    animated: true,
-    style: { stroke: "#1890ff", strokeWidth: 2 },
-  },
-  {
-    id: "rtsp->zlm",
-    source: "rtsp",
-    target: "zlm",
-    sourceHandle: "output",
-    targetHandle: "rtsp-input",
-    animated: true,
-    style: { stroke: "#52c41a", strokeWidth: 2 },
-  },
-  {
-    id: "gb28181->zlm",
-    source: "gb28181",
-    target: "zlm",
-    sourceHandle: "output",
-    targetHandle: "rtp-input",
-    animated: true,
-    style: { stroke: "#faad14", strokeWidth: 2 },
-  },
-  {
-    id: "zlm->gowvp",
-    source: "zlm",
-    target: "gowvp",
-    sourceHandle: "http-output",
-    targetHandle: "zlm-input", // ZLM HTTP(左侧顶部) 连接到 GoWVP ZLM连接(左侧底部)
-    animated: true,
-    style: { stroke: "#722ed1", strokeWidth: 2 },
-    type: "smoothstep", // 使用smoothstep避免垂直遮挡，形成弯曲连接线
-  },
-  {
-    id: "gb28181->gowvp",
-    source: "gb28181",
-    target: "gowvp",
-    sourceHandle: "output",
-    targetHandle: "gb28181-input", // GB/T28181 连接到 GoWVP 左侧的国标信令
-    animated: true,
-    style: { stroke: "#13c2c2", strokeWidth: 2 },
-  },
-  {
-    id: "onvif->gowvp",
-    source: "onvif",
-    target: "gowvp",
-    sourceHandle: "output",
-    targetHandle: "onvif-input", // ONVIF 连接到 GoWVP 左侧的 ONVIF 端口
-    animated: true,
-    style: { stroke: "#fa8c16", strokeWidth: 2 },
-  },
-  {
-    id: "client->gowvp",
-    source: "client",
-    target: "gowvp",
-    sourceHandle: "output",
-    targetHandle: "http-15123-input", // 网页后台管理连接到 GoWVP 右侧的 HTTP 15123
-    animated: true,
-    style: { stroke: "#f5222d", strokeWidth: 2 },
-  },
+  { id: "rtmp->zlm", source: "rtmp", target: "zlm", sourceHandle: "output", targetHandle: "rtmp-input", animated: true, style: { stroke: "#1890ff", strokeWidth: 2 } },
+  { id: "rtsp->zlm", source: "rtsp", target: "zlm", sourceHandle: "output", targetHandle: "rtsp-input", animated: true, style: { stroke: "#52c41a", strokeWidth: 2 } },
+  { id: "gb28181->zlm", source: "gb28181", target: "zlm", sourceHandle: "output", targetHandle: "rtp-input", animated: true, style: { stroke: "#faad14", strokeWidth: 2 } },
+  { id: "zlm->gowvp", source: "zlm", target: "gowvp", sourceHandle: "http-output", targetHandle: "zlm-input", animated: true, style: { stroke: "#722ed1", strokeWidth: 2 }, type: "smoothstep" },
+  { id: "gb28181->gowvp", source: "gb28181", target: "gowvp", sourceHandle: "output", targetHandle: "gb28181-input", animated: true, style: { stroke: "#13c2c2", strokeWidth: 2 } },
+  { id: "onvif->gowvp", source: "onvif", target: "gowvp", sourceHandle: "output", targetHandle: "onvif-input", animated: true, style: { stroke: "#fa8c16", strokeWidth: 2 } },
+  { id: "client->gowvp", source: "client", target: "gowvp", sourceHandle: "output", targetHandle: "http-15123-input", animated: true, style: { stroke: "#f5222d", strokeWidth: 2 } },
 ];
 
+// ── 主组件 ──────────────────────────
+
 export default function DesktopView() {
-  const { t } = useTranslation(["desktop", "common"]);
+  const { t, i18n } = useTranslation(["desktop", "common"]);
+  const [viewMode, setViewMode] = useState<"dataflow" | "2d">("dataflow");
   const [nodes, setNodes] = useState<Node[]>(getInitialNodes(t));
   const [edges] = useState<Edge[]>(initialEdges);
 
@@ -471,42 +412,30 @@ export default function DesktopView() {
     },
   });
 
-  // 获取当前版本号
   const { data: versionData } = useQuery({
     queryKey: [checkVersionKey],
     queryFn: checkVersion,
-    staleTime: 5 * 60 * 1000, // 5 分钟内不重复请求
+    staleTime: 5 * 60 * 1000,
   });
 
-  // 当语言切换时，重新生成节点数据
   useEffect(() => {
     setNodes(getInitialNodes(t));
   }, [t]);
 
-  // 更新 GoWVP 节点版本号
   useEffect(() => {
     if (!versionData?.current_version) return;
-
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === "gowvp") {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              version: versionData.current_version,
-            },
-          };
+          return { ...node, data: { ...node.data, version: versionData.current_version } };
         }
         return node;
       }),
     );
   }, [versionData]);
 
-  // 更新 ZLM 节点数据
   useEffect(() => {
     if (!data?.data.items[0]) return;
-
     const item = data.data.items[0];
     setNodes((nds) =>
       nds.map((node) => {
@@ -529,39 +458,186 @@ export default function DesktopView() {
   }, [data]);
 
   return (
-    <div className="h-screen w-screen pb-24 ">
+    <div className="h-screen w-screen relative" style={{ background: "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)" }}>
       <style>
-        {`
-          /* 隐藏 React Flow attribution */
-          .react-flow__attribution {
-            display: none !important;
-          }
-
-        `}
+        {`.react-flow__attribution { display: none !important; }`}
       </style>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{
-          padding: 0.2,
-          includeHiddenNodes: false,
-          minZoom: 1,
-          maxZoom: 1.2,
-        }}
-        attributionPosition="bottom-left"
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={true}
-        onNodesChange={() => {
-          // 禁用拖动时不处理任何变化
-        }}
+
+      {viewMode === "dataflow" ? (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2, includeHiddenNodes: false, minZoom: 1, maxZoom: 1.2 }}
+          attributionPosition="bottom-left"
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          onNodesChange={() => {}}
+        >
+          <Background />
+          <Controls />
+          <Panel position="top-left">
+            <ViewSwitchBar viewMode={viewMode} onViewModeChange={setViewMode} t={t} />
+          </Panel>
+        </ReactFlow>
+      ) : (
+        <FloorPlanEditor viewMode={viewMode} onViewModeChange={setViewMode} />
+      )}
+
+      {/* 右下角悬浮菜单 */}
+      <DesktopFab i18n={i18n} />
+    </div>
+  );
+}
+
+// ── 左上角视图切换栏（数据流 tab 使用 Panel，2D tab 由 FloorPlanEditor 自行渲染） ──
+
+function ViewSwitchBar({
+  viewMode,
+  onViewModeChange,
+  t,
+}: {
+  viewMode: "dataflow" | "2d";
+  onViewModeChange: (mode: "dataflow" | "2d") => void;
+  t: any;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex gap-0.5 bg-white rounded-lg shadow border border-gray-200 p-0.5">
+        <ViewSwitchButton
+          icon={<Layers style={{ width: 16, height: 16 }} />}
+          active={viewMode === "dataflow"}
+          onClick={() => onViewModeChange("dataflow")}
+          tooltip={t("desktop:dataflow")}
+        />
+        <ViewSwitchButton
+          icon={<MapIcon style={{ width: 16, height: 16 }} />}
+          active={viewMode === "2d"}
+          onClick={() => onViewModeChange("2d")}
+          tooltip="2D"
+        />
+      </div>
+    </div>
+  );
+}
+
+function ViewSwitchButton({
+  icon,
+  active,
+  onClick,
+  tooltip,
+}: {
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  tooltip: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={tooltip}
+      onClick={onClick}
+      className={`
+        w-7 h-7 rounded flex items-center justify-center transition-colors
+        ${active
+          ? "bg-gray-900 text-white"
+          : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+        }
+      `}
+    >
+      {icon}
+    </button>
+  );
+}
+
+// ── 右下角悬浮操作按钮（FAB） ──────────────────────────
+
+function DesktopFab({ i18n }: { i18n: any }) {
+  const navigate = useNavigate();
+  const { t } = useTranslation("common");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as HTMLElement)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const menuItems = [
+    { icon: Home, label: t("quick_desktop"), action: () => navigate("/desktop") },
+    { icon: Cctv, label: t("gb_channel"), action: () => navigate("/nchannels") },
+    { icon: Bell, label: t("alerts"), action: () => navigate("/alerts") },
+    { icon: MonitorUp, label: t("rtmp_stream"), action: () => navigate("/rtmps") },
+    { icon: Waypoints, label: t("rtsp_proxy"), action: () => navigate("/rtsps") },
+    { icon: Languages, label: t("language"), action: () => {
+      const next = i18n.language === "zh" ? "en" : "zh";
+      i18n.changeLanguage(next);
+    }},
+    { icon: Github, label: "Github", action: () => window.open("https://github.com/gowvp/gb28181") },
+    { icon: Sparkles, label: "Gitee", action: () => window.open("https://gitee.com/gowvp/gb28181") },
+  ];
+
+  return (
+    <div ref={containerRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+      {/* 展开的菜单项 */}
+      <div
+        className={`flex flex-col gap-1 transition-all duration-200 origin-bottom ${
+          open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+        }`}
       >
-        <Background />
-        <Controls />
-        {/* 删除 MiniMap */}
-      </ReactFlow>
+        <div className="bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[160px]">
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => { item.action(); setOpen(false); }}
+              className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <item.icon className="w-4 h-4 text-gray-500" />
+              {item.label}
+            </button>
+          ))}
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem("token");
+              navigate("/");
+            }}
+            className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            {t("logout")}
+          </button>
+        </div>
+      </div>
+
+      {/* 头像按钮 */}
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={`
+          w-12 h-12 rounded-full shadow-lg border-2 transition-all duration-200
+          flex items-center justify-center overflow-hidden
+          ${open ? "border-gray-900 ring-2 ring-gray-900/20" : "border-white hover:border-gray-300"}
+        `}
+      >
+        <Avatar className="w-full h-full">
+          <AvatarImage src="./assets/imgs/bg.avif" alt="User" />
+          <AvatarFallback className="bg-gray-900 text-white text-sm">
+            <ChevronUp className={`w-5 h-5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </AvatarFallback>
+        </Avatar>
+      </button>
     </div>
   );
 }

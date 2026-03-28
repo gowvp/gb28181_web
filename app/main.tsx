@@ -77,10 +77,10 @@ const router = createBrowserRouter(
       element: <RootLayout />,
       children: [
         { path: "/", element: <LoginView /> },
+        { path: "desktop", element: <DesktopView /> },
         {
           element: <HomeLayout />,
           children: [
-            { path: "desktop", element: <DesktopView /> },
             { path: "home", element: <DashboardView /> },
             { path: "devices", element: <DeviceView /> },
             { path: "rtmps", element: <RtmpView /> },
