@@ -77,7 +77,7 @@ export default defineConfig(({ mode }) => {
         // 所有 API 请求统一使用 /api 前缀
         // 前端调用 /api/xxx，代理到后端的 /xxx
         "/api": {
-          target: "http://192.168.3.103:15123",
+          target: "http://127.0.0.1:15123",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
