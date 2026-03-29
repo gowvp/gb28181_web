@@ -67,12 +67,51 @@ import type {
   PlannerView,
 } from "./floor_plan.types";
 
+const ALIGNMENT_SNAP_THRESHOLD = FLOOR_PLAN_GRID_SIZE * 0.45;
+
+type SelectionDragSnapshot = {
+  wallIds: string[];
+  cameraIds: string[];
+  startWorld: PlannerPoint;
+  moved: boolean;
+  bounds: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  };
+  wallOrigins: Record<string, FloorWall>;
+  cameraOrigins: Record<string, { x: number; y: number }>;
+};
+
+type PlannerClipboardState = {
+  walls: FloorWall[];
+  cameras: CameraMarker[];
+  bounds: {
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  };
+  width: number;
+  height: number;
+};
+
+type PlannerGuides = {
+  vertical: number[];
+  horizontal: number[];
+};
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
 function createWallId() {
   return `wall-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createCameraId() {
+  return `camera-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function createGroupId() {
@@ -259,6 +298,198 @@ function getPlanBounds(plan: FloorPlanState) {
   };
 }
 
+function getSelectionBounds(plan: FloorPlanState, selection: PlannerSelection) {
+  if (!selection) {
+    return null;
+  }
+
+  const xValues = [
+    ...plan.walls
+      .filter((wall) => selection.wallIds.includes(wall.id))
+      .flatMap((wall) => [wall.x1, wall.x2]),
+    ...plan.cameras
+      .filter((camera) => selection.cameraIds.includes(camera.id))
+      .map((camera) => camera.x),
+  ];
+  const yValues = [
+    ...plan.walls
+      .filter((wall) => selection.wallIds.includes(wall.id))
+      .flatMap((wall) => [wall.y1, wall.y2]),
+    ...plan.cameras
+      .filter((camera) => selection.cameraIds.includes(camera.id))
+      .map((camera) => camera.y),
+  ];
+
+  if (xValues.length === 0 || yValues.length === 0) {
+    return null;
+  }
+
+  return {
+    minX: Math.min(...xValues),
+    maxX: Math.max(...xValues),
+    minY: Math.min(...yValues),
+    maxY: Math.max(...yValues),
+  };
+}
+
+// 将当前选择集复制为一份可重复粘贴的剪贴板快照。
+function buildClipboard(plan: FloorPlanState, selection: PlannerSelection): PlannerClipboardState | null {
+  if (!selection) {
+    return null;
+  }
+
+  const walls = plan.walls.filter((wall) => selection.wallIds.includes(wall.id));
+  const cameras = plan.cameras.filter((camera) => selection.cameraIds.includes(camera.id));
+  if (walls.length === 0 && cameras.length === 0) {
+    return null;
+  }
+
+  const bounds = getSelectionBounds(plan, selection);
+  if (!bounds) {
+    return null;
+  }
+
+  return {
+    walls: walls.map((wall) => ({ ...wall })),
+    cameras: cameras.map((camera) => ({ ...camera })),
+    bounds,
+    width: Math.max(FLOOR_PLAN_GRID_SIZE, bounds.maxX - bounds.minX),
+    height: Math.max(FLOOR_PLAN_GRID_SIZE, bounds.maxY - bounds.minY),
+  };
+}
+
+// 基于剪贴板快照生成一组新的实体，并保留组内相对关系。
+function createPastedEntities(clipboard: PlannerClipboardState, targetTopLeft: PlannerPoint) {
+  const deltaX = targetTopLeft.x - clipboard.bounds.minX;
+  const deltaY = targetTopLeft.y - clipboard.bounds.minY;
+  const groupIdMap = new Map<string, string>();
+  const mapGroupId = (groupId?: string | null) => {
+    if (!groupId) {
+      return null;
+    }
+    if (!groupIdMap.has(groupId)) {
+      groupIdMap.set(groupId, createGroupId());
+    }
+    return groupIdMap.get(groupId) ?? null;
+  };
+
+  const walls = clipboard.walls.map((wall) => ({
+    ...wall,
+    id: createWallId(),
+    x1: wall.x1 + deltaX,
+    y1: wall.y1 + deltaY,
+    x2: wall.x2 + deltaX,
+    y2: wall.y2 + deltaY,
+    groupId: mapGroupId(wall.groupId),
+  }));
+
+  const cameras = clipboard.cameras.map((camera) => ({
+    ...camera,
+    id: createCameraId(),
+    x: camera.x + deltaX,
+    y: camera.y + deltaY,
+    groupId: mapGroupId(camera.groupId),
+  }));
+
+  return { walls, cameras };
+}
+
+function clampPasteTopLeft(point: PlannerPoint, clipboard: PlannerClipboardState) {
+  return snapPoint({
+    x: clamp(point.x, 0, Math.max(0, FLOOR_PLAN_WORLD_WIDTH - clipboard.width)),
+    y: clamp(point.y, 0, Math.max(0, FLOOR_PLAN_WORLD_HEIGHT - clipboard.height)),
+  });
+}
+
+// 复制指定选择集，并把新对象生成在原位置，便于 Alt + 拖动直接复制一份后继续移动。
+function duplicateSelectionAtSource(plan: FloorPlanState, selection: PlannerSelection) {
+  const clipboard = buildClipboard(plan, selection);
+  if (!clipboard) {
+    return null;
+  }
+
+  const pasted = createPastedEntities(clipboard, {
+    x: clipboard.bounds.minX,
+    y: clipboard.bounds.minY,
+  });
+
+  return {
+    clipboard,
+    pasted,
+    selection: createSelection(
+      pasted.walls.map((wall) => wall.id),
+      pasted.cameras.map((camera) => camera.id),
+    ),
+  };
+}
+
+// 收集未被拖动对象的对齐参考值，用于吸附提示线。
+function getGuideReferenceValues(plan: FloorPlanState, excludedSelection?: PlannerSelection) {
+  const xValues = [0, FLOOR_PLAN_WORLD_WIDTH / 2, FLOOR_PLAN_WORLD_WIDTH];
+  const yValues = [0, FLOOR_PLAN_WORLD_HEIGHT / 2, FLOOR_PLAN_WORLD_HEIGHT];
+
+  for (const wall of plan.walls) {
+    if (excludedSelection?.wallIds.includes(wall.id)) {
+      continue;
+    }
+    xValues.push(wall.x1, wall.x2);
+    yValues.push(wall.y1, wall.y2);
+  }
+
+  for (const camera of plan.cameras) {
+    if (excludedSelection?.cameraIds.includes(camera.id)) {
+      continue;
+    }
+    xValues.push(camera.x);
+    yValues.push(camera.y);
+  }
+
+  return {
+    xValues: Array.from(new Set(xValues.map((value) => Math.round(value)))),
+    yValues: Array.from(new Set(yValues.map((value) => Math.round(value)))),
+  };
+}
+
+function getSnapshotGuideValues(snapshot: SelectionDragSnapshot) {
+  const xValues = [
+    ...Object.values(snapshot.wallOrigins).flatMap((wall) => [wall.x1, wall.x2]),
+    ...Object.values(snapshot.cameraOrigins).map((camera) => camera.x),
+  ];
+  const yValues = [
+    ...Object.values(snapshot.wallOrigins).flatMap((wall) => [wall.y1, wall.y2]),
+    ...Object.values(snapshot.cameraOrigins).map((camera) => camera.y),
+  ];
+
+  return {
+    xValues: Array.from(new Set(xValues.map((value) => Math.round(value)))),
+    yValues: Array.from(new Set(yValues.map((value) => Math.round(value)))),
+  };
+}
+
+function findGuideAdjustment(movingValues: number[], referenceValues: number[]) {
+  let bestDelta: number | null = null;
+  let guide: number | null = null;
+
+  for (const movingValue of movingValues) {
+    for (const referenceValue of referenceValues) {
+      const delta = referenceValue - movingValue;
+      if (Math.abs(delta) > ALIGNMENT_SNAP_THRESHOLD) {
+        continue;
+      }
+      if (bestDelta === null || Math.abs(delta) < Math.abs(bestDelta)) {
+        bestDelta = delta;
+        guide = referenceValue;
+      }
+    }
+  }
+
+  return {
+    delta: bestDelta ?? 0,
+    guide,
+  };
+}
+
+// 按住 Shift 时将墙线约束为水平或垂直，默认允许任意角度斜线。
 function snapWallEnd(start: PlannerPoint, point: PlannerPoint) {
   const deltaX = point.x - start.x;
   const deltaY = point.y - start.y;
@@ -624,10 +855,18 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const [hoveredCameraId, setHoveredCameraId] = useState<string | null>(null);
   const [hoverEvent, setHoverEvent] = useState<LatestCameraEvent | null>(null);
   const [hoverLoading, setHoverLoading] = useState(false);
+  const [hasClipboard, setHasClipboard] = useState(false);
+  const [alignmentGuides, setAlignmentGuides] = useState<PlannerGuides>({
+    vertical: [],
+    horizontal: [],
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<FloorPlanState[]>([cloneFloorPlanState(initialPlan)]);
   const historyIndexRef = useRef(0);
+  const clipboardRef = useRef<PlannerClipboardState | null>(null);
+  const pasteCascadeRef = useRef(0);
+  const pointerWorldRef = useRef<PlannerPoint | null>(null);
   const panRef = useRef<
     | {
         startX: number;
@@ -647,23 +886,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
     | null
   >(null);
-  const dragSelectionRef = useRef<
-    | {
-        wallIds: string[];
-        cameraIds: string[];
-        startWorld: PlannerPoint;
-        moved: boolean;
-        bounds: {
-          minX: number;
-          maxX: number;
-          minY: number;
-          maxY: number;
-        };
-        wallOrigins: Record<string, FloorWall>;
-        cameraOrigins: Record<string, { x: number; y: number }>;
-      }
-    | null
-  >(null);
+  const dragSelectionRef = useRef<SelectionDragSnapshot | null>(null);
   const dragWallHandleRef = useRef<
     | {
         wallId: string;
@@ -738,6 +961,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
   const canGroup = selectedTotal > 1;
   const canUngroup = selectedGroupIds.length > 0;
+  const canCopySelection = selectedTotal > 0;
 
   const hoveredCamera = useMemo(() => {
     if (!hoveredCameraId) {
@@ -793,6 +1017,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [replacePlan],
   );
 
+  const clearGuides = useCallback(() => {
+    setAlignmentGuides({ vertical: [], horizontal: [] });
+  }, []);
+
   const zoomToFit = useCallback(() => {
     const bounds = getPlanBounds(planRef.current);
     const width = Math.max(240, bounds.maxX - bounds.minX + 280);
@@ -832,6 +1060,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [mutatePlan, selectedCamera],
   );
 
+  // 删除前先读取当前选择快照，避免异步状态切换后误删其它对象。
   const deleteSelection = useCallback(() => {
     const currentSelection = selectionRef.current;
     if (!currentSelection) {
@@ -844,6 +1073,113 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       draft.walls = draft.walls.filter((wall) => !currentSelection.wallIds.includes(wall.id));
     });
     setSelection(null);
+  }, [mutatePlan]);
+
+  // 复制当前选择集，供粘贴和重复操作复用。
+  const copySelection = useCallback(() => {
+    const clipboard = buildClipboard(planRef.current, selectionRef.current);
+    clipboardRef.current = clipboard;
+    pasteCascadeRef.current = 0;
+    setHasClipboard(Boolean(clipboard));
+  }, []);
+
+  // 优先用鼠标所在位置作为粘贴锚点，能让复制出来的结构直接落在用户当前关注区域，降低二次拖动成本。
+  const resolvePasteTopLeft = useCallback((clipboard: PlannerClipboardState) => {
+    const pointerWorld = pointerWorldRef.current;
+    if (
+      pointerWorld &&
+      Number.isFinite(pointerWorld.x) &&
+      Number.isFinite(pointerWorld.y)
+    ) {
+      return clampPasteTopLeft(
+        {
+          x: pointerWorld.x - clipboard.width / 2,
+          y: pointerWorld.y - clipboard.height / 2,
+        },
+        clipboard,
+      );
+    }
+
+    const viewportCenter = getViewportCenter(planRef.current.view, viewportSize);
+    return clampPasteTopLeft(
+      {
+        x: viewportCenter.x - clipboard.width / 2,
+        y: viewportCenter.y - clipboard.height / 2,
+      },
+      clipboard,
+    );
+  }, [viewportSize]);
+
+  // 粘贴时优先落在当前鼠标位置，只有拿不到鼠标坐标时才回退到视口中心，避免用户每次粘贴后都要再找副本。
+  const pasteClipboard = useCallback(
+    (mode: "pointer" | "duplicate" = "pointer") => {
+      const clipboard = clipboardRef.current;
+      if (!clipboard) {
+        return;
+      }
+
+      pasteCascadeRef.current += 1;
+      const cascadeOffset = FLOOR_PLAN_GRID_SIZE * Math.min(6, pasteCascadeRef.current);
+      const pointerTopLeft = resolvePasteTopLeft(clipboard);
+      const rawTargetTopLeft =
+        mode === "duplicate"
+          ? {
+              x: clipboard.bounds.minX + cascadeOffset,
+              y: clipboard.bounds.minY + cascadeOffset,
+            }
+          : {
+              x: pointerTopLeft.x + cascadeOffset,
+              y: pointerTopLeft.y + cascadeOffset,
+            };
+
+      const targetTopLeft = clampPasteTopLeft(rawTargetTopLeft, clipboard);
+      const pasted = createPastedEntities(clipboard, targetTopLeft);
+
+      mutatePlan((draft) => {
+        draft.walls.push(...pasted.walls);
+        draft.cameras.push(...pasted.cameras);
+      });
+      setSelection(
+        createSelection(
+          pasted.walls.map((wall) => wall.id),
+          pasted.cameras.map((camera) => camera.id),
+        ),
+      );
+      setTool("select");
+    },
+    [mutatePlan, resolvePasteTopLeft],
+  );
+
+  // 直接基于当前选择集生成一个偏移副本，提升重复布置效率。
+  const duplicateSelection = useCallback(() => {
+    const clipboard = buildClipboard(planRef.current, selectionRef.current);
+    if (!clipboard) {
+      return;
+    }
+    clipboardRef.current = clipboard;
+    setHasClipboard(true);
+    pasteCascadeRef.current = 1;
+
+    const targetTopLeft = clampPasteTopLeft(
+      {
+        x: clipboard.bounds.minX + FLOOR_PLAN_GRID_SIZE * 2,
+        y: clipboard.bounds.minY + FLOOR_PLAN_GRID_SIZE * 2,
+      },
+      clipboard,
+    );
+    const pasted = createPastedEntities(clipboard, targetTopLeft);
+
+    mutatePlan((draft) => {
+      draft.walls.push(...pasted.walls);
+      draft.cameras.push(...pasted.cameras);
+    });
+    setSelection(
+      createSelection(
+        pasted.walls.map((wall) => wall.id),
+        pasted.cameras.map((camera) => camera.id),
+      ),
+    );
+    setTool("select");
   }, [mutatePlan]);
 
   const groupSelection = useCallback(() => {
@@ -885,8 +1221,6 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     });
   }, [mutatePlan]);
 
-
-
   const undo = useCallback(() => {
     if (historyIndexRef.current <= 0) {
       return;
@@ -896,8 +1230,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     planRef.current = snapshot;
     setPlan(snapshot);
     setSelection(null);
+    clearGuides();
     setHistoryVersion((value) => value + 1);
-  }, []);
+  }, [clearGuides]);
 
   const redo = useCallback(() => {
     if (historyIndexRef.current >= historyRef.current.length - 1) {
@@ -908,8 +1243,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     planRef.current = snapshot;
     setPlan(snapshot);
     setSelection(null);
+    clearGuides();
     setHistoryVersion((value) => value + 1);
-  }, []);
+  }, [clearGuides]);
 
   const loadHoverEvent = useCallback(
     async (camera: CameraMarker | null) => {
@@ -959,13 +1295,144 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [mutatePlan, viewportSize],
   );
 
+  const buildDragSelectionSnapshot = useCallback(
+    (nextSelection: PlannerSelection, startWorld: PlannerPoint) => {
+      if (!nextSelection) {
+        return null;
+      }
 
+      const selectedWalls = planRef.current.walls.filter((wall) =>
+        nextSelection.wallIds.includes(wall.id),
+      );
+      const selectedCameras = planRef.current.cameras.filter((camera) =>
+        nextSelection.cameraIds.includes(camera.id),
+      );
+
+      const xValues = [
+        ...selectedWalls.flatMap((wall) => [wall.x1, wall.x2]),
+        ...selectedCameras.map((camera) => camera.x),
+      ];
+      const yValues = [
+        ...selectedWalls.flatMap((wall) => [wall.y1, wall.y2]),
+        ...selectedCameras.map((camera) => camera.y),
+      ];
+
+      return {
+        wallIds: nextSelection.wallIds,
+        cameraIds: nextSelection.cameraIds,
+        startWorld,
+        moved: false,
+        bounds: {
+          minX: xValues.length > 0 ? Math.min(...xValues) : 0,
+          maxX: xValues.length > 0 ? Math.max(...xValues) : 0,
+          minY: yValues.length > 0 ? Math.min(...yValues) : 0,
+          maxY: yValues.length > 0 ? Math.max(...yValues) : 0,
+        },
+        wallOrigins: Object.fromEntries(selectedWalls.map((wall) => [wall.id, { ...wall }])),
+        cameraOrigins: Object.fromEntries(
+          selectedCameras.map((camera) => [camera.id, { x: camera.x, y: camera.y }]),
+        ),
+      } satisfies SelectionDragSnapshot;
+    },
+    [],
+  );
+
+  // 批量拖动时根据附近对象生成吸附偏移和对齐参考线。
+  const resolveAlignedSelectionDelta = useCallback(
+    (snapshot: SelectionDragSnapshot, rawDeltaX: number, rawDeltaY: number, constrained: boolean) => {
+      const dragDelta = constrainDragDelta(rawDeltaX, rawDeltaY, constrained);
+      let deltaX = clamp(
+        dragDelta.deltaX,
+        -snapshot.bounds.minX,
+        FLOOR_PLAN_WORLD_WIDTH - snapshot.bounds.maxX,
+      );
+      let deltaY = clamp(
+        dragDelta.deltaY,
+        -snapshot.bounds.minY,
+        FLOOR_PLAN_WORLD_HEIGHT - snapshot.bounds.maxY,
+      );
+
+      const movingValues = getSnapshotGuideValues(snapshot);
+      const references = getGuideReferenceValues(planRef.current, {
+        wallIds: snapshot.wallIds,
+        cameraIds: snapshot.cameraIds,
+      });
+
+      const xGuide = findGuideAdjustment(
+        movingValues.xValues.map((value) => value + deltaX),
+        references.xValues,
+      );
+      const yGuide = findGuideAdjustment(
+        movingValues.yValues.map((value) => value + deltaY),
+        references.yValues,
+      );
+
+      deltaX = clamp(
+        deltaX + xGuide.delta,
+        -snapshot.bounds.minX,
+        FLOOR_PLAN_WORLD_WIDTH - snapshot.bounds.maxX,
+      );
+      deltaY = clamp(
+        deltaY + yGuide.delta,
+        -snapshot.bounds.minY,
+        FLOOR_PLAN_WORLD_HEIGHT - snapshot.bounds.maxY,
+      );
+
+      setAlignmentGuides({
+        vertical: xGuide.guide === null ? [] : [xGuide.guide],
+        horizontal: yGuide.guide === null ? [] : [yGuide.guide],
+      });
+
+      return { deltaX, deltaY };
+    },
+    [],
+  );
+
+  // 拖动墙体端点时同样支持与其它对象端点/摄像头点位对齐。
+  const resolveAlignedWallHandlePoint = useCallback(
+    (wallId: string, endpoint: "start" | "end", point: PlannerPoint, constrained: boolean, anchor: PlannerPoint) => {
+      const nextPoint = constrained ? snapWallEnd(anchor, point) : point;
+      const references = getGuideReferenceValues(planRef.current, createSelection([wallId], []));
+      const xGuide = findGuideAdjustment([nextPoint.x], references.xValues);
+      const yGuide = findGuideAdjustment([nextPoint.y], references.yValues);
+
+      const alignedPoint = clampPointToWorld(
+        snapPoint({
+          x: nextPoint.x + xGuide.delta,
+          y: nextPoint.y + yGuide.delta,
+        }),
+      );
+
+      setAlignmentGuides({
+        vertical: xGuide.guide === null ? [] : [xGuide.guide],
+        horizontal: yGuide.guide === null ? [] : [yGuide.guide],
+      });
+
+      return endpoint === "start"
+        ? alignedPoint
+        : alignedPoint;
+    },
+    [],
+  );
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
       const container = containerRef.current;
       if (!container) {
         return;
+      }
+
+      // 无论当前是否在拖拽，都持续刷新最近一次鼠标所在世界坐标，保证键盘粘贴和工具栏粘贴都能贴到用户当前关注点。
+      const containerRect = container.getBoundingClientRect();
+      if (
+        event.clientX >= containerRect.left &&
+        event.clientX <= containerRect.right &&
+        event.clientY >= containerRect.top &&
+        event.clientY <= containerRect.bottom
+      ) {
+        pointerWorldRef.current = clampPointToWorld(
+          snapPoint(clientToWorld(event.clientX, event.clientY, container, planRef.current.view)),
+        );
       }
 
       if (panRef.current) {
@@ -991,9 +1458,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
           ),
         );
+        // 墙线默认支持任意角度绘制；按住 Shift 时再切换为正交约束。
         setWallPreview({
           start: wallDrawRef.current.start,
-          end: snapWallEnd(wallDrawRef.current.start, current),
+          end: event.shiftKey ? snapWallEnd(wallDrawRef.current.start, current) : current,
         });
         return;
       }
@@ -1028,16 +1496,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         );
         const rawDeltaX = world.x - dragSelectionRef.current.startWorld.x;
         const rawDeltaY = world.y - dragSelectionRef.current.startWorld.y;
-        const constrained = constrainDragDelta(rawDeltaX, rawDeltaY, event.shiftKey);
-        const deltaX = clamp(
-          constrained.deltaX,
-          -dragSelectionRef.current.bounds.minX,
-          FLOOR_PLAN_WORLD_WIDTH - dragSelectionRef.current.bounds.maxX,
-        );
-        const deltaY = clamp(
-          constrained.deltaY,
-          -dragSelectionRef.current.bounds.minY,
-          FLOOR_PLAN_WORLD_HEIGHT - dragSelectionRef.current.bounds.maxY,
+        const aligned = resolveAlignedSelectionDelta(
+          dragSelectionRef.current,
+          rawDeltaX,
+          rawDeltaY,
+          event.shiftKey,
         );
 
         dragSelectionRef.current.moved = true;
@@ -1047,32 +1510,37 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             if (!origin) {
               return;
             }
-            wall.x1 = origin.x1 + deltaX;
-            wall.y1 = origin.y1 + deltaY;
-            wall.x2 = origin.x2 + deltaX;
-            wall.y2 = origin.y2 + deltaY;
+            wall.x1 = origin.x1 + aligned.deltaX;
+            wall.y1 = origin.y1 + aligned.deltaY;
+            wall.x2 = origin.x2 + aligned.deltaX;
+            wall.y2 = origin.y2 + aligned.deltaY;
           });
           draft.cameras.forEach((camera) => {
             const origin = dragSelectionRef.current?.cameraOrigins[camera.id];
             if (!origin) {
               return;
             }
-            camera.x = origin.x + deltaX;
-            camera.y = origin.y + deltaY;
+            camera.x = origin.x + aligned.deltaX;
+            camera.y = origin.y + aligned.deltaY;
           });
         }, false);
         return;
       }
 
       if (dragWallHandleRef.current) {
-        let world = clampPointToWorld(
+        const world = clampPointToWorld(
           snapPoint(
             clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
           ),
         );
-        if (event.shiftKey && dragWallHandleRef.current) {
-          world = snapWallEnd(dragWallHandleRef.current.anchor, world);
-        }
+        const alignedPoint = resolveAlignedWallHandlePoint(
+          dragWallHandleRef.current.wallId,
+          dragWallHandleRef.current.endpoint,
+          world,
+          event.shiftKey,
+          dragWallHandleRef.current.anchor,
+        );
+
         dragWallHandleRef.current.moved = true;
         mutatePlan((draft) => {
           const wall = draft.walls.find(
@@ -1082,11 +1550,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             return;
           }
           if (dragWallHandleRef.current?.endpoint === "start") {
-            wall.x1 = world.x;
-            wall.y1 = world.y;
+            wall.x1 = alignedPoint.x;
+            wall.y1 = alignedPoint.y;
           } else {
-            wall.x2 = world.x;
-            wall.y2 = world.y;
+            wall.x2 = alignedPoint.x;
+            wall.y2 = alignedPoint.y;
           }
         }, false);
       }
@@ -1143,6 +1611,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (dragSelectionRef.current) {
         const moved = dragSelectionRef.current.moved;
         dragSelectionRef.current = null;
+        clearGuides();
         if (moved) {
           pushHistory(planRef.current);
         }
@@ -1151,6 +1620,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (dragWallHandleRef.current) {
         const moved = dragWallHandleRef.current.moved;
         dragWallHandleRef.current = null;
+        clearGuides();
         if (moved) {
           pushHistory(planRef.current);
         }
@@ -1163,7 +1633,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [mutatePlan, pushHistory, replacePlan, roomPreview, wallPreview]);
+  }, [
+    clearGuides,
+    mutatePlan,
+    pushHistory,
+    replacePlan,
+    resolveAlignedSelectionDelta,
+    resolveAlignedWallHandlePoint,
+    roomPreview,
+    wallPreview,
+  ]);
 
   const beginPan = useCallback((clientX: number, clientY: number) => {
     panRef.current = {
@@ -1173,48 +1652,6 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       originY: planRef.current.view.y,
     };
   }, []);
-
-  const buildDragSelectionSnapshot = useCallback(
-    (nextSelection: PlannerSelection, startWorld: PlannerPoint) => {
-      if (!nextSelection) {
-        return null;
-      }
-
-      const selectedWalls = planRef.current.walls.filter((wall) =>
-        nextSelection.wallIds.includes(wall.id),
-      );
-      const selectedCameras = planRef.current.cameras.filter((camera) =>
-        nextSelection.cameraIds.includes(camera.id),
-      );
-
-      const xValues = [
-        ...selectedWalls.flatMap((wall) => [wall.x1, wall.x2]),
-        ...selectedCameras.map((camera) => camera.x),
-      ];
-      const yValues = [
-        ...selectedWalls.flatMap((wall) => [wall.y1, wall.y2]),
-        ...selectedCameras.map((camera) => camera.y),
-      ];
-
-      return {
-        wallIds: nextSelection.wallIds,
-        cameraIds: nextSelection.cameraIds,
-        startWorld,
-        moved: false,
-        bounds: {
-          minX: xValues.length > 0 ? Math.min(...xValues) : 0,
-          maxX: xValues.length > 0 ? Math.max(...xValues) : 0,
-          minY: yValues.length > 0 ? Math.min(...yValues) : 0,
-          maxY: yValues.length > 0 ? Math.max(...yValues) : 0,
-        },
-        wallOrigins: Object.fromEntries(selectedWalls.map((wall) => [wall.id, { ...wall }])),
-        cameraOrigins: Object.fromEntries(
-          selectedCameras.map((camera) => [camera.id, { x: camera.x, y: camera.y }]),
-        ),
-      };
-    },
-    [],
-  );
 
   const nudgeSelection = useCallback(
     (rawDeltaX: number, rawDeltaY: number) => {
@@ -1299,6 +1736,24 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
+      if (isMeta && event.key.toLowerCase() === "c") {
+        event.preventDefault();
+        copySelection();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "v") {
+        event.preventDefault();
+        pasteClipboard();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        duplicateSelection();
+        return;
+      }
+
       if (isMeta && event.key.toLowerCase() === "g" && event.shiftKey) {
         event.preventDefault();
         ungroupSelection();
@@ -1352,12 +1807,24 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         setWallPreview(null);
         setRoomPreview(null);
         setMarqueeRect(null);
+        clearGuides();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [deleteSelection, groupSelection, nudgeSelection, redo, undo, ungroupSelection]);
+  }, [
+    clearGuides,
+    copySelection,
+    deleteSelection,
+    duplicateSelection,
+    groupSelection,
+    nudgeSelection,
+    pasteClipboard,
+    redo,
+    undo,
+    ungroupSelection,
+  ]);
 
   const resolvePointerWorld = useCallback((event: MouseEvent) => {
     const container = containerRef.current;
@@ -1381,10 +1848,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
+      clearGuides();
       const worldPoint = resolvePointerWorld(event.evt);
       if (!worldPoint) {
         return;
       }
+      pointerWorldRef.current = worldPoint;
 
       if (tool === "camera") {
         const camera = createCameraMarker(worldPoint);
@@ -1425,7 +1894,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         setSelection(null);
       }
     },
-    [beginPan, mutatePlan, resolvePointerWorld, tool],
+    [beginPan, clearGuides, mutatePlan, resolvePointerWorld, tool],
   );
 
   const handleCameraMouseDown = useCallback(
@@ -1441,15 +1910,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
+      clearGuides();
       if (event.evt.ctrlKey || event.evt.metaKey) {
         setSelection((current) => toggleEntitySelection(current, "camera", cameraId));
         return;
       }
 
-      const nextSelection = isEntitySelected(selectionRef.current, "camera", cameraId)
+      const baseSelection = isEntitySelected(selectionRef.current, "camera", cameraId)
         ? selectionRef.current
         : selectEntity(planRef.current, "camera", cameraId);
-      setSelection(nextSelection);
+      setSelection(baseSelection);
 
       if (tool !== "select") {
         return;
@@ -1459,9 +1929,27 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (!startWorld) {
         return;
       }
-      dragSelectionRef.current = buildDragSelectionSnapshot(nextSelection, startWorld);
+
+      // 选择模式下按住 Alt 拖动，可先复制当前选择集，再直接拖走副本。
+      if (event.evt.altKey) {
+        const duplicated = duplicateSelectionAtSource(planRef.current, baseSelection);
+        if (duplicated) {
+          clipboardRef.current = duplicated.clipboard;
+          pasteCascadeRef.current = 0;
+          setHasClipboard(true);
+          mutatePlan((draft) => {
+            draft.walls.push(...duplicated.pasted.walls);
+            draft.cameras.push(...duplicated.pasted.cameras);
+          });
+          setSelection(duplicated.selection);
+          dragSelectionRef.current = buildDragSelectionSnapshot(duplicated.selection, startWorld);
+          return;
+        }
+      }
+
+      dragSelectionRef.current = buildDragSelectionSnapshot(baseSelection, startWorld);
     },
-    [beginPan, buildDragSelectionSnapshot, resolvePointerWorld, tool],
+    [beginPan, buildDragSelectionSnapshot, clearGuides, resolvePointerWorld, tool],
   );
 
   const handleWallMouseDown = useCallback(
@@ -1477,15 +1965,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
+      clearGuides();
       if (event.evt.ctrlKey || event.evt.metaKey) {
         setSelection((current) => toggleEntitySelection(current, "wall", wall.id));
         return;
       }
 
-      const nextSelection = isEntitySelected(selectionRef.current, "wall", wall.id)
+      const baseSelection = isEntitySelected(selectionRef.current, "wall", wall.id)
         ? selectionRef.current
         : selectEntity(planRef.current, "wall", wall.id);
-      setSelection(nextSelection);
+      setSelection(baseSelection);
 
       if (tool !== "select") {
         return;
@@ -1495,9 +1984,27 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (!startWorld) {
         return;
       }
-      dragSelectionRef.current = buildDragSelectionSnapshot(nextSelection, startWorld);
+
+      // 选择模式下按住 Alt 拖动墙体，可直接复制当前结构并拖动新副本。
+      if (event.evt.altKey) {
+        const duplicated = duplicateSelectionAtSource(planRef.current, baseSelection);
+        if (duplicated) {
+          clipboardRef.current = duplicated.clipboard;
+          pasteCascadeRef.current = 0;
+          setHasClipboard(true);
+          mutatePlan((draft) => {
+            draft.walls.push(...duplicated.pasted.walls);
+            draft.cameras.push(...duplicated.pasted.cameras);
+          });
+          setSelection(duplicated.selection);
+          dragSelectionRef.current = buildDragSelectionSnapshot(duplicated.selection, startWorld);
+          return;
+        }
+      }
+
+      dragSelectionRef.current = buildDragSelectionSnapshot(baseSelection, startWorld);
     },
-    [beginPan, buildDragSelectionSnapshot, resolvePointerWorld, tool],
+    [beginPan, buildDragSelectionSnapshot, clearGuides, resolvePointerWorld, tool],
   );
 
   const handleWallHandleMouseDown = useCallback(
@@ -1506,6 +2013,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (event.evt.button !== 0) {
         return;
       }
+      clearGuides();
       setSelection(createSelection([wallId], []));
       const wall = planRef.current.walls.find((item) => item.id === wallId);
       if (!wall) {
@@ -1521,7 +2029,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             : { x: wall.x1, y: wall.y1 },
       };
     },
-    [],
+    [clearGuides],
   );
 
   const gridLines = useMemo(() => {
@@ -1611,6 +2119,15 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           <ToolbarButton disabled={!canRedo} title={t("redo")} onClick={redo}>
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
+          <CompactActionButton disabled={!canCopySelection} onClick={copySelection}>
+            {t("copy_selection")}
+          </CompactActionButton>
+          <CompactActionButton disabled={!hasClipboard} onClick={() => pasteClipboard()}>
+            {t("paste_selection")}
+          </CompactActionButton>
+          <CompactActionButton disabled={!canCopySelection} onClick={duplicateSelection}>
+            {t("duplicate_selection")}
+          </CompactActionButton>
           <CompactActionButton disabled={!canGroup} onClick={groupSelection}>
             {t("group_selection")}
           </CompactActionButton>
@@ -1670,6 +2187,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               roomDrawRef.current = null;
               dragSelectionRef.current = null;
               dragWallHandleRef.current = null;
+              clearGuides();
               replacePlan(next, false);
             }}
           >
@@ -1677,8 +2195,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </ToolbarButton>
         </div>
 
-        <div className="absolute bottom-4 left-4 z-20 max-w-3xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
-          {toolHint(tool, t)} · {t("middle_pan_hint")} · {t("multi_select_hint")} · {t("box_select_hint")} · {t("shift_drag_hint")} · {t("select_all_hint")} · {t("preset_hint")}
+        <div className="absolute bottom-4 left-4 z-20 max-w-4xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
+          {toolHint(tool, t)} · {t("middle_pan_hint")} · {t("multi_select_hint")} · {t("box_select_hint")} · {t("shift_drag_hint")} · {t("alt_drag_hint")} · {t("select_all_hint")} · {t("copy_paste_hint")} · {t("preset_hint")}
         </div>
 
         <div ref={containerRef} className="relative flex-1 overflow-hidden select-none">
@@ -1714,6 +2232,27 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                     points={line.points}
                     stroke={line.major ? "#d9e0ea" : "#edf2f7"}
                     strokeWidth={1}
+                    listening={false}
+                  />
+                ))}
+
+                {alignmentGuides.vertical.map((x) => (
+                  <Line
+                    key={`guide-v-${x}`}
+                    points={[x, 0, x, FLOOR_PLAN_WORLD_HEIGHT]}
+                    stroke="#14b8a6"
+                    strokeWidth={2}
+                    dash={[12, 8]}
+                    listening={false}
+                  />
+                ))}
+                {alignmentGuides.horizontal.map((y) => (
+                  <Line
+                    key={`guide-h-${y}`}
+                    points={[0, y, FLOOR_PLAN_WORLD_WIDTH, y]}
+                    stroke="#14b8a6"
+                    strokeWidth={2}
+                    dash={[12, 8]}
                     listening={false}
                   />
                 ))}
@@ -1950,7 +2489,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <div className="mb-3 text-xs leading-5 text-gray-500">
               {selectedGroupIds.length > 0 ? t("grouped_selection_hint") : t("multi_select_hint")}
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 disabled={!canGroup}
@@ -1974,6 +2513,42 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                 }`}
               >
                 {t("ungroup_selection")}
+              </button>
+              <button
+                type="button"
+                disabled={!canCopySelection}
+                onClick={copySelection}
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  canCopySelection
+                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                    : "cursor-not-allowed bg-gray-200 text-gray-400"
+                }`}
+              >
+                {t("copy_selection")}
+              </button>
+              <button
+                type="button"
+                disabled={!canCopySelection}
+                onClick={duplicateSelection}
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  canCopySelection
+                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                    : "cursor-not-allowed bg-gray-200 text-gray-400"
+                }`}
+              >
+                {t("duplicate_selection")}
+              </button>
+              <button
+                type="button"
+                disabled={!hasClipboard}
+                onClick={() => pasteClipboard()}
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  hasClipboard
+                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                    : "cursor-not-allowed bg-gray-200 text-gray-400"
+                }`}
+              >
+                {t("paste_selection")}
               </button>
               <button
                 type="button"
@@ -2008,10 +2583,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <div className="mb-3 text-[11px] leading-5 text-gray-500">
               {selectedWall.groupId ? t("grouped_item_hint") : t("single_item_hint")}
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={copySelection}
+                className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+              >
+                {t("copy_selection")}
+              </button>
+              <button
+                type="button"
+                onClick={duplicateSelection}
+                className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+              >
+                {t("duplicate_selection")}
+              </button>
+            </div>
             <button
               type="button"
               onClick={deleteSelection}
-              className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+              className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
             >
               {t("delete_wall")}
             </button>

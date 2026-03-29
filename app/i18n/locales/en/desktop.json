@@ -65,7 +65,7 @@
   "wall_selected": "Selected Wall",
   "delete_wall": "Delete Wall",
   "select_hint_v2": "Select mode: drag walls, wall endpoints, or cameras directly",
-  "wall_drag_hint": "Wall tool: click and drag to draw orthogonal wall segments snapped to the grid",
+  "wall_drag_hint": "Wall tool: draw walls at any angle by default. Hold Shift to constrain them horizontally or vertically while still snapping to the grid",
   "room_drag_hint": "Room tool: click and drag once to create a rectangular room outline",
   "room_tool": "Rectangle room tool",
   "preset_shapes": "Quick presets",
@@ -87,6 +87,11 @@
   "delete_selected": "Delete Selected",
   "selection_empty_description_v3": "Choose Wall / Room / Camera to start editing. Hold Ctrl/Cmd + left click for multi-select, then group items to drag them together.",
   "box_select_hint": "Drag on empty space to box-select, hold Ctrl/Cmd to add to the selection",
-  "shift_drag_hint": "Hold Shift while dragging a batch or wall endpoint to constrain movement horizontally or vertically",
-  "select_all_hint": "Ctrl/Cmd + A selects all, arrow keys nudge by grid, Shift + arrows moves faster"
+  "shift_drag_hint": "Hold Shift while drawing walls, dragging a batch, or moving a wall endpoint to constrain movement horizontally or vertically",
+  "select_all_hint": "Ctrl/Cmd + A selects all, arrow keys nudge by grid, Shift + arrows moves faster",
+  "copy_selection": "Copy",
+  "paste_selection": "Paste",
+  "duplicate_selection": "Duplicate",
+  "copy_paste_hint": "Ctrl/Cmd + C copies, Ctrl/Cmd + V pastes, Ctrl/Cmd + D quickly duplicates the current selection",
+  "alt_drag_hint": "In select mode, hold Alt while dragging to duplicate the current selection and move the copy"
 }

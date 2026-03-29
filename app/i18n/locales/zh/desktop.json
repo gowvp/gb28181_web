@@ -65,7 +65,7 @@
   "wall_selected": "已选中墙线",
   "delete_wall": "删除墙线",
   "select_hint_v2": "选择模式：可直接拖动墙线、拖动墙线端点，或拖动摄像头调整位置",
-  "wall_drag_hint": "墙线模式：按下并拖动即可绘制横向或纵向墙线，自动吸附到网格",
+  "wall_drag_hint": "墙线模式：默认可绘制任意角度墙线，按住 Shift 可锁定水平或垂直方向，并自动吸附到网格",
   "room_drag_hint": "矩形房间：按下并拖动可一次生成一个房间轮廓",
   "room_tool": "矩形房间工具",
   "preset_shapes": "快捷预设",
@@ -87,6 +87,11 @@
   "delete_selected": "删除所选",
   "selection_empty_description_v3": "先选择“墙线 / 矩形房间 / 摄像头”工具开始编辑；按住 Ctrl/Cmd + 左键支持多选，编组后可整体拖动。",
   "box_select_hint": "空白处按左键拖拽可框选，按住 Ctrl/Cmd 可追加框选",
-  "shift_drag_hint": "拖动多选对象或墙端点时按住 Shift 可锁定水平/垂直方向",
-  "select_all_hint": "Ctrl/Cmd + A 全选，方向键按网格微调，Shift + 方向键快速移动"
+  "shift_drag_hint": "绘制墙线、拖动多选对象或墙端点时按住 Shift 可锁定水平/垂直方向",
+  "select_all_hint": "Ctrl/Cmd + A 全选，方向键按网格微调，Shift + 方向键快速移动",
+  "copy_selection": "复制所选",
+  "paste_selection": "粘贴",
+  "duplicate_selection": "重复所选",
+  "copy_paste_hint": "Ctrl/Cmd + C 复制，Ctrl/Cmd + V 粘贴，Ctrl/Cmd + D 快速重复所选",
+  "alt_drag_hint": "选择模式下按住 Alt 拖动，可直接复制当前选择并拖动副本"
 }
