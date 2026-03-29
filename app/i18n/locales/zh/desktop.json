@@ -75,5 +75,18 @@
   "preset_description": "可一键插入常用轮廓，再继续拖动墙线细调。",
   "preset_hint": "支持快捷预设与矩形拖拽绘制",
   "wall_edit_tip": "拖动整条墙线可平移，拖动两端圆点可微调端点。",
-  "selection_empty_description_v2": "先选择“墙线 / 矩形房间 / 摄像头”工具开始编辑，或直接插入右侧预设图案。"
+  "selection_empty_description_v2": "先选择“墙线 / 矩形房间 / 摄像头”工具开始编辑，或直接插入右侧预设图案。",
+  "group_selection": "编组",
+  "ungroup_selection": "解组",
+  "batch_selected": "批量选择",
+  "batch_selected_summary": "已选 {{walls}} 根墙线，{{cameras}} 个摄像头",
+  "grouped_selection_hint": "已编组对象可整体拖动；按住 Ctrl/Cmd + 左键可继续增减选择。",
+  "grouped_item_hint": "该对象已属于编组；点击任一组内对象会联动选中并整体拖动。",
+  "single_item_hint": "按住 Ctrl/Cmd + 左键可多选，或先批量选择后点击“编组”。",
+  "multi_select_hint": "按住 Ctrl/Cmd + 左键可多选；拖动任一已选对象即可整体移动",
+  "delete_selected": "删除所选",
+  "selection_empty_description_v3": "先选择“墙线 / 矩形房间 / 摄像头”工具开始编辑；按住 Ctrl/Cmd + 左键支持多选，编组后可整体拖动。",
+  "box_select_hint": "空白处按左键拖拽可框选，按住 Ctrl/Cmd 可追加框选",
+  "shift_drag_hint": "拖动多选对象或墙端点时按住 Shift 可锁定水平/垂直方向",
+  "select_all_hint": "Ctrl/Cmd + A 全选，方向键按网格微调，Shift + 方向键快速移动"
 }

@@ -32,7 +32,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -74,6 +73,106 @@ function clamp(value: number, min: number, max: number) {
 
 function createWallId() {
   return `wall-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createGroupId() {
+  return `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function uniqueIds(ids: string[]) {
+  return Array.from(new Set(ids.filter(Boolean)));
+}
+
+function createSelection(wallIds: string[] = [], cameraIds: string[] = []): PlannerSelection {
+  const walls = uniqueIds(wallIds);
+  const cameras = uniqueIds(cameraIds);
+  if (walls.length === 0 && cameras.length === 0) {
+    return null;
+  }
+  return {
+    wallIds: walls,
+    cameraIds: cameras,
+  };
+}
+
+function selectionCount(selection: PlannerSelection) {
+  if (!selection) {
+    return 0;
+  }
+  return selection.wallIds.length + selection.cameraIds.length;
+}
+
+function isEntitySelected(
+  selection: PlannerSelection,
+  entityType: "wall" | "camera",
+  entityId: string,
+) {
+  if (!selection) {
+    return false;
+  }
+  return entityType === "wall"
+    ? selection.wallIds.includes(entityId)
+    : selection.cameraIds.includes(entityId);
+}
+
+function toggleEntitySelection(
+  selection: PlannerSelection,
+  entityType: "wall" | "camera",
+  entityId: string,
+) {
+  if (entityType === "wall") {
+    const next = selection?.wallIds.includes(entityId)
+      ? (selection?.wallIds ?? []).filter((id) => id !== entityId)
+      : [...(selection?.wallIds ?? []), entityId];
+    return createSelection(next, selection?.cameraIds ?? []);
+  }
+
+  const next = selection?.cameraIds.includes(entityId)
+    ? (selection?.cameraIds ?? []).filter((id) => id !== entityId)
+    : [...(selection?.cameraIds ?? []), entityId];
+  return createSelection(selection?.wallIds ?? [], next);
+}
+
+function getEntityGroupId(
+  plan: FloorPlanState,
+  entityType: "wall" | "camera",
+  entityId: string,
+) {
+  if (entityType === "wall") {
+    return plan.walls.find((wall) => wall.id === entityId)?.groupId ?? null;
+  }
+  return plan.cameras.find((camera) => camera.id === entityId)?.groupId ?? null;
+}
+
+function selectEntity(plan: FloorPlanState, entityType: "wall" | "camera", entityId: string) {
+  const groupId = getEntityGroupId(plan, entityType, entityId);
+  if (!groupId) {
+    return entityType === "wall"
+      ? createSelection([entityId], [])
+      : createSelection([], [entityId]);
+  }
+
+  return createSelection(
+    plan.walls.filter((wall) => wall.groupId === groupId).map((wall) => wall.id),
+    plan.cameras.filter((camera) => camera.groupId === groupId).map((camera) => camera.id),
+  );
+}
+
+function getSelectionGroupIds(plan: FloorPlanState, selection: PlannerSelection) {
+  if (!selection) {
+    return [] as string[];
+  }
+
+  const ids = [
+    ...plan.walls
+      .filter((wall) => selection.wallIds.includes(wall.id) && wall.groupId)
+      .map((wall) => wall.groupId as string),
+    ...plan.cameras
+      .filter((camera) => selection.cameraIds.includes(camera.id) && camera.groupId)
+      .map((camera) => camera.groupId as string),
+  ];
+
+  return uniqueIds(ids);
 }
 
 function snapPoint(point: PlannerPoint): PlannerPoint {
@@ -180,6 +279,125 @@ function normalizeRect(start: PlannerPoint, end: PlannerPoint) {
   };
 }
 
+function normalizeMarqueeRect(start: PlannerPoint, end: PlannerPoint) {
+  const rect = normalizeRect(start, end);
+  return {
+    ...rect,
+    x2: rect.x + rect.width,
+    y2: rect.y + rect.height,
+  };
+}
+
+function pointInRect(point: PlannerPoint, rect: ReturnType<typeof normalizeMarqueeRect>) {
+  return point.x >= rect.x && point.x <= rect.x2 && point.y >= rect.y && point.y <= rect.y2;
+}
+
+function lineSegmentsIntersect(a: PlannerPoint, b: PlannerPoint, c: PlannerPoint, d: PlannerPoint) {
+  const direction = (p1: PlannerPoint, p2: PlannerPoint, p3: PlannerPoint) =>
+    (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
+  const onSegment = (p1: PlannerPoint, p2: PlannerPoint, p3: PlannerPoint) =>
+    Math.min(p1.x, p2.x) <= p3.x &&
+    p3.x <= Math.max(p1.x, p2.x) &&
+    Math.min(p1.y, p2.y) <= p3.y &&
+    p3.y <= Math.max(p1.y, p2.y);
+
+  const d1 = direction(c, d, a);
+  const d2 = direction(c, d, b);
+  const d3 = direction(a, b, c);
+  const d4 = direction(a, b, d);
+
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return true;
+  }
+
+  if (d1 === 0 && onSegment(c, d, a)) {
+    return true;
+  }
+  if (d2 === 0 && onSegment(c, d, b)) {
+    return true;
+  }
+  if (d3 === 0 && onSegment(a, b, c)) {
+    return true;
+  }
+  if (d4 === 0 && onSegment(a, b, d)) {
+    return true;
+  }
+
+  return false;
+}
+
+function lineIntersectsRect(
+  start: PlannerPoint,
+  end: PlannerPoint,
+  rect: ReturnType<typeof normalizeMarqueeRect>,
+) {
+  if (pointInRect(start, rect) || pointInRect(end, rect)) {
+    return true;
+  }
+
+  if (
+    Math.max(start.x, end.x) < rect.x ||
+    Math.min(start.x, end.x) > rect.x2 ||
+    Math.max(start.y, end.y) < rect.y ||
+    Math.min(start.y, end.y) > rect.y2
+  ) {
+    return false;
+  }
+
+  const topLeft = { x: rect.x, y: rect.y };
+  const topRight = { x: rect.x2, y: rect.y };
+  const bottomRight = { x: rect.x2, y: rect.y2 };
+  const bottomLeft = { x: rect.x, y: rect.y2 };
+
+  return [
+    [topLeft, topRight],
+    [topRight, bottomRight],
+    [bottomRight, bottomLeft],
+    [bottomLeft, topLeft],
+  ].some(([edgeStart, edgeEnd]) => lineSegmentsIntersect(start, end, edgeStart, edgeEnd));
+}
+
+function selectionFromRect(plan: FloorPlanState, start: PlannerPoint, end: PlannerPoint) {
+  const rect = normalizeMarqueeRect(start, end);
+  if (rect.width < 6 && rect.height < 6) {
+    return null;
+  }
+
+  return createSelection(
+    plan.walls
+      .filter((wall) =>
+        lineIntersectsRect(
+          { x: wall.x1, y: wall.y1 },
+          { x: wall.x2, y: wall.y2 },
+          rect,
+        ),
+      )
+      .map((wall) => wall.id),
+    plan.cameras
+      .filter((camera) => pointInRect({ x: camera.x, y: camera.y }, rect))
+      .map((camera) => camera.id),
+  );
+}
+
+function mergeSelections(base: PlannerSelection, addition: PlannerSelection) {
+  return createSelection(
+    [...(base?.wallIds ?? []), ...(addition?.wallIds ?? [])],
+    [...(base?.cameraIds ?? []), ...(addition?.cameraIds ?? [])],
+  );
+}
+
+function constrainDragDelta(deltaX: number, deltaY: number, constrained: boolean) {
+  if (!constrained) {
+    return { deltaX, deltaY };
+  }
+
+  if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+    return { deltaX, deltaY: 0 };
+  }
+
+  return { deltaX: 0, deltaY };
+}
+
 function createRectangleWalls(start: PlannerPoint, end: PlannerPoint) {
   const rect = normalizeRect(start, end);
   if (rect.width < FLOOR_PLAN_GRID_SIZE || rect.height < FLOOR_PLAN_GRID_SIZE) {
@@ -209,6 +427,7 @@ function createPolygonWalls(points: PlannerPoint[]) {
       y1: current.y,
       x2: next.x,
       y2: next.y,
+      groupId: null,
     });
   }
 
@@ -325,6 +544,31 @@ function ToolbarButton({
   );
 }
 
+function CompactActionButton({
+  disabled,
+  onClick,
+  children,
+}: {
+  disabled?: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex h-9 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition-colors ${
+        disabled
+          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-300"
+          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function PresetButton({
   label,
   onClick,
@@ -360,6 +604,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const planRef = useRef<FloorPlanState>(initialPlan);
   const [tool, setTool] = useState<PlannerTool>("select");
   const [selection, setSelection] = useState<PlannerSelection>(null);
+  const selectionRef = useRef<PlannerSelection>(null);
   const [wallPreview, setWallPreview] = useState<{
     start: PlannerPoint;
     end: PlannerPoint;
@@ -367,6 +612,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const [roomPreview, setRoomPreview] = useState<{
     start: PlannerPoint;
     end: PlannerPoint;
+  } | null>(null);
+  const [marqueeRect, setMarqueeRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
   } | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -388,19 +639,28 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   >(null);
   const wallDrawRef = useRef<{ start: PlannerPoint } | null>(null);
   const roomDrawRef = useRef<{ start: PlannerPoint } | null>(null);
-  const dragCameraRef = useRef<
+  const marqueeRef = useRef<
     | {
-        cameraId: string;
-        moved: boolean;
+        start: PlannerPoint;
+        current: PlannerPoint;
+        additive: boolean;
       }
     | null
   >(null);
-  const dragWallRef = useRef<
+  const dragSelectionRef = useRef<
     | {
-        wallId: string;
+        wallIds: string[];
+        cameraIds: string[];
         startWorld: PlannerPoint;
-        origin: FloorWall;
         moved: boolean;
+        bounds: {
+          minX: number;
+          maxX: number;
+          minY: number;
+          maxY: number;
+        };
+        wallOrigins: Record<string, FloorWall>;
+        cameraOrigins: Record<string, { x: number; y: number }>;
       }
     | null
   >(null);
@@ -409,6 +669,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         wallId: string;
         endpoint: "start" | "end";
         moved: boolean;
+        anchor: PlannerPoint;
       }
     | null
   >(null);
@@ -417,6 +678,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     planRef.current = plan;
     saveFloorPlanState(plan);
   }, [plan]);
+
+  useEffect(() => {
+    selectionRef.current = selection;
+  }, [selection]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -448,18 +713,31 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   );
 
   const selectedCamera = useMemo(() => {
-    if (selection?.type !== "camera") {
+    if (!selection || selection.cameraIds.length !== 1 || selection.wallIds.length > 0) {
       return null;
     }
-    return plan.cameras.find((camera) => camera.id === selection.id) ?? null;
+    return plan.cameras.find((camera) => camera.id === selection.cameraIds[0]) ?? null;
   }, [plan.cameras, selection]);
 
   const selectedWall = useMemo(() => {
-    if (selection?.type !== "wall") {
+    if (!selection || selection.wallIds.length !== 1 || selection.cameraIds.length > 0) {
       return null;
     }
-    return plan.walls.find((wall) => wall.id === selection.id) ?? null;
+    return plan.walls.find((wall) => wall.id === selection.wallIds[0]) ?? null;
   }, [plan.walls, selection]);
+
+  const selectedWallCount = selection?.wallIds.length ?? 0;
+  const selectedCameraCount = selection?.cameraIds.length ?? 0;
+  const selectedTotal = selectionCount(selection);
+  const isBatchSelection = selectedTotal > 1 || (selectedWallCount > 0 && selectedCameraCount > 0);
+
+  const selectedGroupIds = useMemo(
+    () => getSelectionGroupIds(plan, selection),
+    [plan, selection],
+  );
+
+  const canGroup = selectedTotal > 1;
+  const canUngroup = selectedGroupIds.length > 0;
 
   const hoveredCamera = useMemo(() => {
     if (!hoveredCameraId) {
@@ -555,18 +833,59 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   );
 
   const deleteSelection = useCallback(() => {
-    if (!selection) {
+    const currentSelection = selectionRef.current;
+    if (!currentSelection) {
       return;
     }
     mutatePlan((draft) => {
-      if (selection.type === "camera") {
-        draft.cameras = draft.cameras.filter((camera) => camera.id !== selection.id);
-      } else {
-        draft.walls = draft.walls.filter((wall) => wall.id !== selection.id);
-      }
+      draft.cameras = draft.cameras.filter(
+        (camera) => !currentSelection.cameraIds.includes(camera.id),
+      );
+      draft.walls = draft.walls.filter((wall) => !currentSelection.wallIds.includes(wall.id));
     });
     setSelection(null);
-  }, [mutatePlan, selection]);
+  }, [mutatePlan]);
+
+  const groupSelection = useCallback(() => {
+    const currentSelection = selectionRef.current;
+    if (selectionCount(currentSelection) < 2) {
+      return;
+    }
+    const groupId = createGroupId();
+    mutatePlan((draft) => {
+      draft.walls.forEach((wall) => {
+        if (currentSelection?.wallIds.includes(wall.id)) {
+          wall.groupId = groupId;
+        }
+      });
+      draft.cameras.forEach((camera) => {
+        if (currentSelection?.cameraIds.includes(camera.id)) {
+          camera.groupId = groupId;
+        }
+      });
+    });
+  }, [mutatePlan]);
+
+  const ungroupSelection = useCallback(() => {
+    const currentSelection = selectionRef.current;
+    if (!currentSelection) {
+      return;
+    }
+    mutatePlan((draft) => {
+      draft.walls.forEach((wall) => {
+        if (currentSelection.wallIds.includes(wall.id)) {
+          wall.groupId = null;
+        }
+      });
+      draft.cameras.forEach((camera) => {
+        if (currentSelection.cameraIds.includes(camera.id)) {
+          camera.groupId = null;
+        }
+      });
+    });
+  }, [mutatePlan]);
+
+
 
   const undo = useCallback(() => {
     if (historyIndexRef.current <= 0) {
@@ -576,6 +895,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     const snapshot = cloneFloorPlanState(historyRef.current[historyIndexRef.current]);
     planRef.current = snapshot;
     setPlan(snapshot);
+    setSelection(null);
     setHistoryVersion((value) => value + 1);
   }, []);
 
@@ -587,6 +907,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     const snapshot = cloneFloorPlanState(historyRef.current[historyIndexRef.current]);
     planRef.current = snapshot;
     setPlan(snapshot);
+    setSelection(null);
     setHistoryVersion((value) => value + 1);
   }, []);
 
@@ -632,50 +953,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       mutatePlan((draft) => {
         draft.walls.push(...walls);
       });
-      setSelection({ type: "wall", id: walls[0].id });
+      setSelection(createSelection(walls.map((wall) => wall.id), []));
       setTool("select");
     },
     [mutatePlan, viewportSize],
   );
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isMeta = event.ctrlKey || event.metaKey;
 
-      if (isMeta && event.key.toLowerCase() === "z" && event.shiftKey) {
-        event.preventDefault();
-        redo();
-        return;
-      }
-
-      if (isMeta && event.key.toLowerCase() === "z") {
-        event.preventDefault();
-        undo();
-        return;
-      }
-
-      if (isMeta && event.key.toLowerCase() === "y") {
-        event.preventDefault();
-        redo();
-        return;
-      }
-
-      if (event.key === "Delete" || event.key === "Backspace") {
-        deleteSelection();
-        return;
-      }
-
-      if (event.key === "Escape") {
-        wallDrawRef.current = null;
-        roomDrawRef.current = null;
-        setWallPreview(null);
-        setRoomPreview(null);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [deleteSelection, redo, undo]);
 
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
@@ -724,54 +1008,71 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      if (dragCameraRef.current) {
-        const world = clampPointToWorld(
+      if (marqueeRef.current) {
+        const current = clampPointToWorld(
           snapPoint(
             clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
           ),
         );
-        dragCameraRef.current.moved = true;
-        mutatePlan((draft) => {
-          const camera = draft.cameras.find(
-            (item) => item.id === dragCameraRef.current?.cameraId,
-          );
-          if (!camera) {
-            return;
-          }
-          camera.x = world.x;
-          camera.y = world.y;
-        }, false);
+        marqueeRef.current.current = current;
+        const rect = normalizeRect(marqueeRef.current.start, current);
+        setMarqueeRect(rect);
         return;
       }
 
-      if (dragWallRef.current) {
+      if (dragSelectionRef.current) {
         const world = clampPointToWorld(
           snapPoint(
             clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
           ),
         );
-        const deltaX = world.x - dragWallRef.current.startWorld.x;
-        const deltaY = world.y - dragWallRef.current.startWorld.y;
-        dragWallRef.current.moved = true;
+        const rawDeltaX = world.x - dragSelectionRef.current.startWorld.x;
+        const rawDeltaY = world.y - dragSelectionRef.current.startWorld.y;
+        const constrained = constrainDragDelta(rawDeltaX, rawDeltaY, event.shiftKey);
+        const deltaX = clamp(
+          constrained.deltaX,
+          -dragSelectionRef.current.bounds.minX,
+          FLOOR_PLAN_WORLD_WIDTH - dragSelectionRef.current.bounds.maxX,
+        );
+        const deltaY = clamp(
+          constrained.deltaY,
+          -dragSelectionRef.current.bounds.minY,
+          FLOOR_PLAN_WORLD_HEIGHT - dragSelectionRef.current.bounds.maxY,
+        );
+
+        dragSelectionRef.current.moved = true;
         mutatePlan((draft) => {
-          const wall = draft.walls.find((item) => item.id === dragWallRef.current?.wallId);
-          if (!wall) {
-            return;
-          }
-          wall.x1 = clamp(dragWallRef.current.origin.x1 + deltaX, 0, FLOOR_PLAN_WORLD_WIDTH);
-          wall.y1 = clamp(dragWallRef.current.origin.y1 + deltaY, 0, FLOOR_PLAN_WORLD_HEIGHT);
-          wall.x2 = clamp(dragWallRef.current.origin.x2 + deltaX, 0, FLOOR_PLAN_WORLD_WIDTH);
-          wall.y2 = clamp(dragWallRef.current.origin.y2 + deltaY, 0, FLOOR_PLAN_WORLD_HEIGHT);
+          draft.walls.forEach((wall) => {
+            const origin = dragSelectionRef.current?.wallOrigins[wall.id];
+            if (!origin) {
+              return;
+            }
+            wall.x1 = origin.x1 + deltaX;
+            wall.y1 = origin.y1 + deltaY;
+            wall.x2 = origin.x2 + deltaX;
+            wall.y2 = origin.y2 + deltaY;
+          });
+          draft.cameras.forEach((camera) => {
+            const origin = dragSelectionRef.current?.cameraOrigins[camera.id];
+            if (!origin) {
+              return;
+            }
+            camera.x = origin.x + deltaX;
+            camera.y = origin.y + deltaY;
+          });
         }, false);
         return;
       }
 
       if (dragWallHandleRef.current) {
-        const world = clampPointToWorld(
+        let world = clampPointToWorld(
           snapPoint(
             clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
           ),
         );
+        if (event.shiftKey && dragWallHandleRef.current) {
+          world = snapWallEnd(dragWallHandleRef.current.anchor, world);
+        }
         dragWallHandleRef.current.moved = true;
         mutatePlan((draft) => {
           const wall = draft.walls.find(
@@ -807,11 +1108,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             y1: preview.start.y,
             x2: preview.end.x,
             y2: preview.end.y,
+            groupId: null,
           };
           mutatePlan((draft) => {
             draft.walls.push(wall);
           });
-          setSelection({ type: "wall", id: wall.id });
+          setSelection(createSelection([wall.id], []));
         }
       }
 
@@ -825,22 +1127,22 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             mutatePlan((draft) => {
               draft.walls.push(...walls);
             });
-            setSelection({ type: "wall", id: walls[0].id });
+            setSelection(createSelection(walls.map((wall) => wall.id), []));
           }
         }
       }
 
-      if (dragCameraRef.current) {
-        const moved = dragCameraRef.current.moved;
-        dragCameraRef.current = null;
-        if (moved) {
-          pushHistory(planRef.current);
-        }
+      if (marqueeRef.current) {
+        const { start, current, additive } = marqueeRef.current;
+        marqueeRef.current = null;
+        setMarqueeRect(null);
+        const nextSelection = selectionFromRect(planRef.current, start, current);
+        setSelection((previous) => (additive ? mergeSelections(previous, nextSelection) : nextSelection));
       }
 
-      if (dragWallRef.current) {
-        const moved = dragWallRef.current.moved;
-        dragWallRef.current = null;
+      if (dragSelectionRef.current) {
+        const moved = dragSelectionRef.current.moved;
+        dragSelectionRef.current = null;
         if (moved) {
           pushHistory(planRef.current);
         }
@@ -861,7 +1163,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [mutatePlan, planRef, pushHistory, replacePlan, roomPreview, wallPreview]);
+  }, [mutatePlan, pushHistory, replacePlan, roomPreview, wallPreview]);
 
   const beginPan = useCallback((clientX: number, clientY: number) => {
     panRef.current = {
@@ -872,13 +1174,203 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     };
   }, []);
 
-  const handleStageMouseDown = useCallback(
-    (event: KonvaEventObject<MouseEvent>) => {
-      const container = containerRef.current;
-      if (!container) {
+  const buildDragSelectionSnapshot = useCallback(
+    (nextSelection: PlannerSelection, startWorld: PlannerPoint) => {
+      if (!nextSelection) {
+        return null;
+      }
+
+      const selectedWalls = planRef.current.walls.filter((wall) =>
+        nextSelection.wallIds.includes(wall.id),
+      );
+      const selectedCameras = planRef.current.cameras.filter((camera) =>
+        nextSelection.cameraIds.includes(camera.id),
+      );
+
+      const xValues = [
+        ...selectedWalls.flatMap((wall) => [wall.x1, wall.x2]),
+        ...selectedCameras.map((camera) => camera.x),
+      ];
+      const yValues = [
+        ...selectedWalls.flatMap((wall) => [wall.y1, wall.y2]),
+        ...selectedCameras.map((camera) => camera.y),
+      ];
+
+      return {
+        wallIds: nextSelection.wallIds,
+        cameraIds: nextSelection.cameraIds,
+        startWorld,
+        moved: false,
+        bounds: {
+          minX: xValues.length > 0 ? Math.min(...xValues) : 0,
+          maxX: xValues.length > 0 ? Math.max(...xValues) : 0,
+          minY: yValues.length > 0 ? Math.min(...yValues) : 0,
+          maxY: yValues.length > 0 ? Math.max(...yValues) : 0,
+        },
+        wallOrigins: Object.fromEntries(selectedWalls.map((wall) => [wall.id, { ...wall }])),
+        cameraOrigins: Object.fromEntries(
+          selectedCameras.map((camera) => [camera.id, { x: camera.x, y: camera.y }]),
+        ),
+      };
+    },
+    [],
+  );
+
+  const nudgeSelection = useCallback(
+    (rawDeltaX: number, rawDeltaY: number) => {
+      const currentSelection = selectionRef.current;
+      if (!currentSelection) {
         return;
       }
 
+      const snapshot = buildDragSelectionSnapshot(currentSelection, { x: 0, y: 0 });
+      if (!snapshot) {
+        return;
+      }
+
+      const deltaX = clamp(
+        rawDeltaX,
+        -snapshot.bounds.minX,
+        FLOOR_PLAN_WORLD_WIDTH - snapshot.bounds.maxX,
+      );
+      const deltaY = clamp(
+        rawDeltaY,
+        -snapshot.bounds.minY,
+        FLOOR_PLAN_WORLD_HEIGHT - snapshot.bounds.maxY,
+      );
+
+      if (deltaX === 0 && deltaY === 0) {
+        return;
+      }
+
+      mutatePlan((draft) => {
+        draft.walls.forEach((wall) => {
+          const origin = snapshot.wallOrigins[wall.id];
+          if (!origin) {
+            return;
+          }
+          wall.x1 = origin.x1 + deltaX;
+          wall.y1 = origin.y1 + deltaY;
+          wall.x2 = origin.x2 + deltaX;
+          wall.y2 = origin.y2 + deltaY;
+        });
+        draft.cameras.forEach((camera) => {
+          const origin = snapshot.cameraOrigins[camera.id];
+          if (!origin) {
+            return;
+          }
+          camera.x = origin.x + deltaX;
+          camera.y = origin.y + deltaY;
+        });
+      });
+    },
+    [buildDragSelectionSnapshot, mutatePlan],
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        Boolean(target?.isContentEditable);
+      if (isTypingTarget) {
+        return;
+      }
+
+      const isMeta = event.ctrlKey || event.metaKey;
+
+      if (isMeta && event.key.toLowerCase() === "z" && event.shiftKey) {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undo();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "g" && event.shiftKey) {
+        event.preventDefault();
+        ungroupSelection();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "g") {
+        event.preventDefault();
+        groupSelection();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        setSelection(
+          createSelection(
+            planRef.current.walls.map((wall) => wall.id),
+            planRef.current.cameras.map((camera) => camera.id),
+          ),
+        );
+        return;
+      }
+
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
+        const step = event.shiftKey ? FLOOR_PLAN_GRID_SIZE * 2 : FLOOR_PLAN_GRID_SIZE;
+        const deltas = {
+          ArrowUp: { x: 0, y: -step },
+          ArrowDown: { x: 0, y: step },
+          ArrowLeft: { x: -step, y: 0 },
+          ArrowRight: { x: step, y: 0 },
+        } as const;
+        const next = deltas[event.key as keyof typeof deltas];
+        if (next) {
+          event.preventDefault();
+          nudgeSelection(next.x, next.y);
+          return;
+        }
+      }
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        deleteSelection();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        wallDrawRef.current = null;
+        roomDrawRef.current = null;
+        marqueeRef.current = null;
+        dragSelectionRef.current = null;
+        dragWallHandleRef.current = null;
+        setWallPreview(null);
+        setRoomPreview(null);
+        setMarqueeRect(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [deleteSelection, groupSelection, nudgeSelection, redo, undo, ungroupSelection]);
+
+  const resolvePointerWorld = useCallback((event: MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) {
+      return null;
+    }
+    return clampPointToWorld(
+      snapPoint(clientToWorld(event.clientX, event.clientY, container, planRef.current.view)),
+    );
+  }, []);
+
+  const handleStageMouseDown = useCallback(
+    (event: KonvaEventObject<MouseEvent>) => {
       if (event.evt.button === 1 || (tool === "pan" && event.evt.button === 0)) {
         event.evt.preventDefault();
         beginPan(event.evt.clientX, event.evt.clientY);
@@ -889,18 +1381,17 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      const worldPoint = clampPointToWorld(
-        snapPoint(
-          clientToWorld(event.evt.clientX, event.evt.clientY, container, planRef.current.view),
-        ),
-      );
+      const worldPoint = resolvePointerWorld(event.evt);
+      if (!worldPoint) {
+        return;
+      }
 
       if (tool === "camera") {
         const camera = createCameraMarker(worldPoint);
         mutatePlan((draft) => {
           draft.cameras.push(camera);
         });
-        setSelection({ type: "camera", id: camera.id });
+        setSelection(createSelection([], [camera.id]));
         return;
       }
 
@@ -916,9 +1407,25 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      setSelection(null);
+      if (tool === "select") {
+        const additive = event.evt.ctrlKey || event.evt.metaKey;
+        marqueeRef.current = {
+          start: worldPoint,
+          current: worldPoint,
+          additive,
+        };
+        setMarqueeRect(normalizeRect(worldPoint, worldPoint));
+        if (!additive) {
+          setSelection(null);
+        }
+        return;
+      }
+
+      if (!(event.evt.ctrlKey || event.evt.metaKey)) {
+        setSelection(null);
+      }
     },
-    [beginPan, mutatePlan, tool],
+    [beginPan, mutatePlan, resolvePointerWorld, tool],
   );
 
   const handleCameraMouseDown = useCallback(
@@ -929,16 +1436,32 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         beginPan(event.evt.clientX, event.evt.clientY);
         return;
       }
-      setSelection({ type: "camera", id: cameraId });
+
+      if (event.evt.button !== 0) {
+        return;
+      }
+
+      if (event.evt.ctrlKey || event.evt.metaKey) {
+        setSelection((current) => toggleEntitySelection(current, "camera", cameraId));
+        return;
+      }
+
+      const nextSelection = isEntitySelected(selectionRef.current, "camera", cameraId)
+        ? selectionRef.current
+        : selectEntity(planRef.current, "camera", cameraId);
+      setSelection(nextSelection);
+
       if (tool !== "select") {
         return;
       }
-      dragCameraRef.current = {
-        cameraId,
-        moved: false,
-      };
+
+      const startWorld = resolvePointerWorld(event.evt);
+      if (!startWorld) {
+        return;
+      }
+      dragSelectionRef.current = buildDragSelectionSnapshot(nextSelection, startWorld);
     },
-    [beginPan, tool],
+    [beginPan, buildDragSelectionSnapshot, resolvePointerWorld, tool],
   );
 
   const handleWallMouseDown = useCallback(
@@ -949,33 +1472,32 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         beginPan(event.evt.clientX, event.evt.clientY);
         return;
       }
-      setSelection({ type: "wall", id: wall.id });
+
+      if (event.evt.button !== 0) {
+        return;
+      }
+
+      if (event.evt.ctrlKey || event.evt.metaKey) {
+        setSelection((current) => toggleEntitySelection(current, "wall", wall.id));
+        return;
+      }
+
+      const nextSelection = isEntitySelected(selectionRef.current, "wall", wall.id)
+        ? selectionRef.current
+        : selectEntity(planRef.current, "wall", wall.id);
+      setSelection(nextSelection);
+
       if (tool !== "select") {
         return;
       }
 
-      const container = containerRef.current;
-      if (!container) {
+      const startWorld = resolvePointerWorld(event.evt);
+      if (!startWorld) {
         return;
       }
-
-      dragWallRef.current = {
-        wallId: wall.id,
-        startWorld: clampPointToWorld(
-          snapPoint(
-            clientToWorld(
-              event.evt.clientX,
-              event.evt.clientY,
-              container,
-              planRef.current.view,
-            ),
-          ),
-        ),
-        origin: { ...wall },
-        moved: false,
-      };
+      dragSelectionRef.current = buildDragSelectionSnapshot(nextSelection, startWorld);
     },
-    [beginPan, tool],
+    [beginPan, buildDragSelectionSnapshot, resolvePointerWorld, tool],
   );
 
   const handleWallHandleMouseDown = useCallback(
@@ -984,11 +1506,19 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (event.evt.button !== 0) {
         return;
       }
-      setSelection({ type: "wall", id: wallId });
+      setSelection(createSelection([wallId], []));
+      const wall = planRef.current.walls.find((item) => item.id === wallId);
+      if (!wall) {
+        return;
+      }
       dragWallHandleRef.current = {
         wallId,
         endpoint,
         moved: false,
+        anchor:
+          endpoint === "start"
+            ? { x: wall.x2, y: wall.y2 }
+            : { x: wall.x1, y: wall.y1 },
       };
     },
     [],
@@ -1051,7 +1581,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   return (
     <div className="flex h-full min-h-screen bg-[#f5f7fb] text-gray-900">
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-sm backdrop-blur">
+        <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-sm backdrop-blur">
           <ToolbarButton title={t("dataflow")} onClick={() => onViewModeChange("dataflow")}>
             <Layers className="h-4 w-4" />
           </ToolbarButton>
@@ -1081,6 +1611,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           <ToolbarButton disabled={!canRedo} title={t("redo")} onClick={redo}>
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
+          <CompactActionButton disabled={!canGroup} onClick={groupSelection}>
+            {t("group_selection")}
+          </CompactActionButton>
+          <CompactActionButton disabled={!canUngroup} onClick={ungroupSelection}>
+            {t("ungroup_selection")}
+          </CompactActionButton>
+          <div className="mx-1 h-6 w-px bg-gray-200" />
           <ToolbarButton
             title={t("zoom_out")}
             onClick={() =>
@@ -1131,6 +1668,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               setRoomPreview(null);
               wallDrawRef.current = null;
               roomDrawRef.current = null;
+              dragSelectionRef.current = null;
+              dragWallHandleRef.current = null;
               replacePlan(next, false);
             }}
           >
@@ -1138,8 +1677,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </ToolbarButton>
         </div>
 
-        <div className="absolute bottom-4 left-4 z-20 max-w-2xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
-          {toolHint(tool, t)} · {t("middle_pan_hint")} · {t("preset_hint")}
+        <div className="absolute bottom-4 left-4 z-20 max-w-3xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
+          {toolHint(tool, t)} · {t("middle_pan_hint")} · {t("multi_select_hint")} · {t("box_select_hint")} · {t("shift_drag_hint")} · {t("select_all_hint")} · {t("preset_hint")}
         </div>
 
         <div ref={containerRef} className="relative flex-1 overflow-hidden select-none">
@@ -1209,20 +1748,34 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   />
                 ) : null}
 
+                {marqueeRect ? (
+                  <Rect
+                    x={marqueeRect.x}
+                    y={marqueeRect.y}
+                    width={marqueeRect.width}
+                    height={marqueeRect.height}
+                    fill="#2563eb22"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dash={[12, 8]}
+                    listening={false}
+                  />
+                ) : null}
+
                 {plan.walls.map((wall) => {
-                  const isSelected = selection?.type === "wall" && selection.id === wall.id;
+                  const isSelected = isEntitySelected(selection, "wall", wall.id);
                   return (
                     <Group key={wall.id}>
                       <Line
                         points={[wall.x1, wall.y1, wall.x2, wall.y2]}
-                        stroke={isSelected ? "#2563eb" : "#111827"}
+                        stroke={isSelected ? "#2563eb" : wall.groupId ? "#1f2937" : "#111827"}
                         strokeWidth={isSelected ? 12 : 10}
                         hitStrokeWidth={26}
                         lineCap="round"
                         onMouseDown={(event) => handleWallMouseDown(wall, event)}
                       />
 
-                      {isSelected ? (
+                      {isSelected && selectedWallCount === 1 && selectedCameraCount === 0 ? (
                         <>
                           <Circle
                             x={wall.x1}
@@ -1253,7 +1806,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                 })}
 
                 {plan.cameras.map((camera) => {
-                  const isSelected = selection?.type === "camera" && selection.id === camera.id;
+                  const isSelected = isEntitySelected(selection, "camera", camera.id);
                   const hasRecentEvent = Boolean(camera.latestEventAt);
                   const accent = camera.channelId ? (hasRecentEvent ? "#f97316" : "#2563eb") : "#9ca3af";
                   const facingX = camera.x + Math.cos((camera.angle * Math.PI) / 180) * 34;
@@ -1290,7 +1843,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                         y={camera.y}
                         radius={isSelected ? 15 : 12}
                         fill={accent}
-                        stroke="#ffffff"
+                        stroke={isSelected ? "#111827" : "#ffffff"}
                         strokeWidth={3}
                         onMouseDown={(event) => handleCameraMouseDown(camera.id, event)}
                       />
@@ -1385,7 +1938,53 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           onDelete={deleteSelection}
         />
 
-        {selectedCamera ? (
+        {isBatchSelection ? (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            <div className="mb-1 font-medium text-gray-900">{t("batch_selected")}</div>
+            <div className="mb-2 text-xs text-gray-500">
+              {t("batch_selected_summary", {
+                walls: selectedWallCount,
+                cameras: selectedCameraCount,
+              })}
+            </div>
+            <div className="mb-3 text-xs leading-5 text-gray-500">
+              {selectedGroupIds.length > 0 ? t("grouped_selection_hint") : t("multi_select_hint")}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                disabled={!canGroup}
+                onClick={groupSelection}
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  canGroup
+                    ? "bg-gray-900 text-white hover:bg-gray-800"
+                    : "cursor-not-allowed bg-gray-200 text-gray-400"
+                }`}
+              >
+                {t("group_selection")}
+              </button>
+              <button
+                type="button"
+                disabled={!canUngroup}
+                onClick={ungroupSelection}
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  canUngroup
+                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                    : "cursor-not-allowed bg-gray-200 text-gray-400"
+                }`}
+              >
+                {t("ungroup_selection")}
+              </button>
+              <button
+                type="button"
+                onClick={deleteSelection}
+                className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white hover:bg-red-600"
+              >
+                {t("delete_selected")}
+              </button>
+            </div>
+          </div>
+        ) : selectedCamera ? (
           <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
             <div className="mb-1 font-medium text-gray-900">{t("camera_summary")}</div>
             <div>
@@ -1397,12 +1996,18 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <div>
               {t("range")}: {Math.round(selectedCamera.range)}
             </div>
+            <div className="mt-2 text-[11px] text-gray-500">
+              {selectedCamera.groupId ? t("grouped_item_hint") : t("single_item_hint")}
+            </div>
           </div>
         ) : selectedWall ? (
           <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
             <div className="mb-1 font-medium text-gray-900">{t("wall_selected")}</div>
             <div className="mb-2 text-xs text-gray-500">#{selectedWall.id}</div>
             <div className="mb-3 text-xs leading-5 text-gray-500">{t("wall_edit_tip")}</div>
+            <div className="mb-3 text-[11px] leading-5 text-gray-500">
+              {selectedWall.groupId ? t("grouped_item_hint") : t("single_item_hint")}
+            </div>
             <button
               type="button"
               onClick={deleteSelection}
@@ -1413,7 +2018,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </div>
         ) : (
           <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("selection_empty_description_v2")} />
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("selection_empty_description_v3")} />
           </div>
         )}
       </aside>

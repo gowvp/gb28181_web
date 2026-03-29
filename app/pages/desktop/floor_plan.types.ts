@@ -19,6 +19,7 @@ export type FloorWall = {
   y1: number;
   x2: number;
   y2: number;
+  groupId?: string | null;
 };
 
 export type CameraMarker = {
@@ -30,6 +31,7 @@ export type CameraMarker = {
   range: number;
   channelId: string | null;
   channelName: string | null;
+  groupId?: string | null;
   deviceName?: string | null;
   latestEventAt?: number | null;
   latestEventImage?: string | null;
@@ -38,17 +40,17 @@ export type CameraMarker = {
 };
 
 export type FloorPlanState = {
-  version: 2;
+  version: 3;
   walls: FloorWall[];
   cameras: CameraMarker[];
   view: PlannerView;
   updatedAt: number;
 };
 
-export type PlannerSelection =
-  | { type: "wall"; id: string }
-  | { type: "camera"; id: string }
-  | null;
+export type PlannerSelection = {
+  wallIds: string[];
+  cameraIds: string[];
+} | null;
 
 export type LatestCameraEvent = {
   channelId: string;

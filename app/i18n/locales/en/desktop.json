@@ -75,5 +75,18 @@
   "preset_description": "Insert a common outline with one click, then fine-tune it by dragging walls.",
   "preset_hint": "Quick presets and rectangle drag-draw are supported",
   "wall_edit_tip": "Drag the whole wall to move it. Drag either endpoint handle for fine tuning.",
-  "selection_empty_description_v2": "Choose Wall / Rectangle Room / Camera to start editing, or insert a preset shape from the right panel."
+  "selection_empty_description_v2": "Choose Wall / Rectangle Room / Camera to start editing, or insert a preset shape from the right panel.",
+  "group_selection": "Group",
+  "ungroup_selection": "Ungroup",
+  "batch_selected": "Batch Selection",
+  "batch_selected_summary": "{{walls}} walls selected, {{cameras}} cameras selected",
+  "grouped_selection_hint": "Grouped items move together. Hold Ctrl/Cmd + left click to add or remove items from the selection.",
+  "grouped_item_hint": "This item belongs to a group. Clicking any item in the group selects and drags the whole group.",
+  "single_item_hint": "Hold Ctrl/Cmd + left click for multi-select, or select multiple items first and then group them.",
+  "multi_select_hint": "Hold Ctrl/Cmd + left click for multi-select, then drag any selected item to move all of them",
+  "delete_selected": "Delete Selected",
+  "selection_empty_description_v3": "Choose Wall / Room / Camera to start editing. Hold Ctrl/Cmd + left click for multi-select, then group items to drag them together.",
+  "box_select_hint": "Drag on empty space to box-select, hold Ctrl/Cmd to add to the selection",
+  "shift_drag_hint": "Hold Shift while dragging a batch or wall endpoint to constrain movement horizontally or vertically",
+  "select_all_hint": "Ctrl/Cmd + A selects all, arrow keys nudge by grid, Shift + arrows moves faster"
 }

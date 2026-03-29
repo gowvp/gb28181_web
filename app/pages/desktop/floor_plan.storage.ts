@@ -19,6 +19,7 @@ export function createCameraMarker(point: PlannerPoint): CameraMarker {
     range: 260,
     channelId: null,
     channelName: null,
+    groupId: null,
     deviceName: null,
     latestEventAt: null,
     latestEventImage: null,
@@ -29,7 +30,7 @@ export function createCameraMarker(point: PlannerPoint): CameraMarker {
 
 export function createDefaultFloorPlanState(): FloorPlanState {
   return {
-    version: 2,
+    version: 3,
     walls: [],
     cameras: [],
     view: {
@@ -54,7 +55,7 @@ export function normalizeFloorPlanState(input: unknown): FloorPlanState {
   const value = input as Partial<FloorPlanState>;
 
   return {
-    version: 2,
+    version: 3,
     walls: Array.isArray(value.walls)
       ? value.walls
           .filter((wall) => wall && typeof wall.id === "string")
@@ -64,6 +65,7 @@ export function normalizeFloorPlanState(input: unknown): FloorPlanState {
             y1: Number.isFinite(wall.y1) ? wall.y1 : 0,
             x2: Number.isFinite(wall.x2) ? wall.x2 : 0,
             y2: Number.isFinite(wall.y2) ? wall.y2 : 0,
+            groupId: wall.groupId ?? null,
           }))
       : [],
     cameras: Array.isArray(value.cameras)
@@ -78,6 +80,7 @@ export function normalizeFloorPlanState(input: unknown): FloorPlanState {
             range: clamp(Number.isFinite(camera.range) ? camera.range : 260, 80, 800),
             channelId: camera.channelId ?? null,
             channelName: camera.channelName ?? null,
+            groupId: camera.groupId ?? null,
             deviceName: camera.deviceName ?? null,
             latestEventAt: camera.latestEventAt ?? null,
             latestEventImage: camera.latestEventImage ?? null,
