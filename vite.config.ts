@@ -81,6 +81,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
+        "/local": {
+          target: "http://127.0.0.1:15123",
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api/, ""),
+        },
         // // 录像 m3u8 播放列表（不走 /api 前缀，直接代理）
         // "/recordings/channels": {
         //   target: "http://127.0.0.1:15123",
