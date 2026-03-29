@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Button, DatePicker, Select } from "antd";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import {
   ArrowLeft,
   Calendar,
@@ -53,6 +53,15 @@ type SegmentIssue = {
   endMs: number;
   rawMessage: string;
 };
+
+/**
+ * 为什么把日历单元格的值统一转换成 Dayjs：
+ * antd 的 cellRender 类型在不同版本里会放宽成 string/number/Dayjs 联合类型，
+ * 先收敛到同一种日期对象可以避免 UI 升级时把编译问题扩散到渲染逻辑里。
+ */
+function normalizeCalendarCellDate(value: string | number | Dayjs): Dayjs {
+  return dayjs(value);
+}
 
 export default function RecordingDetailView() {
   const navigate = useNavigate();
@@ -440,9 +449,10 @@ export default function RecordingDetailView() {
                       return info.originNode;
                     }
 
-                    const dateStr = current.format("YYYY-MM-DD");
+                    const currentDate = normalizeCalendarCellDate(current);
+                    const dateStr = currentDate.format("YYYY-MM-DD");
                     const hasRecording = monthRecordingDateSet.has(dateStr);
-                    const isSelectedDate = current.isSame(dayjs(selectedDate), "day");
+                    const isSelectedDate = currentDate.isSame(dayjs(selectedDate), "day");
 
                     return (
                       <div className="relative h-full w-full">

@@ -38,9 +38,8 @@ import { useTranslation } from "react-i18next";
 import { CameraBindingPanel } from "~/components/desktop/camera-binding-panel";
 import { CameraHoverCard } from "~/components/desktop/camera-hover-card";
 import {
-  FlattenDeviceChannels,
-  FindDevicesChannels,
-  findDevicesChannelsKey,
+  FindPlannerChannelOptions,
+  findPlannerChannelOptionsKey,
 } from "~/service/api/device/device";
 import {
   FLOOR_PLAN_GRID_SIZE,
@@ -925,14 +924,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   }, []);
 
   const channelQuery = useQuery({
-    queryKey: [findDevicesChannelsKey, "floor-plan"],
-    queryFn: () => FindDevicesChannels({ page: 1, size: 500 }),
+    queryKey: [findPlannerChannelOptionsKey, "floor-plan"],
+    queryFn: FindPlannerChannelOptions,
     staleTime: 30_000,
   });
 
   const channelOptions = useMemo(
-    () => FlattenDeviceChannels(channelQuery.data?.data.items ?? []),
-    [channelQuery.data?.data.items],
+    () => channelQuery.data ?? [],
+    [channelQuery.data],
   );
 
   const selectedCamera = useMemo(() => {
@@ -2451,6 +2450,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           camera={selectedCamera}
           channelOptions={channelOptions}
           channelsLoading={channelQuery.isLoading}
+          channelsError={channelQuery.isError ? String(channelQuery.error) : null}
           onBindChannel={(channelId) => {
             updateSelectedCamera((camera) => {
               const option = channelOptions.find((item) => item.value === channelId);

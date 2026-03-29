@@ -93,5 +93,7 @@
   "paste_selection": "粘贴",
   "duplicate_selection": "重复所选",
   "copy_paste_hint": "Ctrl/Cmd + C 复制，Ctrl/Cmd + V 粘贴，Ctrl/Cmd + D 快速重复所选",
-  "alt_drag_hint": "选择模式下按住 Alt 拖动，可直接复制当前选择并拖动副本"
+  "alt_drag_hint": "选择模式下按住 Alt 拖动，可直接复制当前选择并拖动副本",
+  "channel_count_loaded": "已加载 {{count}} 路通道",
+  "channel_load_warning": "通道列表可能未完整加载，当前结果已尽力回退到可用数据。"
 }
