@@ -8,3 +8,4 @@ dist/
 .cursor/
 .remember/
 stats.html
+vite.config.ts
