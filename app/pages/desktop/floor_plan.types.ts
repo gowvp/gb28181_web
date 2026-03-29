@@ -1,4 +1,6 @@
-export type PlannerTool = "select" | "wall" | "camera" | "pan";
+export type PlannerTool = "select" | "wall" | "room" | "camera" | "pan";
+
+export type FloorPlanTemplateId = "small_room" | "corridor" | "l_room";
 
 export type PlannerPoint = {
   x: number;
