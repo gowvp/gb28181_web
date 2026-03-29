@@ -18,12 +18,13 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Mp4Player, { type Mp4PlayerRef } from "~/components/mp4-player";
-import DayPlaybackTimeline from "~/components/timeline/day-playback-timeline";
+import DayPlaybackTimeline, { type TimelineEventMarker } from "~/components/timeline/day-playback-timeline";
 import { cn } from "~/lib/utils";
 import {
   FindDevicesChannels,
   findDevicesChannelsKey,
 } from "~/service/api/device/device";
+import { FindEvents, findEventsKey, GetEventImageUrl } from "~/service/api/event/event";
 import {
   FindRecordings,
   findRecordingsKey,
@@ -40,9 +41,11 @@ import {
   getSegmentsTotalDuration,
   locateSegmentByAbsoluteMs,
   normalizeRecordings,
+  parseBackendDateTime,
 } from "./time-mapping";
 
 const PAGE_SIZE = 30;
+const EVENT_PAGE_SIZE = 200;
 
 type SegmentIssue = {
   url: string;
@@ -63,6 +66,7 @@ export default function RecordingDetailView() {
 
   const [channelId, setChannelId] = useState(initialChannelId);
   const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [calendarPanelDate, setCalendarPanelDate] = useState(() => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [currentAbsoluteMs, setCurrentAbsoluteMs] = useState<number | null>(null);
   const [currentContinuousSec, setCurrentContinuousSec] = useState(0);
@@ -125,21 +129,27 @@ export default function RecordingDetailView() {
     }
   }, [allChannels, channelId, selectedDate, updateUrl]);
 
+  useEffect(() => {
+    setCalendarPanelDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  }, [selectedDate]);
+
   const { data: monthlyData } = useQuery({
-    queryKey: [monthlyKey, channelId, selectedDate.getFullYear(), selectedDate.getMonth() + 1],
+    queryKey: [monthlyKey, channelId, calendarPanelDate.getFullYear(), calendarPanelDate.getMonth() + 1],
     queryFn: () =>
       GetMonthly({
         cid: channelId,
-        year: selectedDate.getFullYear(),
-        month: selectedDate.getMonth() + 1,
+        year: calendarPanelDate.getFullYear(),
+        month: calendarPanelDate.getMonth() + 1,
       }),
     enabled: !!channelId,
   });
 
-  const monthRecordingDays = useMemo(() => {
-    const bitmap = monthlyData?.data?.has_video || "";
-    return bitmap.split("").filter((bit) => bit === "1").length;
-  }, [monthlyData]);
+  const monthRecordingDateSet = useMemo(
+    () => buildMonthlyRecordingDateSet(calendarPanelDate, monthlyData?.data?.has_video || ""),
+    [calendarPanelDate, monthlyData],
+  );
+
+  const monthRecordingDays = monthRecordingDateSet.size;
 
   const {
     data: recordingsResult,
@@ -148,6 +158,12 @@ export default function RecordingDetailView() {
   } = useQuery({
     queryKey: [findRecordingsKey, "full-day", channelId, dayStartMs, dayEndMs],
     queryFn: () => fetchAllRecordings(channelId, dayStartMs, dayEndMs),
+    enabled: !!channelId,
+  });
+
+  const { data: eventsResult } = useQuery({
+    queryKey: [findEventsKey, "full-day", channelId, dayStartMs, dayEndMs],
+    queryFn: () => fetchAllEvents(channelId, dayStartMs, dayEndMs),
     enabled: !!channelId,
   });
 
@@ -182,6 +198,18 @@ export default function RecordingDetailView() {
   const mergedCoverageSeconds = useMemo(
     () => timeRanges.reduce((sum, range) => sum + Math.max(range.endMs - range.startMs, 0) / 1000, 0),
     [timeRanges],
+  );
+  const normalizedEvents = useMemo(
+    () => normalizeEventSnapshots(eventsResult?.items || []),
+    [eventsResult],
+  );
+  const timelineEventMarkers = useMemo<TimelineEventMarker[]>(
+    () => buildTimelineEventMarkers(normalizedEvents),
+    [normalizedEvents],
+  );
+  const timelineEventRanges = useMemo(
+    () => buildEventTimeRanges(normalizedEvents, dayStartMs, dayEndMs),
+    [dayEndMs, dayStartMs, normalizedEvents],
   );
 
   useEffect(() => {
@@ -312,6 +340,7 @@ export default function RecordingDetailView() {
       const nextDate = value.toDate();
       nextDate.setHours(0, 0, 0, 0);
       setSelectedDate(nextDate);
+      setCalendarPanelDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
       setDatePickerOpen(false);
       setCurrentAbsoluteMs(null);
       setCurrentContinuousSec(0);
@@ -365,8 +394,8 @@ export default function RecordingDetailView() {
     : "--:--:--";
 
   return (
-    <div className="h-full bg-gray-50 overflow-auto">
-      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 space-y-4">
+    <div className="h-full overflow-auto bg-gray-50">
+      <div className="mx-auto max-w-7xl space-y-4 px-4 py-4 sm:px-6">
         <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="flex items-center gap-2">
@@ -398,11 +427,46 @@ export default function RecordingDetailView() {
                 <Button type="text" icon={<ChevronLeft className="h-4 w-4" />} onClick={goToPrevDay} />
                 <DatePicker
                   value={dayjs(selectedDate)}
+                  pickerValue={dayjs(calendarPanelDate)}
                   onChange={handleDateChange}
+                  onPanelChange={(value) => {
+                    const nextPanelDate = value.toDate();
+                    nextPanelDate.setDate(1);
+                    nextPanelDate.setHours(0, 0, 0, 0);
+                    setCalendarPanelDate(nextPanelDate);
+                  }}
+                  cellRender={(current, info) => {
+                    if (info.type !== "date") {
+                      return info.originNode;
+                    }
+
+                    const dateStr = current.format("YYYY-MM-DD");
+                    const hasRecording = monthRecordingDateSet.has(dateStr);
+                    const isSelectedDate = current.isSame(dayjs(selectedDate), "day");
+
+                    return (
+                      <div className="relative h-full w-full">
+                        {info.originNode}
+                        {hasRecording && (
+                          <span
+                            className={cn(
+                              "pointer-events-none absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full",
+                              isSelectedDate ? "bg-white/95" : "bg-blue-500",
+                            )}
+                          />
+                        )}
+                      </div>
+                    );
+                  }}
                   allowClear={false}
                   format="YYYY-MM-DD"
                   open={datePickerOpen}
-                  onOpenChange={setDatePickerOpen}
+                  onOpenChange={(open) => {
+                    setDatePickerOpen(open);
+                    if (open) {
+                      setCalendarPanelDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+                    }
+                  }}
                   suffixIcon={<Calendar className="h-4 w-4" />}
                 />
                 <Button type="text" icon={<ChevronRight className="h-4 w-4" />} onClick={goToNextDay} />
@@ -413,13 +477,14 @@ export default function RecordingDetailView() {
                 <span>当天片段 {recordings.length} 个</span>
                 <span>可播放 {formatDuration(totalPlayableSeconds)}</span>
                 <span>异常片段 {segmentIssues.length} 个</span>
+                <span>告警快照 {timelineEventMarkers.length} 个</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <div ref={fullscreenRef} className={cn("flex flex-col", isFullscreen && "h-screen bg-white") }>
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div ref={fullscreenRef} className={cn("flex flex-col", isFullscreen && "h-screen bg-white")}>
             <div className="aspect-video bg-black">
               {isLoading ? (
                 <div className="flex h-full items-center justify-center text-sm text-gray-300">正在加载当天录像...</div>
@@ -483,6 +548,8 @@ export default function RecordingDetailView() {
                   dayEndMs={dayEndMs}
                   ranges={timeRanges}
                   errorRanges={failedTimeRanges}
+                  eventMarkers={timelineEventMarkers}
+                  eventRanges={timelineEventRanges}
                   currentTimeMs={currentAbsoluteMs}
                   onSeek={(absoluteMs) => seekToAbsolute(absoluteMs, isPlaying)}
                   compact
@@ -576,12 +643,13 @@ export default function RecordingDetailView() {
                 {!isMobileViewport && <span>快捷键：Space 播放/暂停</span>}
                 {!isMobileViewport && <span>← 后退 5 秒</span>}
                 {!isMobileViewport && <span>→ 前进 5 秒</span>}
+                {!isMobileViewport && <span>悬停时间轴可预览画面</span>}
                 <span>蓝色：正常片段</span>
                 <span>红色：异常片段</span>
+                <span>橙色：AI事件</span>
                 {isMobileViewport && <span>拖动时间轴可快速定位</span>}
                 {isFetching && <span>正在刷新录像数据...</span>}
               </div>
-
             </div>
           </div>
         </div>
@@ -593,6 +661,8 @@ export default function RecordingDetailView() {
               dayEndMs={dayEndMs}
               ranges={timeRanges}
               errorRanges={failedTimeRanges}
+              eventMarkers={timelineEventMarkers}
+              eventRanges={timelineEventRanges}
               currentTimeMs={currentAbsoluteMs}
               onSeek={(absoluteMs) => seekToAbsolute(absoluteMs, isPlaying)}
             />
@@ -612,7 +682,7 @@ export default function RecordingDetailView() {
             </div>
             <details className="mt-2 text-xs text-red-700">
               <summary className="cursor-pointer select-none">查看技术详情</summary>
-              <div className="mt-2 rounded-lg border border-red-100 bg-white/70 px-2 py-2 break-all text-red-600">
+              <div className="mt-2 break-all rounded-lg border border-red-100 bg-white/70 px-2 py-2 text-red-600">
                 {latestSegmentIssue.rawMessage}
               </div>
             </details>
@@ -645,6 +715,8 @@ function InfoBadge({
     </div>
   );
 }
+
+
 
 function useIsMobileViewport() {
   const [isMobile, setIsMobile] = useState(() => {
@@ -707,6 +779,26 @@ function formatDateForUrl(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function buildMonthlyRecordingDateSet(monthDate: Date, bitmap: string) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const monthStart = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const result = new Set<string>();
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    if (bitmap[day - 1] !== "1") {
+      continue;
+    }
+
+    const date = new Date(monthStart);
+    date.setDate(day);
+    result.add(formatDateForUrl(date));
+  }
+
+  return result;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -749,4 +841,141 @@ function formatClockTime(value: number) {
     second: "2-digit",
     hour12: false,
   });
+}
+
+async function fetchAllEvents(cid: string, startMs: number, endMs: number) {
+  const items: Array<Record<string, unknown>> = [];
+  let total = 0;
+
+  for (let page = 1; page <= 200; page += 1) {
+    const response = await FindEvents({
+      cid,
+      start_ms: startMs,
+      end_ms: endMs,
+      page,
+      size: EVENT_PAGE_SIZE,
+    });
+
+    const pageItems = (response.data?.items || []) as Array<Record<string, unknown>>;
+    total = response.data?.total || total;
+    items.push(...pageItems);
+
+    if (pageItems.length === 0 || items.length >= total || pageItems.length < EVENT_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return {
+    items,
+    total: total || items.length,
+  };
+}
+
+type NormalizedEventSnapshot = {
+  id: string;
+  absoluteMs: number;
+  imagePath: string;
+  imageSrc: string;
+  labels: string[];
+  count: number;
+  maxScore: number;
+};
+
+function normalizeEventSnapshots(items: Array<Record<string, unknown>>): NormalizedEventSnapshot[] {
+  const grouped = new Map<string, {
+    absoluteMs: number;
+    imagePath: string;
+    labels: string[];
+    count: number;
+    maxScore: number;
+  }>();
+
+  for (const item of items) {
+    const imagePath = typeof item.image_path === "string" ? item.image_path.trim() : "";
+    if (!imagePath) continue;
+
+    const absoluteMs = parseBackendDateTime(item.started_at);
+    if (!Number.isFinite(absoluteMs)) continue;
+
+    const key = `${imagePath}::${absoluteMs}`;
+    const label = typeof item.label === "string" && item.label.trim() ? item.label.trim() : "告警";
+    const rawScore = typeof item.score === "number" ? item.score : Number(item.score ?? 0);
+    const score = Number.isFinite(rawScore) ? rawScore : 0;
+
+    const current = grouped.get(key) ?? {
+      absoluteMs,
+      imagePath,
+      labels: [],
+      count: 0,
+      maxScore: 0,
+    };
+
+    current.count += 1;
+    current.maxScore = Math.max(current.maxScore, score);
+    if (!current.labels.includes(label)) {
+      current.labels.push(label);
+    }
+
+    grouped.set(key, current);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([key, value]) => ({
+      id: key,
+      absoluteMs: value.absoluteMs,
+      imagePath: value.imagePath,
+      imageSrc: GetEventImageUrl(value.imagePath),
+      labels: value.labels,
+      count: value.count,
+      maxScore: value.maxScore,
+    }))
+    .sort((a, b) => a.absoluteMs - b.absoluteMs);
+}
+
+function buildTimelineEventMarkers(events: NormalizedEventSnapshot[]): TimelineEventMarker[] {
+  return events.map((event) => ({
+    id: event.id,
+    absoluteMs: event.absoluteMs,
+    imageSrc: event.imageSrc,
+    label: event.labels[0] || "告警",
+    title: `${formatClockTime(event.absoluteMs)} 告警快照`,
+    subtitle: buildEventSubtitle(event),
+    count: event.count,
+    score: event.maxScore,
+  }));
+}
+
+function buildEventTimeRanges(events: NormalizedEventSnapshot[], dayStartMs: number, dayEndMs: number) {
+  if (events.length === 0) return [];
+
+  const ranges = events
+    .map((event) => ({
+      startMs: Math.max(dayStartMs, event.absoluteMs - 1500),
+      endMs: Math.min(dayEndMs, event.absoluteMs + 1500),
+    }))
+    .sort((a, b) => a.startMs - b.startMs);
+
+  const merged: Array<{ startMs: number; endMs: number }> = [];
+  const mergeGapMs = 10 * 1000;
+
+  for (const range of ranges) {
+    const last = merged[merged.length - 1];
+    if (!last || range.startMs > last.endMs + mergeGapMs) {
+      merged.push({ ...range });
+      continue;
+    }
+
+    last.endMs = Math.max(last.endMs, range.endMs);
+  }
+
+  return merged;
+}
+
+function buildEventSubtitle(event: Pick<NormalizedEventSnapshot, "labels" | "count" | "maxScore">) {
+  const labelText = event.labels.length > 2
+    ? `${event.labels.slice(0, 2).join(" / ")} 等`
+    : event.labels.join(" / ");
+  const scoreText = event.maxScore > 0 ? ` · 最高置信度 ${Math.round(event.maxScore * 100)}%` : "";
+  const countText = event.count > 1 ? ` · ${event.count} 个目标` : "";
+  return `${labelText || "告警"}${countText}${scoreText}`;
 }
