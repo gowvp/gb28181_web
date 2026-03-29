@@ -1,769 +1,884 @@
+import { useQuery } from "@tanstack/react-query";
+import { Empty } from "antd";
 import {
-  Background,
-  Controls,
-  Panel,
-  ReactFlow,
-} from "@xyflow/react";
-import { Camera, Eraser, Layers, Map as MapIcon, Move, Pencil, RotateCcw, Tag, Trash2 } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+  Camera,
+  Hand,
+  Layers,
+  Map as MapIcon,
+  MousePointer2,
+  Redo2,
+  RotateCcw,
+  Undo2,
+  WandSparkles,
+  Waypoints,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { CameraBindingPanel } from "~/components/desktop/camera-binding-panel";
+import { CameraHoverCard } from "~/components/desktop/camera-hover-card";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "~/components/ui/tooltip";
+  FlattenDeviceChannels,
+  FindDevicesChannels,
+  findDevicesChannelsKey,
+} from "~/service/api/device/device";
+import {
+  FLOOR_PLAN_GRID_SIZE,
+  FLOOR_PLAN_WORLD_HEIGHT,
+  FLOOR_PLAN_WORLD_WIDTH,
+  clearFloorPlanState,
+  cloneFloorPlanState,
+  createCameraMarker,
+  createDefaultFloorPlanState,
+  loadFloorPlanState,
+  normalizeFloorPlanState,
+  saveFloorPlanState,
+} from "./floor_plan.storage";
+import { getLatestCameraEvent } from "./floor_plan.events";
+import type {
+  CameraMarker,
+  FloorPlanState,
+  FloorWall,
+  LatestCameraEvent,
+  PlannerPoint,
+  PlannerSelection,
+  PlannerTool,
+  PlannerView,
+} from "./floor_plan.types";
 
-// ── 六边形画色板 ──────────────────────────
-
-export const FLOOR_PLAN_PALETTE = [
-  "#6b7280",
-  "#94a3b8",
-  "#d4a574",
-  "#a8c5a0",
-  "#b8c5d6",
-  "#d4b8c5",
-  "#c5c0a8",
-] as const;
-
-interface HexCell {
-  q: number;
-  r: number;
-  color: string | null;
-  roomName: string | null;
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
-interface CameraMarker {
-  id: string;
-  q: number;
-  r: number;
-  angle: number;
-  fov: number;
-  range: number;
-  channelId: string | null;
-  channelName: string | null;
+function createWallId() {
+  return `wall-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-type EditorMode = "paint" | "erase" | "label" | "camera" | "pan";
-
-// ── 六边形几何 (flat-top) ──────────────────────────
-
-const HEX_SIZE = 28;
-
-function hexToPixel(q: number, r: number): [number, number] {
-  const x = HEX_SIZE * (3 / 2) * q;
-  const y = HEX_SIZE * Math.sqrt(3) * (r + q / 2);
-  return [x, y];
+function snapPoint(point: PlannerPoint): PlannerPoint {
+  return {
+    x: Math.round(point.x / FLOOR_PLAN_GRID_SIZE) * FLOOR_PLAN_GRID_SIZE,
+    y: Math.round(point.y / FLOOR_PLAN_GRID_SIZE) * FLOOR_PLAN_GRID_SIZE,
+  };
 }
 
-function pixelToHex(px: number, py: number): [number, number] {
-  const q = ((2 / 3) * px) / HEX_SIZE;
-  const r = ((-1 / 3) * px + (Math.sqrt(3) / 3) * py) / HEX_SIZE;
-  return cubeRound(q, r);
+function screenToWorld(
+  clientX: number,
+  clientY: number,
+  container: HTMLDivElement,
+  view: PlannerView,
+): PlannerPoint {
+  const rect = container.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left - view.x) / view.scale,
+    y: (clientY - rect.top - view.y) / view.scale,
+  };
 }
 
-function cubeRound(q: number, r: number): [number, number] {
-  const s = -q - r;
-  let rq = Math.round(q);
-  let rr = Math.round(r);
-  const rs = Math.round(s);
-  const dq = Math.abs(rq - q);
-  const dr = Math.abs(rr - r);
-  const ds = Math.abs(rs - s);
-  if (dq > dr && dq > ds) rq = -rr - rs;
-  else if (dr > ds) rr = -rq - rs;
-  return [rq, rr];
+function worldToScreen(point: PlannerPoint, view: PlannerView): PlannerPoint {
+  return {
+    x: point.x * view.scale + view.x,
+    y: point.y * view.scale + view.y,
+  };
 }
 
-function hexCorners(cx: number, cy: number, size: number): string {
-  const points: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const rad = (Math.PI / 180) * 60 * i;
-    points.push(`${cx + size * Math.cos(rad)},${cy + size * Math.sin(rad)}`);
+function formatAngle(angle: number) {
+  return `${Math.round(angle)}°`;
+}
+
+function createSectorPath(camera: CameraMarker) {
+  const startAngle = ((camera.angle - camera.fov / 2) * Math.PI) / 180;
+  const endAngle = ((camera.angle + camera.fov / 2) * Math.PI) / 180;
+  const startX = camera.x + Math.cos(startAngle) * camera.range;
+  const startY = camera.y + Math.sin(startAngle) * camera.range;
+  const endX = camera.x + Math.cos(endAngle) * camera.range;
+  const endY = camera.y + Math.sin(endAngle) * camera.range;
+  const largeArc = camera.fov > 180 ? 1 : 0;
+
+  return `M ${camera.x} ${camera.y} L ${startX} ${startY} A ${camera.range} ${camera.range} 0 ${largeArc} 1 ${endX} ${endY} Z`;
+}
+
+function getPlanBounds(plan: FloorPlanState) {
+  const points: PlannerPoint[] = [];
+  for (const wall of plan.walls) {
+    points.push({ x: wall.x1, y: wall.y1 }, { x: wall.x2, y: wall.y2 });
   }
-  return points.join(" ");
-}
-
-function hexKey(q: number, r: number): string {
-  return `${q},${r}`;
-}
-
-function generateHexGrid(radius: number): Array<[number, number]> {
-  const cells: Array<[number, number]> = [];
-  for (let q = -radius; q <= radius; q++) {
-    const r1 = Math.max(-radius, -q - radius);
-    const r2 = Math.min(radius, -q + radius);
-    for (let r = r1; r <= r2; r++) {
-      cells.push([q, r]);
-    }
+  for (const camera of plan.cameras) {
+    points.push({ x: camera.x, y: camera.y });
   }
-  return cells;
+
+  if (points.length === 0) {
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: FLOOR_PLAN_WORLD_WIDTH * 0.6,
+      maxY: FLOOR_PLAN_WORLD_HEIGHT * 0.5,
+    };
+  }
+
+  return {
+    minX: Math.min(...points.map((point) => point.x)),
+    minY: Math.min(...points.map((point) => point.y)),
+    maxX: Math.max(...points.map((point) => point.x)),
+    maxY: Math.max(...points.map((point) => point.y)),
+  };
 }
 
-// ── 工具栏按钮组件 ──────────────────────────
+function toolHint(tool: PlannerTool, t: (key: string) => string) {
+  switch (tool) {
+    case "select":
+      return t("select_hint");
+    case "wall":
+      return t("wall_hint");
+    case "camera":
+      return t("camera_place_hint");
+    case "pan":
+      return t("pan_hint_v2");
+    default:
+      return "";
+  }
+}
 
-function ToolButton({
+function ToolbarButton({
   active,
-  onClick,
   title,
+  onClick,
   children,
 }: {
-  active: boolean;
-  onClick: () => void;
+  active?: boolean;
   title: string;
+  onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onClick}
-            className={`
-              w-8 h-8 rounded-md flex items-center justify-center transition-colors
-              ${active
-                ? "bg-gray-900 text-white shadow-sm"
-                : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-              }
-            `}
-          >
-            {children}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">{title}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+        active
+          ? "border-gray-900 bg-gray-900 text-white"
+          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
-
-// ── FloorPlanEditor ──────────────────────────
-
-const GRID_RADIUS = 30;
 
 interface FloorPlanEditorProps {
   viewMode: "dataflow" | "2d";
   onViewModeChange: (mode: "dataflow" | "2d") => void;
 }
 
-export default function FloorPlanEditor({ viewMode, onViewModeChange }: FloorPlanEditorProps) {
+export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorProps) {
   const { t } = useTranslation("desktop");
 
-  const [cells, setCells] = useState<Map<string, HexCell>>(new Map());
-  const [cameras, setCameras] = useState<CameraMarker[]>([]);
-  const [mode, setMode] = useState<EditorMode>("paint");
-  const [selectedColor, setSelectedColor] = useState<string>(FLOOR_PLAN_PALETTE[0]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [labelInput, setLabelInput] = useState("");
-  const [labelTarget, setLabelTarget] = useState<string | null>(null);
-  const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
-
-  const svgRef = useRef<SVGSVGElement>(null);
-  const gRef = useRef<SVGGElement>(null);
-  const isPanning = useRef(false);
-  const panStart = useRef({ x: 0, y: 0 });
-  const panOffset = useRef({ x: 0, y: 0 });
-  const isPainting = useRef(false);
-
-  const gridCoords = useMemo(() => generateHexGrid(GRID_RADIUS), []);
-
-  // ── 坐标转换（通过 <g> 的 CTM 直接获取变换后坐标，自动包含 zoom/pan） ──
-
-  const svgPoint = useCallback(
-    (clientX: number, clientY: number): [number, number] => {
-      const g = gRef.current;
-      if (!g) return [0, 0];
-      const ctm = g.getScreenCTM();
-      if (!ctm) return [0, 0];
-      const inv = ctm.inverse();
-      const x = inv.a * clientX + inv.c * clientY + inv.e;
-      const y = inv.b * clientX + inv.d * clientY + inv.f;
-      return [x, y];
-    },
+  const initialPlan = useMemo(
+    () => loadFloorPlanState() ?? createDefaultFloorPlanState(),
     [],
   );
 
-  // ── 画笔操作（仅用于 mouseMove 拖拽涂色） ──────────────────────────
-
-  const applyBrush = useCallback(
-    (q: number, r: number) => {
-      const key = hexKey(q, r);
-      setCells((prev) => {
-        const next = new Map(prev);
-        if (mode === "paint") {
-          const existing = next.get(key);
-          next.set(key, {
-            q,
-            r,
-            color: selectedColor,
-            roomName: existing?.roomName ?? null,
-          });
-        } else if (mode === "erase") {
-          next.delete(key);
-        }
-        return next;
-      });
-    },
-    [mode, selectedColor],
-  );
-
-  // ── polygon 的 onClick（所有模式统一入口，避免和 mouseDown 重复） ──
-
-  const handleHexClick = useCallback(
-    (q: number, r: number, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!isEditing) return;
-
-      if (mode === "label") {
-        const key = hexKey(q, r);
-        if (cells.has(key)) {
-          setLabelTarget(key);
-          setLabelInput(cells.get(key)?.roomName || "");
-        }
-      } else if (mode === "camera") {
-        const key = hexKey(q, r);
-        if (cells.has(key)) {
-          const existing = cameras.find((c) => c.q === q && c.r === r);
-          if (existing) {
-            setSelectedCamera(existing.id);
-          } else {
-            const newCam: CameraMarker = {
-              id: `cam-${Date.now()}`,
-              q,
-              r,
-              angle: 0,
-              fov: Math.PI / 3,
-              range: 80,
-              channelId: null,
-              channelName: null,
-            };
-            setCameras((prev) => [...prev, newCam]);
-            setSelectedCamera(newCam.id);
-          }
-        }
-      }
-      // paint / erase 由 mouseDown + mouseMove 处理，不在 onClick 中处理
-    },
-    [isEditing, mode, cells, cameras],
-  );
-
-  // ── 鼠标事件 ──────────────────────────
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      // 平移：pan 模式 / 中键 / Alt+左键
-      if (mode === "pan" || e.button === 1 || (e.button === 0 && e.altKey)) {
-        isPanning.current = true;
-        panStart.current = { x: e.clientX, y: e.clientY };
-        panOffset.current = { ...pan };
-        e.preventDefault();
-        return;
-      }
-
-      if (!isEditing || e.button !== 0) return;
-
-      // 画笔/橡皮擦：立即涂第一个格子，然后拖拽继续涂
-      if (mode === "paint" || mode === "erase") {
-        isPainting.current = true;
-        const [px, py] = svgPoint(e.clientX, e.clientY);
-        const [q, r] = pixelToHex(px, py);
-        applyBrush(q, r);
-      }
-    },
-    [mode, isEditing, pan, svgPoint, applyBrush],
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (isPanning.current) {
-        setPan({
-          x: panOffset.current.x + (e.clientX - panStart.current.x) / zoom,
-          y: panOffset.current.y + (e.clientY - panStart.current.y) / zoom,
-        });
-        return;
-      }
-      if (isPainting.current && isEditing && (mode === "paint" || mode === "erase")) {
-        const [px, py] = svgPoint(e.clientX, e.clientY);
-        const [q, r] = pixelToHex(px, py);
-        applyBrush(q, r);
-      }
-    },
-    [zoom, isEditing, mode, svgPoint, applyBrush],
-  );
-
-  const handleMouseUp = useCallback(() => {
-    isPanning.current = false;
-    isPainting.current = false;
-  }, []);
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.92 : 1.08;
-    setZoom((z) => Math.max(0.3, Math.min(3, z * delta)));
-  }, []);
-
-  // ── 标签 ──────────────────────────
-
-  const confirmLabel = useCallback(() => {
-    if (!labelTarget) return;
-    setCells((prev) => {
-      const next = new Map(prev);
-      const cell = next.get(labelTarget);
-      if (cell) {
-        next.set(labelTarget, { ...cell, roomName: labelInput || null });
-      }
-      return next;
-    });
-    setLabelTarget(null);
-    setLabelInput("");
-  }, [labelTarget, labelInput]);
-
-  // ── 摄像头 ──────────────────────────
-
-  const deleteCamera = useCallback((id: string) => {
-    setCameras((prev) => prev.filter((c) => c.id !== id));
-    setSelectedCamera(null);
-  }, []);
-
-  const updateCamera = useCallback(
-    (id: string, updates: Partial<CameraMarker>) => {
-      setCameras((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, ...updates } : c)),
-      );
-    },
-    [],
-  );
-
-  const roomNames = useMemo(() => {
-    const names = new Set<string>();
-    for (const cell of cells.values()) {
-      if (cell.roomName) names.add(cell.roomName);
-    }
-    return Array.from(names);
-  }, [cells]);
-
-  const resetCanvas = useCallback(() => {
-    setCells(new Map());
-    setCameras([]);
-    setSelectedCamera(null);
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  }, []);
-
-  // ── 容器尺寸和 viewBox 计算 ──────────────────────────
+  const [plan, setPlan] = useState<FloorPlanState>(initialPlan);
+  const planRef = useRef<FloorPlanState>(initialPlan);
+  const [tool, setTool] = useState<PlannerTool>("select");
+  const [selection, setSelection] = useState<PlannerSelection>(null);
+  const [pendingWallStart, setPendingWallStart] = useState<PlannerPoint | null>(null);
+  const [wallPreviewPoint, setWallPreviewPoint] = useState<PlannerPoint | null>(null);
+  const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [hoveredCameraId, setHoveredCameraId] = useState<string | null>(null);
+  const [hoverEvent, setHoverEvent] = useState<LatestCameraEvent | null>(null);
+  const [hoverLoading, setHoverLoading] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerSize, setContainerSize] = useState({ w: 1200, h: 600 });
+  const historyRef = useRef<FloorPlanState[]>([cloneFloorPlanState(initialPlan)]);
+  const historyIndexRef = useRef(0);
+  const panRef = useRef<
+    | {
+        startX: number;
+        startY: number;
+        originX: number;
+        originY: number;
+      }
+    | null
+  >(null);
+  const dragCameraRef = useRef<
+    | {
+        cameraId: string;
+        moved: boolean;
+      }
+    | null
+  >(null);
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      if (width > 0 && height > 0) {
-        setContainerSize({ w: width, h: height });
+    planRef.current = plan;
+    saveFloorPlanState(plan);
+  }, [plan]);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect) {
+        return;
       }
+      setViewportSize({ width: rect.width, height: rect.height });
     });
-    ro.observe(el);
-    return () => ro.disconnect();
+
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
 
-  // viewBox 高度固定为 1200，宽度按容器宽高比缩放
-  const vbH = 1200;
-  const vbW = (containerSize.w / containerSize.h) * vbH;
-  const halfW = vbW / 2;
-  const halfH = vbH / 2;
+  const channelQuery = useQuery({
+    queryKey: [findDevicesChannelsKey, "floor-plan"],
+    queryFn: () => FindDevicesChannels({ page: 1, size: 500 }),
+    staleTime: 30_000,
+  });
 
-  const cursorStyle = useMemo(() => {
-    if (isPanning.current) return "grabbing";
-    if (mode === "pan") return "grab";
-    if (!isEditing) return "default";
-    if (mode === "paint" || mode === "erase") return "crosshair";
-    if (mode === "label") return "text";
-    if (mode === "camera") return "crosshair";
-    return "default";
-  }, [mode, isEditing]);
-
-  return (
-    <div className="h-full w-full relative bg-gray-50">
-      {/* ReactFlow 壳层：仅用于提供 Controls 和 Panel UI，不处理交互 */}
-      <div className="absolute inset-0 z-2 pointer-events-none">
-      <ReactFlow
-        nodes={[]}
-        edges={[]}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={false}
-        panOnDrag={false}
-        zoomOnScroll={false}
-        zoomOnPinch={false}
-        zoomOnDoubleClick={false}
-        preventScrolling={false}
-        proOptions={{ hideAttribution: true }}
-        style={{ pointerEvents: "none" }}
-      >
-        <Controls className="pointer-events-auto" />
-
-        {/* 左上角：视图切换 + 编辑按钮（同行同高） */}
-        <Panel position="top-left" className="pointer-events-auto">
-          <div className="flex items-center gap-2">
-            {/* 视图切换 */}
-            <div className="flex gap-0.5 bg-white rounded-lg shadow border border-gray-200 p-0.5">
-              <button
-                type="button"
-                title={t("dataflow")}
-                onClick={() => onViewModeChange("dataflow")}
-                className="w-7 h-7 rounded flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-              >
-                <Layers style={{ width: 16, height: 16 }} />
-              </button>
-              <button
-                type="button"
-                title="2D"
-                className="w-7 h-7 rounded flex items-center justify-center bg-gray-900 text-white transition-colors"
-              >
-                <MapIcon style={{ width: 16, height: 16 }} />
-              </button>
-            </div>
-
-            {/* 编辑按钮（与切换按钮同行同高） */}
-            <Button
-              variant={isEditing ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-              className="gap-1.5 h-8"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              {isEditing ? t("editing") : t("edit")}
-            </Button>
-
-            {/* 编辑工具栏 */}
-            {isEditing && (
-              <>
-                <div className="h-5 w-px bg-gray-300" />
-                <div className="flex items-center gap-1">
-                  <ToolButton active={mode === "paint"} onClick={() => setMode("paint")} title={t("paint")}>
-                    <Pencil className="h-4 w-4" />
-                  </ToolButton>
-                  <ToolButton active={mode === "erase"} onClick={() => setMode("erase")} title={t("eraser")}>
-                    <Eraser className="h-4 w-4" />
-                  </ToolButton>
-                  <ToolButton active={mode === "label"} onClick={() => setMode("label")} title={t("label_tool")}>
-                    <Tag className="h-4 w-4" />
-                  </ToolButton>
-                  <ToolButton active={mode === "camera"} onClick={() => setMode("camera")} title={t("camera_tool")}>
-                    <Camera className="h-4 w-4" />
-                  </ToolButton>
-                  <ToolButton active={mode === "pan"} onClick={() => setMode("pan")} title={t("pan_tool")}>
-                    <Move className="h-4 w-4" />
-                  </ToolButton>
-                </div>
-                <div className="h-5 w-px bg-gray-300" />
-                {mode === "paint" && (
-                  <div className="flex items-center gap-1.5">
-                    {FLOOR_PLAN_PALETTE.map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setSelectedColor(color)}
-                        className={`w-6 h-6 rounded-full border-2 transition-all hover:scale-110 ${
-                          selectedColor === color
-                            ? "border-gray-900 scale-110 ring-2 ring-gray-900/20"
-                            : "border-gray-300"
-                        }`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                )}
-                {mode === "paint" && <div className="h-5 w-px bg-gray-300" />}
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={resetCanvas}
-                        className="h-8 w-8 p-0 text-gray-500 hover:text-red-500"
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("reset_canvas")}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </>
-            )}
-          </div>
-        </Panel>
-      </ReactFlow>
-      </div>
-
-      {/* SVG 画布 */}
-      <div ref={containerRef} className="absolute inset-0 z-1">
-        <svg
-          ref={svgRef}
-          className="w-full h-full"
-          viewBox={`${-halfW} ${-halfH} ${vbW} ${vbH}`}
-          style={{ cursor: cursorStyle }}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onWheel={handleWheel}
-        >
-          <g ref={gRef} transform={`scale(${zoom}) translate(${pan.x}, ${pan.y})`}>
-            {gridCoords.map(([q, r]) => {
-              const [cx, cy] = hexToPixel(q, r);
-              const key = hexKey(q, r);
-              const cell = cells.get(key);
-              const isFilled = !!cell;
-
-              return (
-                <g key={key}>
-                  <polygon
-                    points={hexCorners(cx, cy, HEX_SIZE - 1)}
-                    fill={isFilled ? (cell.color || FLOOR_PLAN_PALETTE[0]) : "transparent"}
-                    stroke={isFilled ? "#9ca3af" : (isEditing ? "#c0c0c0" : "#d0d0d0")}
-                    strokeWidth={isFilled ? 1.5 : 1}
-                    strokeDasharray={!isFilled ? "4,3" : "none"}
-                    opacity={isFilled ? 1 : (isEditing ? 0.8 : 0.6)}
-                    className={isEditing && !isFilled ? "hover:opacity-100" : ""}
-                    style={{ cursor: isEditing ? "pointer" : "default" }}
-                    onClick={(e) => handleHexClick(q, r, e)}
-                  />
-                  {isFilled && cell.roomName && (
-                    <text
-                      x={cx}
-                      y={cy}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={8}
-                      fontWeight={600}
-                      fill="white"
-                      className="pointer-events-none select-none"
-                      style={{ textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
-                    >
-                      {cell.roomName}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-
-            {/* 摄像头 */}
-            {cameras.map((cam) => {
-              const [cx, cy] = hexToPixel(cam.q, cam.r);
-              const isSelected = selectedCamera === cam.id;
-              const fovHalf = cam.fov / 2;
-              const rad = (cam.angle * Math.PI) / 180;
-              const x1 = cx + cam.range * Math.cos(rad - fovHalf);
-              const y1 = cy + cam.range * Math.sin(rad - fovHalf);
-              const x2 = cx + cam.range * Math.cos(rad + fovHalf);
-              const y2 = cy + cam.range * Math.sin(rad + fovHalf);
-              const largeArcFlag = cam.fov > Math.PI ? 1 : 0;
-
-              return (
-                <g key={cam.id}>
-                  <path
-                    d={`M ${cx} ${cy} L ${x1} ${y1} A ${cam.range} ${cam.range} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
-                    fill={isSelected ? "rgba(59,130,246,0.15)" : "rgba(100,116,139,0.08)"}
-                    stroke={isSelected ? "#3b82f6" : "#94a3b8"}
-                    strokeWidth={isSelected ? 1.5 : 0.8}
-                    strokeDasharray="4,2"
-                  />
-                  {/* 摄像头圆点 + 方向线 */}
-                  <g
-                    transform={`translate(${cx}, ${cy})`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isEditing && mode === "camera") {
-                        setSelectedCamera(cam.id);
-                      }
-                    }}
-                    style={{ cursor: isEditing ? "pointer" : "default" }}
-                  >
-                    <circle
-                      r={10}
-                      fill={isSelected ? "#3b82f6" : "#475569"}
-                      stroke="white"
-                      strokeWidth={2}
-                    />
-                    {/* Cctv 图标（lucide cctv 的 SVG path，缩放到 12x12 并居中） */}
-                    <g transform="translate(-6,-6) scale(0.5)" fill="none" stroke="white" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16.75 12h3.632a1 1 0 0 1 .894 1.447l-2.034 4.069a1 1 0 0 1-1.708.134l-2.124-2.97" />
-                      <path d="M17.106 9.053a1 1 0 0 1 .447 1.341l-3.106 6.211a1 1 0 0 1-1.342.447L3.61 12.3a2.92 2.92 0 0 1-1.3-3.91L3.69 5.6a2.92 2.92 0 0 1 3.92-1.3z" />
-                      <path d="M2 19h3.76a2 2 0 0 0 1.8-1.1L9 15" />
-                      <path d="M2 21v-4" />
-                      <circle cx={7} cy={9} r={0.5} fill="white" />
-                    </g>
-                    <line
-                      x1={0} y1={0}
-                      x2={16 * Math.cos(rad)} y2={16 * Math.sin(rad)}
-                      stroke={isSelected ? "#3b82f6" : "#475569"}
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                    />
-                  </g>
-                  {cam.channelName && (
-                    <text
-                      x={cx} y={cy + 18}
-                      textAnchor="middle"
-                      fontSize={7}
-                      fill="#475569"
-                      fontWeight={500}
-                      className="pointer-events-none select-none"
-                    >
-                      {cam.channelName}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-
-        {/* 标签输入浮层 */}
-        {labelTarget && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 flex items-center gap-2 z-20">
-            <Tag className="h-4 w-4 text-gray-400 shrink-0" />
-            <Input
-              autoFocus
-              value={labelInput}
-              onChange={(e) => setLabelInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") confirmLabel();
-                if (e.key === "Escape") {
-                  setLabelTarget(null);
-                  setLabelInput("");
-                }
-              }}
-              placeholder={t("room_name_placeholder")}
-              className="w-32 h-8 text-sm"
-            />
-            <Button size="sm" onClick={confirmLabel}>
-              {t("confirm")}
-            </Button>
-          </div>
-        )}
-
-        {/* 摄像头属性面板 */}
-        {isEditing && selectedCamera && cameras.find((c) => c.id === selectedCamera) && (
-          <CameraPanel
-            camera={cameras.find((c) => c.id === selectedCamera)!}
-            onUpdate={(updates) => updateCamera(selectedCamera, updates)}
-            onDelete={() => deleteCamera(selectedCamera)}
-            onClose={() => setSelectedCamera(null)}
-          />
-        )}
-
-        {/* 房间列表 */}
-        {roomNames.length > 0 && (
-          <div className="absolute bottom-4 left-16 bg-white/90 backdrop-blur-sm rounded-lg shadow border border-gray-200 p-3" style={{ zIndex: 2 }}>
-            <div className="text-xs font-medium text-gray-500 mb-2">{t("rooms")}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {roomNames.map((name) => (
-                <span
-                  key={name}
-                  className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs"
-                >
-                  {name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 操作提示 */}
-        {isEditing && (
-          <div className="absolute bottom-4 right-4 text-xs text-gray-400 bg-white/80 backdrop-blur-sm rounded px-2 py-1" style={{ zIndex: 2 }}>
-            {mode === "paint" && t("paint_hint")}
-            {mode === "erase" && t("erase_hint")}
-            {mode === "label" && t("label_hint")}
-            {mode === "camera" && t("camera_hint")}
-            {mode === "pan" && t("pan_hint")}
-          </div>
-        )}
-      </div>
-    </div>
+  const channelOptions = useMemo(
+    () => FlattenDeviceChannels(channelQuery.data?.data.items ?? []),
+    [channelQuery.data?.data.items],
   );
-}
 
-// ── 摄像头属性面板 ──────────────────────────
+  const selectedCamera = useMemo(() => {
+    if (selection?.type !== "camera") {
+      return null;
+    }
+    return plan.cameras.find((camera) => camera.id === selection.id) ?? null;
+  }, [plan.cameras, selection]);
 
-function CameraPanel({
-  camera,
-  onUpdate,
-  onDelete,
-  onClose,
-}: {
-  camera: CameraMarker;
-  onUpdate: (updates: Partial<CameraMarker>) => void;
-  onDelete: () => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation("desktop");
+  const selectedWall = useMemo(() => {
+    if (selection?.type !== "wall") {
+      return null;
+    }
+    return plan.walls.find((wall) => wall.id === selection.id) ?? null;
+  }, [plan.walls, selection]);
+
+  const hoveredCamera = useMemo(() => {
+    if (!hoveredCameraId) {
+      return null;
+    }
+    return plan.cameras.find((camera) => camera.id === hoveredCameraId) ?? null;
+  }, [hoveredCameraId, plan.cameras]);
+
+  const hoveredCameraScreenPosition = useMemo(() => {
+    if (!hoveredCamera) {
+      return null;
+    }
+    return worldToScreen({ x: hoveredCamera.x, y: hoveredCamera.y }, plan.view);
+  }, [hoveredCamera, plan.view]);
+
+  const canUndo = historyIndexRef.current > 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+
+  const pushHistory = useCallback((next: FloorPlanState) => {
+    const normalized = cloneFloorPlanState(normalizeFloorPlanState(next));
+    const base = historyRef.current.slice(0, historyIndexRef.current + 1);
+    base.push(normalized);
+    if (base.length > 80) {
+      base.shift();
+    }
+    historyRef.current = base;
+    historyIndexRef.current = base.length - 1;
+    setHistoryVersion((value) => value + 1);
+  }, []);
+
+  const replacePlan = useCallback(
+    (next: FloorPlanState, commit = true) => {
+      const normalized = normalizeFloorPlanState({
+        ...next,
+        updatedAt: Date.now(),
+      });
+      planRef.current = normalized;
+      setPlan(normalized);
+      if (commit) {
+        pushHistory(normalized);
+      }
+    },
+    [pushHistory],
+  );
+
+  const mutatePlan = useCallback(
+    (recipe: (draft: FloorPlanState) => void, commit = true) => {
+      const draft = cloneFloorPlanState(planRef.current);
+      recipe(draft);
+      draft.updatedAt = Date.now();
+      replacePlan(draft, commit);
+    },
+    [replacePlan],
+  );
+
+  const resetView = useCallback(() => {
+    const next = cloneFloorPlanState(planRef.current);
+    next.view = createDefaultFloorPlanState().view;
+    replacePlan(next, false);
+  }, [replacePlan]);
+
+  const zoomToFit = useCallback(() => {
+    const bounds = getPlanBounds(planRef.current);
+    const width = Math.max(240, bounds.maxX - bounds.minX + 280);
+    const height = Math.max(240, bounds.maxY - bounds.minY + 280);
+    const scale = clamp(
+      Math.min(viewportSize.width / width, viewportSize.height / height),
+      0.4,
+      2.4,
+    );
+
+    replacePlan(
+      {
+        ...planRef.current,
+        view: {
+          scale,
+          x: viewportSize.width / 2 - ((bounds.minX + bounds.maxX) / 2) * scale,
+          y: viewportSize.height / 2 - ((bounds.minY + bounds.maxY) / 2) * scale,
+        },
+      },
+      false,
+    );
+  }, [replacePlan, viewportSize.height, viewportSize.width]);
+
+  const updateSelectedCamera = useCallback(
+    (recipe: (camera: CameraMarker) => void, commit = true) => {
+      if (!selectedCamera) {
+        return;
+      }
+      mutatePlan((draft) => {
+        const camera = draft.cameras.find((item) => item.id === selectedCamera.id);
+        if (!camera) {
+          return;
+        }
+        recipe(camera);
+      }, commit);
+    },
+    [mutatePlan, selectedCamera],
+  );
+
+  const deleteSelection = useCallback(() => {
+    if (!selection) {
+      return;
+    }
+    mutatePlan((draft) => {
+      if (selection.type === "camera") {
+        draft.cameras = draft.cameras.filter((camera) => camera.id !== selection.id);
+      } else {
+        draft.walls = draft.walls.filter((wall) => wall.id !== selection.id);
+      }
+    });
+    setSelection(null);
+  }, [mutatePlan, selection]);
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current <= 0) {
+      return;
+    }
+    historyIndexRef.current -= 1;
+    const snapshot = cloneFloorPlanState(historyRef.current[historyIndexRef.current]);
+    planRef.current = snapshot;
+    setPlan(snapshot);
+    setHistoryVersion((value) => value + 1);
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) {
+      return;
+    }
+    historyIndexRef.current += 1;
+    const snapshot = cloneFloorPlanState(historyRef.current[historyIndexRef.current]);
+    planRef.current = snapshot;
+    setPlan(snapshot);
+    setHistoryVersion((value) => value + 1);
+  }, []);
+
+  const loadHoverEvent = useCallback(async (camera: CameraMarker | null) => {
+    if (!camera?.channelId) {
+      setHoverEvent(null);
+      setHoverLoading(false);
+      return;
+    }
+
+    setHoverEvent(null);
+    setHoverLoading(true);
+    const latest = await getLatestCameraEvent(camera.channelId);
+    setHoverEvent(latest);
+    setHoverLoading(false);
+
+    if (!latest) {
+      return;
+    }
+
+    mutatePlan((draft) => {
+      const target = draft.cameras.find((item) => item.id === camera.id);
+      if (!target) {
+        return;
+      }
+      target.latestEventAt = latest.startedAt;
+      target.latestEventImage = latest.imageSrc;
+      target.latestEventLabel = latest.label;
+      target.latestEventScore = latest.score;
+    }, false);
+  }, [mutatePlan]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isMeta = event.ctrlKey || event.metaKey;
+
+      if (isMeta && event.key.toLowerCase() === "z" && event.shiftKey) {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        undo();
+        return;
+      }
+
+      if (isMeta && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        deleteSelection();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setPendingWallStart(null);
+        setWallPreviewPoint(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [deleteSelection, redo, undo]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+
+      if (panRef.current) {
+        const deltaX = event.clientX - panRef.current.startX;
+        const deltaY = event.clientY - panRef.current.startY;
+        replacePlan(
+          {
+            ...planRef.current,
+            view: {
+              ...planRef.current.view,
+              x: panRef.current.originX + deltaX,
+              y: panRef.current.originY + deltaY,
+            },
+          },
+          false,
+        );
+        return;
+      }
+
+      if (dragCameraRef.current) {
+        const world = snapPoint(screenToWorld(event.clientX, event.clientY, container, planRef.current.view));
+        dragCameraRef.current.moved = true;
+        mutatePlan((draft) => {
+          const camera = draft.cameras.find((item) => item.id === dragCameraRef.current?.cameraId);
+          if (!camera) {
+            return;
+          }
+          camera.x = world.x;
+          camera.y = world.y;
+        }, false);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (panRef.current) {
+        panRef.current = null;
+      }
+      if (dragCameraRef.current) {
+        const moved = dragCameraRef.current.moved;
+        dragCameraRef.current = null;
+        if (moved) {
+          pushHistory(planRef.current);
+        }
+      }
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [mutatePlan, pushHistory, replacePlan]);
+
+  const beginPan = useCallback((clientX: number, clientY: number) => {
+    panRef.current = {
+      startX: clientX,
+      startY: clientY,
+      originX: planRef.current.view.x,
+      originY: planRef.current.view.y,
+    };
+  }, []);
+
+  const handleCanvasMouseDown = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+
+      if (event.button === 1 || (tool === "pan" && event.button === 0)) {
+        event.preventDefault();
+        beginPan(event.clientX, event.clientY);
+        return;
+      }
+
+      if (event.button !== 0) {
+        return;
+      }
+
+      const worldPoint = snapPoint(screenToWorld(event.clientX, event.clientY, container, plan.view));
+
+      if (tool === "camera") {
+        const camera = createCameraMarker(worldPoint);
+        mutatePlan((draft) => {
+          draft.cameras.push(camera);
+        });
+        setSelection({ type: "camera", id: camera.id });
+        return;
+      }
+
+      if (tool === "wall") {
+        if (!pendingWallStart) {
+          setPendingWallStart(worldPoint);
+          setWallPreviewPoint(worldPoint);
+          return;
+        }
+
+        if (pendingWallStart.x === worldPoint.x && pendingWallStart.y === worldPoint.y) {
+          return;
+        }
+
+        const wall: FloorWall = {
+          id: createWallId(),
+          x1: pendingWallStart.x,
+          y1: pendingWallStart.y,
+          x2: worldPoint.x,
+          y2: worldPoint.y,
+        };
+        mutatePlan((draft) => {
+          draft.walls.push(wall);
+        });
+        setSelection({ type: "wall", id: wall.id });
+        setPendingWallStart(worldPoint);
+        setWallPreviewPoint(worldPoint);
+        return;
+      }
+
+      setSelection(null);
+    },
+    [beginPan, mutatePlan, pendingWallStart, plan.view, tool],
+  );
+
+  const handleCanvasMouseMove = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      if (!pendingWallStart || tool !== "wall") {
+        return;
+      }
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+      const worldPoint = snapPoint(screenToWorld(event.clientX, event.clientY, container, plan.view));
+      setWallPreviewPoint(worldPoint);
+    },
+    [pendingWallStart, plan.view, tool],
+  );
+
+  const handleCameraMouseDown = useCallback(
+    (cameraId: string, event: ReactMouseEvent<SVGCircleElement>) => {
+      event.stopPropagation();
+      if (event.button === 1) {
+        event.preventDefault();
+        beginPan(event.clientX, event.clientY);
+        return;
+      }
+      setSelection({ type: "camera", id: cameraId });
+      if (tool !== "select") {
+        return;
+      }
+      dragCameraRef.current = {
+        cameraId,
+        moved: false,
+      };
+    },
+    [beginPan, tool],
+  );
+
+  const gridLines = useMemo(() => {
+    const lines: Array<{ key: string; x1: number; y1: number; x2: number; y2: number }> = [];
+    for (let x = 0; x <= FLOOR_PLAN_WORLD_WIDTH; x += FLOOR_PLAN_GRID_SIZE) {
+      lines.push({ key: `vx-${x}`, x1: x, y1: 0, x2: x, y2: FLOOR_PLAN_WORLD_HEIGHT });
+    }
+    for (let y = 0; y <= FLOOR_PLAN_WORLD_HEIGHT; y += FLOOR_PLAN_GRID_SIZE) {
+      lines.push({ key: `hy-${y}`, x1: 0, y1: y, x2: FLOOR_PLAN_WORLD_WIDTH, y2: y });
+    }
+    return lines;
+  }, []);
+
+  void historyVersion;
 
   return (
-    <div className="absolute top-4 right-4 w-56 bg-white rounded-lg shadow-lg border border-gray-200 p-3 z-20">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-gray-700">{t("camera_settings")}</span>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+    <div className="flex h-full min-h-screen bg-[#f5f7fb] text-gray-900">
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-sm backdrop-blur">
+          <ToolbarButton title={t("dataflow")} onClick={() => onViewModeChange("dataflow")}>
+            <Layers className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active title={t("floor_plan_mode")} onClick={() => onViewModeChange("2d")}>
+            <MapIcon className="h-4 w-4" />
+          </ToolbarButton>
+          <div className="mx-1 h-6 w-px bg-gray-200" />
+          <ToolbarButton active={tool === "select"} title={t("select_tool")} onClick={() => setTool("select")}>
+            <MousePointer2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={tool === "wall"} title={t("wall_tool")} onClick={() => setTool("wall")}>
+            <Waypoints className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={tool === "camera"} title={t("camera_tool")} onClick={() => setTool("camera")}>
+            <Camera className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={tool === "pan"} title={t("pan_tool")} onClick={() => setTool("pan")}>
+            <Hand className="h-4 w-4" />
+          </ToolbarButton>
+          <div className="mx-1 h-6 w-px bg-gray-200" />
+          <ToolbarButton title={t("undo")} onClick={undo}>
+            <Undo2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton title={t("redo")} onClick={redo}>
+            <Redo2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton title={t("zoom_out")} onClick={() => replacePlan({ ...plan, view: { ...plan.view, scale: clamp(plan.view.scale - 0.15, 0.35, 3.2) } }, false)}>
+            <ZoomOut className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton title={t("zoom_in")} onClick={() => replacePlan({ ...plan, view: { ...plan.view, scale: clamp(plan.view.scale + 0.15, 0.35, 3.2) } }, false)}>
+            <ZoomIn className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton title={t("zoom_to_fit")} onClick={zoomToFit}>
+            <WandSparkles className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            title={t("reset_layout")}
+            onClick={() => {
+              clearFloorPlanState();
+              const next = createDefaultFloorPlanState();
+              historyRef.current = [cloneFloorPlanState(next)];
+              historyIndexRef.current = 0;
+              setHistoryVersion((value) => value + 1);
+              setSelection(null);
+              setPendingWallStart(null);
+              setWallPreviewPoint(null);
+              replacePlan(next, false);
+            }}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
+
+        <div className="absolute bottom-4 left-4 z-20 max-w-xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
+          {toolHint(tool, t)} · {t("middle_pan_hint")} · {t("double_click_finish_wall")}
+        </div>
+
+        <div
+          ref={containerRef}
+          className="relative flex-1 overflow-hidden"
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onDoubleClick={() => {
+            setPendingWallStart(null);
+            setWallPreviewPoint(null);
+          }}
+          onContextMenu={(event) => {
+            if (tool === "wall") {
+              event.preventDefault();
+              setPendingWallStart(null);
+              setWallPreviewPoint(null);
+            }
+          }}
         >
-          ×
-        </button>
+          <svg className="h-full w-full select-none" style={{ cursor: tool === "pan" ? "grab" : "default" }}>
+            <rect x={0} y={0} width={viewportSize.width} height={viewportSize.height} fill="#f8fafc" />
+            <g transform={`translate(${plan.view.x} ${plan.view.y}) scale(${plan.view.scale})`}>
+              <rect x={0} y={0} width={FLOOR_PLAN_WORLD_WIDTH} height={FLOOR_PLAN_WORLD_HEIGHT} fill="#ffffff" rx={16} ry={16} />
+              {gridLines.map((line) => (
+                <line
+                  key={line.key}
+                  x1={line.x1}
+                  y1={line.y1}
+                  x2={line.x2}
+                  y2={line.y2}
+                  stroke="#e5e7eb"
+                  strokeWidth={1}
+                />
+              ))}
+
+              {plan.walls.map((wall) => {
+                const isSelected = selection?.type === "wall" && selection.id === wall.id;
+                return (
+                  <line
+                    key={wall.id}
+                    x1={wall.x1}
+                    y1={wall.y1}
+                    x2={wall.x2}
+                    y2={wall.y2}
+                    stroke={isSelected ? "#2563eb" : "#111827"}
+                    strokeWidth={isSelected ? 12 : 10}
+                    strokeLinecap="round"
+                    onMouseDown={(event) => {
+                      event.stopPropagation();
+                      setSelection({ type: "wall", id: wall.id });
+                    }}
+                  />
+                );
+              })}
+
+              {pendingWallStart && wallPreviewPoint ? (
+                <line
+                  x1={pendingWallStart.x}
+                  y1={pendingWallStart.y}
+                  x2={wallPreviewPoint.x}
+                  y2={wallPreviewPoint.y}
+                  stroke="#60a5fa"
+                  strokeWidth={4}
+                  strokeDasharray="10 8"
+                  strokeLinecap="round"
+                />
+              ) : null}
+
+              {plan.cameras.map((camera) => {
+                const isSelected = selection?.type === "camera" && selection.id === camera.id;
+                const hasRecentEvent = Boolean(camera.latestEventAt);
+                const accent = camera.channelId ? (hasRecentEvent ? "#f97316" : "#2563eb") : "#9ca3af";
+                const facingX = camera.x + Math.cos((camera.angle * Math.PI) / 180) * 30;
+                const facingY = camera.y + Math.sin((camera.angle * Math.PI) / 180) * 30;
+                return (
+                  <g
+                    key={camera.id}
+                    onMouseEnter={() => {
+                      setHoveredCameraId(camera.id);
+                      void loadHoverEvent(camera);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredCameraId((current) => (current === camera.id ? null : current));
+                    }}
+                  >
+                    <path d={createSectorPath(camera)} fill={accent} opacity={0.14} stroke={accent} strokeWidth={2} />
+                    <line x1={camera.x} y1={camera.y} x2={facingX} y2={facingY} stroke={accent} strokeWidth={3} />
+                    <circle
+                      cx={camera.x}
+                      cy={camera.y}
+                      r={isSelected ? 15 : 12}
+                      fill={accent}
+                      stroke="#ffffff"
+                      strokeWidth={3}
+                      onMouseDown={(event) => handleCameraMouseDown(camera.id, event)}
+                    />
+                    <text
+                      x={camera.x + 16}
+                      y={camera.y - 14}
+                      fill="#334155"
+                      fontSize={18}
+                      fontWeight={600}
+                    >
+                      {camera.channelName || t("camera_label")}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+
+          {hoveredCamera && hoveredCameraScreenPosition ? (
+            <CameraHoverCard
+              camera={hoveredCamera}
+              latestEvent={hoverEvent}
+              loading={hoverLoading}
+              x={hoveredCameraScreenPosition.x + 18}
+              y={hoveredCameraScreenPosition.y + 18}
+            />
+          ) : null}
+        </div>
       </div>
 
-      <label className="block text-xs text-gray-500 mb-1">{t("direction")}</label>
-      <input
-        type="range" min={0} max={360}
-        value={camera.angle}
-        onChange={(e) => onUpdate({ angle: Number(e.target.value) })}
-        className="w-full mb-1 accent-blue-500"
-      />
-      <div className="text-xs text-gray-400 text-right mb-2">{camera.angle}°</div>
+      <aside className="w-[320px] shrink-0 border-l border-gray-200 bg-white/90 p-4 backdrop-blur">
+        <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+          <div className="mb-2 text-sm font-semibold text-gray-900">{t("planner_overview")}</div>
+          <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+            <div className="rounded-xl bg-white p-3 shadow-sm">
+              <div className="text-xs text-gray-500">{t("wall_count")}</div>
+              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.walls.length}</div>
+            </div>
+            <div className="rounded-xl bg-white p-3 shadow-sm">
+              <div className="text-xs text-gray-500">{t("camera_count")}</div>
+              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.cameras.length}</div>
+            </div>
+            <div className="col-span-2 rounded-xl bg-white p-3 shadow-sm text-xs text-gray-500">
+              {t("current_scale")}: {(plan.view.scale * 100).toFixed(0)}%
+            </div>
+          </div>
+        </div>
 
-      <label className="block text-xs text-gray-500 mb-1">{t("fov")}</label>
-      <input
-        type="range" min={10} max={180}
-        value={Math.round((camera.fov * 180) / Math.PI)}
-        onChange={(e) => onUpdate({ fov: (Number(e.target.value) * Math.PI) / 180 })}
-        className="w-full mb-1 accent-blue-500"
-      />
-      <div className="text-xs text-gray-400 text-right mb-2">
-        {Math.round((camera.fov * 180) / Math.PI)}°
-      </div>
+        <CameraBindingPanel
+          camera={selectedCamera}
+          channelOptions={channelOptions}
+          channelsLoading={channelQuery.isLoading}
+          onBindChannel={(channelId) => {
+            updateSelectedCamera((camera) => {
+              const option = channelOptions.find((item) => item.value === channelId);
+              camera.channelId = channelId;
+              camera.channelName = option?.channelName ?? null;
+              camera.deviceName = option?.deviceName ?? null;
+            });
+          }}
+          onAngleChange={(value) => updateSelectedCamera((camera) => { camera.angle = value; })}
+          onFovChange={(value) => updateSelectedCamera((camera) => { camera.fov = value; })}
+          onRangeChange={(value) => updateSelectedCamera((camera) => { camera.range = value; })}
+          onDelete={deleteSelection}
+        />
 
-      <label className="block text-xs text-gray-500 mb-1">{t("range")}</label>
-      <input
-        type="range" min={30} max={200}
-        value={camera.range}
-        onChange={(e) => onUpdate({ range: Number(e.target.value) })}
-        className="w-full mb-2 accent-blue-500"
-      />
-
-      <Button
-        variant="destructive"
-        size="sm"
-        className="w-full mt-1"
-        onClick={onDelete}
-      >
-        <Trash2 className="h-3.5 w-3.5 mr-1" />
-        {t("delete_camera")}
-      </Button>
+        {selectedCamera ? (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+            <div className="mb-1 font-medium text-gray-900">{t("camera_summary")}</div>
+            <div>{t("direction")}: {formatAngle(selectedCamera.angle)}</div>
+            <div>{t("fov")}: {Math.round(selectedCamera.fov)}°</div>
+            <div>{t("range")}: {Math.round(selectedCamera.range)}</div>
+          </div>
+        ) : selectedWall ? (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            <div className="mb-1 font-medium text-gray-900">{t("wall_selected")}</div>
+            <div className="mb-3 text-xs text-gray-500">#{selectedWall.id}</div>
+            <button
+              type="button"
+              onClick={deleteSelection}
+              className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+            >
+              {t("delete_wall")}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4">
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("selection_empty_description")} />
+          </div>
+        )}
+      </aside>
     </div>
   );
 }
