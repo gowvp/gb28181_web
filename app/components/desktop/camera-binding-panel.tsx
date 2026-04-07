@@ -2,6 +2,7 @@ import { Input, Select, Slider, Spin } from "antd";
 import { Bell, ExternalLink, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import type { CameraMarker, LatestCameraEvent } from "~/pages/desktop/floor_plan.types";
 import type { FlatDeviceChannelOption } from "~/service/api/device/device";
 import type { FloorPlanInteractionMode } from "~/pages/desktop/floor_plan.storage";
@@ -58,8 +59,8 @@ export function CameraBindingPanel({
   selectedLatestEvent = null,
   selectedEventLoading = false,
   channelOnline = null,
-  onOpenPlayback,
-  onOpenAlerts,
+  playbackTo = null,
+  alertsTo = null,
 }: {
   camera: CameraMarker | null;
   channelOptions: FlatDeviceChannelOption[];
@@ -76,8 +77,8 @@ export function CameraBindingPanel({
   selectedLatestEvent?: LatestCameraEvent | null;
   selectedEventLoading?: boolean;
   channelOnline?: boolean | null;
-  onOpenPlayback?: () => void;
-  onOpenAlerts?: () => void;
+  playbackTo?: { pathname: string; search: string } | null;
+  alertsTo?: { pathname: string; search: string } | null;
 }) {
   const { t } = useTranslation("desktop");
 
@@ -108,25 +109,23 @@ export function CameraBindingPanel({
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm font-semibold text-gray-900">{t("panel_latest_ai_event")}</div>
             <div className="flex flex-wrap justify-end gap-1">
-              {camera.channelId && onOpenAlerts ? (
-                <button
-                  type="button"
-                  onClick={onOpenAlerts}
+              {camera.channelId && alertsTo ? (
+                <Link
+                  to={alertsTo}
                   className="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700"
                 >
                   <Bell className="h-3.5 w-3.5" />
                   {t("open_alerts")}
-                </button>
+                </Link>
               ) : null}
-              {camera.channelId && onOpenPlayback ? (
-                <button
-                  type="button"
-                  onClick={onOpenPlayback}
+              {camera.channelId && playbackTo ? (
+                <Link
+                  to={playbackTo}
                   className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   {t("open_playback")}
-                </button>
+                </Link>
               ) : null}
             </div>
           </div>

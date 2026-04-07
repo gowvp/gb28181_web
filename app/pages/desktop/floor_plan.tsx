@@ -38,7 +38,6 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 import { CameraBindingPanel } from "~/components/desktop/camera-binding-panel";
 import { CameraHoverCard } from "~/components/desktop/camera-hover-card";
 import {
@@ -61,8 +60,8 @@ import {
   type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
 import { getLatestCameraEvent, prefetchLatestEventsForChannelIds } from "./floor_plan.events";
-import { buildAlertsHref } from "./floor_plan.alerts";
-import { buildPlaybackDetailHref } from "./floor_plan.playback";
+import { buildAlertsTo } from "./floor_plan.alerts";
+import { buildPlaybackDetailTo } from "./floor_plan.playback";
 import type {
   CameraMarker,
   FloorPlanState,
@@ -1045,8 +1044,6 @@ interface FloorPlanEditorProps {
  */
 export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorProps) {
   const { t } = useTranslation("desktop");
-  const navigate = useNavigate();
-
   const initialPlan = useMemo(
     () => loadFloorPlanState() ?? createDefaultFloorPlanState(),
     [],
@@ -1253,30 +1250,6 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 为什么录像入口与列表页拼相同 URL：
    * 详情页只解析 `cid`+`date`，与录像列表一致可减少「从平面图进入」与「从列表进入」两套行为，排障时也只对一种链接形态。
    */
-  const navigateToPlayback = useCallback(
-    (channelId: string | null | undefined) => {
-      if (!channelId) {
-        return;
-      }
-      navigate(buildPlaybackDetailHref(channelId));
-    },
-    [navigate],
-  );
-
-  /**
-   * 为什么告警与录像分两个入口：
-   * 告警列表按事件流浏览，录像按日回放；用户从平面图切入时常只想先看该通道告警，与产品里「告警页 / 回放页」分工一致。
-   */
-  const navigateToAlerts = useCallback(
-    (channelId: string | null | undefined) => {
-      if (!channelId) {
-        return;
-      }
-      navigate(buildAlertsHref(channelId));
-    },
-    [navigate],
-  );
-
   const cameraFilterTrim = channelNameFilter.trim().toLowerCase();
 
   /**
@@ -3191,15 +3164,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                     : undefined
                   : null
               }
-              onOpenPlayback={
+              playbackTo={
                 hoveredCamera.channelId
-                  ? () => navigateToPlayback(hoveredCamera.channelId)
-                  : undefined
+                  ? buildPlaybackDetailTo(hoveredCamera.channelId)
+                  : null
               }
-              onOpenAlerts={
-                hoveredCamera.channelId
-                  ? () => navigateToAlerts(hoveredCamera.channelId)
-                  : undefined
+              alertsTo={
+                hoveredCamera.channelId ? buildAlertsTo(hoveredCamera.channelId) : null
               }
             />
           ) : null}
@@ -3262,15 +3233,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           selectedLatestEvent={panelLatestEvent}
           selectedEventLoading={panelEventLoading}
           channelOnline={selectedChannelOnline}
-          onOpenPlayback={
-            selectedCamera?.channelId
-              ? () => navigateToPlayback(selectedCamera.channelId)
-              : undefined
+          playbackTo={
+            selectedCamera?.channelId ? buildPlaybackDetailTo(selectedCamera.channelId) : null
           }
-          onOpenAlerts={
-            selectedCamera?.channelId
-              ? () => navigateToAlerts(selectedCamera.channelId)
-              : undefined
+          alertsTo={
+            selectedCamera?.channelId ? buildAlertsTo(selectedCamera.channelId) : null
           }
           onBindChannel={(channelId) => {
             updateSelectedCamera((camera) => {

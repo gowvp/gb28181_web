@@ -9,3 +9,18 @@ export function buildPlaybackDetailHref(channelId: string): string {
   ).padStart(2, "0")}`;
   return `/playback/detail?cid=${encodeURIComponent(channelId)}&date=${encodeURIComponent(dateStr)}`;
 }
+
+/**
+ * 为什么单独提供 pathname + search：
+ * `navigate("/playback/detail?...")` 在部分环境与 basename 组合时解析不稳定；`navigate({ pathname, search })` 与 `<Link to={{ pathname, search }}>` 由路由统一拼接 basename，避免点到按钮却留在桌面页。
+ */
+export function buildPlaybackDetailTo(channelId: string): { pathname: string; search: string } {
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate(),
+  ).padStart(2, "0")}`;
+  const params = new URLSearchParams();
+  params.set("cid", channelId);
+  params.set("date", dateStr);
+  return { pathname: "/playback/detail", search: `?${params.toString()}` };
+}

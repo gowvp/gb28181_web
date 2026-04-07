@@ -1,6 +1,7 @@
 import { Spin } from "antd";
 import { Bell, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import type { CameraMarker, LatestCameraEvent } from "~/pages/desktop/floor_plan.types";
 
 const CARD_WIDTH = 288;
@@ -62,8 +63,8 @@ export function CameraHoverCard({
   containerWidth,
   containerHeight,
   channelOnline = null,
-  onOpenPlayback,
-  onOpenAlerts,
+  playbackTo = null,
+  alertsTo = null,
 }: {
   camera: CameraMarker;
   latestEvent: LatestCameraEvent | null;
@@ -74,14 +75,14 @@ export function CameraHoverCard({
   containerHeight: number;
   /** 来自当前通道列表；`undefined` 表示列表中暂无该 id */
   channelOnline?: boolean | null | undefined;
-  onOpenPlayback?: () => void;
-  onOpenAlerts?: () => void;
+  playbackTo?: { pathname: string; search: string } | null;
+  alertsTo?: { pathname: string; search: string } | null;
 }) {
   const { t } = useTranslation("desktop");
 
   const { x, y } = clampCardPosition(anchorX + 18, anchorY + 18, containerWidth, containerHeight);
-  const canPlayback = Boolean(camera.channelId && onOpenPlayback);
-  const canAlerts = Boolean(camera.channelId && onOpenAlerts);
+  const canPlayback = Boolean(camera.channelId && playbackTo);
+  const canAlerts = Boolean(camera.channelId && alertsTo);
 
   return (
     <div
@@ -93,31 +94,25 @@ export function CameraHoverCard({
           {camera.channelName || t("camera_unbound")}
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-1">
-          {canAlerts ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenAlerts?.();
-              }}
+          {canAlerts && alertsTo ? (
+            <Link
+              to={alertsTo}
+              onClick={(e) => e.stopPropagation()}
               className="pointer-events-auto inline-flex items-center gap-1 rounded-lg bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700"
             >
               <Bell className="h-3.5 w-3.5" />
               {t("open_alerts")}
-            </button>
+            </Link>
           ) : null}
-          {canPlayback ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenPlayback?.();
-              }}
+          {canPlayback && playbackTo ? (
+            <Link
+              to={playbackTo}
+              onClick={(e) => e.stopPropagation()}
               className="pointer-events-auto inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               {t("open_playback")}
-            </button>
+            </Link>
           ) : null}
         </div>
       </div>
