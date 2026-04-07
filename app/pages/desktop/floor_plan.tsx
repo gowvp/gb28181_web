@@ -2,11 +2,13 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import { Empty } from "antd";
 import {
   Camera,
+  Eye,
   Hand,
   Layers,
   LayoutTemplate,
   Map as MapIcon,
   MousePointer2,
+  Pencil,
   Redo2,
   RotateCcw,
   Square,
@@ -35,6 +37,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { CameraBindingPanel } from "~/components/desktop/camera-binding-panel";
 import { CameraHoverCard } from "~/components/desktop/camera-hover-card";
 import {
@@ -49,11 +52,15 @@ import {
   cloneFloorPlanState,
   createCameraMarker,
   createDefaultFloorPlanState,
+  loadFloorPlanInteractionMode,
   loadFloorPlanState,
   normalizeFloorPlanState,
+  saveFloorPlanInteractionMode,
   saveFloorPlanState,
+  type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
 import { getLatestCameraEvent } from "./floor_plan.events";
+import { buildPlaybackDetailHref } from "./floor_plan.playback";
 import type {
   CameraMarker,
   FloorPlanState,
@@ -101,26 +108,50 @@ type PlannerGuides = {
   horizontal: number[];
 };
 
+/**
+ * 为什么在编辑器内保留一份 clamp 而不从 storage 复用：
+ * floor_plan 与持久化层解耦后不应反向依赖 storage 的私有工具，避免循环引用与 bundle 边界模糊；数值语义与 storage 一致即可。
+ */
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+/**
+ * 为什么 id 要带时间戳与随机后缀：
+ * 同一次交互里可能连续创建多条墙线，仅用自增或纯随机在并发/快速点击时仍有碰撞风险，混合时间戳能把冲突概率压到可接受且便于日志里按时间粗排。
+ */
 function createWallId() {
   return `wall-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * 为什么摄像头 id 策略与墙线一致但前缀不同：
+ * 日志与调试时按前缀过滤即可区分实体类型，避免把墙与摄像头误当作同一类对象排查。
+ */
 function createCameraId() {
   return `camera-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * 为什么编组 id 单独前缀：
+ * groupId 在墙与摄像头之间复用，若与实体 id 格式混用，撤销/复制时难以一眼看出是「标签」还是「可渲染对象」。
+ */
 function createGroupId() {
   return `group-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * 为什么要先 filter(Boolean) 再 Set：
+ * 合并选择或历史数据里可能出现空字符串 id，直接进入 Set 仍占坑位，后续 includes 判断会误判为「已选中」。
+ */
 function uniqueIds(ids: string[]) {
   return Array.from(new Set(ids.filter(Boolean)));
 }
 
+/**
+ * 为什么空集合返回 null 而不是空对象：
+ * 大量交互分支用「无选中」与「有选中」二分，null 能强制调用方显式处理，避免 wallIds/cameraIds 全空却当作有效选择集。
+ */
 function createSelection(wallIds: string[] = [], cameraIds: string[] = []): PlannerSelection {
   const walls = uniqueIds(wallIds);
   const cameras = uniqueIds(cameraIds);
@@ -133,6 +164,10 @@ function createSelection(wallIds: string[] = [], cameraIds: string[] = []): Plan
   };
 }
 
+/**
+ * 为什么用统一计数而不是分别判断数组：
+ * 批量操作（编组、删除、快捷键提示）只关心「选中了几个实体」，合并计数避免墙/摄像头两套重复逻辑漂移。
+ */
 function selectionCount(selection: PlannerSelection) {
   if (!selection) {
     return 0;
@@ -140,6 +175,10 @@ function selectionCount(selection: PlannerSelection) {
   return selection.wallIds.length + selection.cameraIds.length;
 }
 
+/**
+ * 为什么把墙与摄像头拆成 entityType 参数：
+ * 两者 id 空间独立，若用单一字符串列表容易在复制粘贴后产生跨类型歧义；分类型查询让选中判断与后端 channel 概念解耦。
+ */
 function isEntitySelected(
   selection: PlannerSelection,
   entityType: "wall" | "camera",
@@ -153,6 +192,10 @@ function isEntitySelected(
     : selection.cameraIds.includes(entityId);
 }
 
+/**
+ * 为什么 Ctrl/Cmd 多选要走 toggle 而不是覆盖：
+ * 用户期望在已有选中集上增量加减，覆盖会打断框选后的精细调整，与常见矢量编辑习惯不一致。
+ */
 function toggleEntitySelection(
   selection: PlannerSelection,
   entityType: "wall" | "camera",
@@ -171,6 +214,10 @@ function toggleEntitySelection(
   return createSelection(selection?.wallIds ?? [], next);
 }
 
+/**
+ * 为什么编组查询要落在 plan 上而不是缓存 groupId：
+ * groupId 存在实体上，plan 是唯一事实来源；单独维护映射会在撤销/重做时与 plan 分叉。
+ */
 function getEntityGroupId(
   plan: FloorPlanState,
   entityType: "wall" | "camera",
@@ -182,6 +229,10 @@ function getEntityGroupId(
   return plan.cameras.find((camera) => camera.id === entityId)?.groupId ?? null;
 }
 
+/**
+ * 为什么点击单个对象要展开整组：
+ * 编组的意义是「一起动」，若只高亮其中一个，用户会误以为未编组成功，展开整组能减少反复确认的成本。
+ */
 function selectEntity(plan: FloorPlanState, entityType: "wall" | "camera", entityId: string) {
   const groupId = getEntityGroupId(plan, entityType, entityId);
   if (!groupId) {
@@ -196,6 +247,10 @@ function selectEntity(plan: FloorPlanState, entityType: "wall" | "camera", entit
   );
 }
 
+/**
+ * 为什么解组需要收集当前选区涉及的所有 groupId：
+ * 一次多选可能跨多个编组，解组要对每个组分别清空 groupId，只处理第一个会留下「半解组」的隐蔽状态。
+ */
 function getSelectionGroupIds(plan: FloorPlanState, selection: PlannerSelection) {
   if (!selection) {
     return [] as string[];
@@ -213,6 +268,10 @@ function getSelectionGroupIds(plan: FloorPlanState, selection: PlannerSelection)
   return uniqueIds(ids);
 }
 
+/**
+ * 为什么坐标要吸附网格而不是任意浮点：
+ * 产品约定首版以网格为「可沟通」的精度，自由浮点会让对齐线与用户口述坐标都对不上，吸附后墙线与摄像头更容易一致复现。
+ */
 function snapPoint(point: PlannerPoint): PlannerPoint {
   return {
     x: Math.round(point.x / FLOOR_PLAN_GRID_SIZE) * FLOOR_PLAN_GRID_SIZE,
@@ -220,6 +279,10 @@ function snapPoint(point: PlannerPoint): PlannerPoint {
   };
 }
 
+/**
+ * 为什么世界坐标要裁剪到固定矩形：
+ * 无限坐标会让缩放适配与碰撞检测溢出，裁剪后保证所有实体落在可持久化、可预览的同一画布语义内。
+ */
 function clampPointToWorld(point: PlannerPoint): PlannerPoint {
   return {
     x: clamp(point.x, 0, FLOOR_PLAN_WORLD_WIDTH),
@@ -227,6 +290,10 @@ function clampPointToWorld(point: PlannerPoint): PlannerPoint {
   };
 }
 
+/**
+ * 为什么用容器 getBoundingClientRect 而不是 Stage 内置坐标：
+ * 工具栏与侧栏占用空间时，指针事件相对视口的偏移必须扣掉容器原点，否则缩放/平移后的世界坐标会系统性偏移。
+ */
 function clientToWorld(
   clientX: number,
   clientY: number,
@@ -240,6 +307,10 @@ function clientToWorld(
   };
 }
 
+/**
+ * 为什么需要 worldToScreen：
+ * HTML 悬浮层（如 AI 事件卡片）不在 Konva 坐标系内渲染，必须把同一世界点转换到屏幕像素才能与摄像头圆点对齐。
+ */
 function worldToScreen(point: PlannerPoint, view: PlannerView): PlannerPoint {
   return {
     x: point.x * view.scale + view.x,
@@ -247,10 +318,18 @@ function worldToScreen(point: PlannerPoint, view: PlannerView): PlannerPoint {
   };
 }
 
+/**
+ * 为什么角度展示要取整：
+ * 浮点角度在 UI 上无业务意义却增加噪音，取整与滑杆步进心智一致，也避免国际化字符串过长。
+ */
 function formatAngle(angle: number) {
   return `${Math.round(angle)}°`;
 }
 
+/**
+ * 为什么扇形用分段折线近似：
+ * Konva 无原生扇形图元，用多边形逼近可在任意 FOV 下保持闭合填充；步数随 FOV 变化避免宽角时边缘过糙。
+ */
 function createSectorPoints(camera: CameraMarker) {
   const steps = Math.max(8, Math.ceil(camera.fov / 10));
   const startAngle = camera.angle - camera.fov / 2;
@@ -269,6 +348,10 @@ function createSectorPoints(camera: CameraMarker) {
   return points;
 }
 
+/**
+ * 为什么空平面图要给非零默认包围盒：
+ * 「适配画布」在无任何实体时需要可计算的缩放中心，否则会得到 NaN 或极端缩放，用户误以为视图坏了。
+ */
 function getPlanBounds(plan: FloorPlanState) {
   const points: PlannerPoint[] = [];
 
@@ -297,6 +380,10 @@ function getPlanBounds(plan: FloorPlanState) {
   };
 }
 
+/**
+ * 为什么选中包围盒与全图包围盒分开：
+ * Alt 复制等操作只需在当前选中范围内算偏移，混入未选墙线会让粘贴落点偏离用户视觉焦点。
+ */
 function getSelectionBounds(plan: FloorPlanState, selection: PlannerSelection) {
   if (!selection) {
     return null;
@@ -331,7 +418,10 @@ function getSelectionBounds(plan: FloorPlanState, selection: PlannerSelection) {
   };
 }
 
-// 将当前选择集复制为一份可重复粘贴的剪贴板快照。
+/**
+ * 为什么剪贴板要存边界与宽高：
+ * 粘贴时需要把内容整体平移且不越界，边界与尺寸来自选中集本身，比每次从 plan 重算更稳定且与撤销栈快照一致。
+ */
 function buildClipboard(plan: FloorPlanState, selection: PlannerSelection): PlannerClipboardState | null {
   if (!selection) {
     return null;
@@ -357,7 +447,10 @@ function buildClipboard(plan: FloorPlanState, selection: PlannerSelection): Plan
   };
 }
 
-// 基于剪贴板快照生成一组新的实体，并保留组内相对关系。
+/**
+ * 为什么粘贴时要 remap groupId：
+ * 新墙线与摄像头是全新 id，若沿用旧 groupId 会与未粘贴对象意外同组；按旧组映射到新 id 才能保持「副本内部」仍为一组。
+ */
 function createPastedEntities(clipboard: PlannerClipboardState, targetTopLeft: PlannerPoint) {
   const deltaX = targetTopLeft.x - clipboard.bounds.minX;
   const deltaY = targetTopLeft.y - clipboard.bounds.minY;
@@ -393,6 +486,10 @@ function createPastedEntities(clipboard: PlannerClipboardState, targetTopLeft: P
   return { walls, cameras };
 }
 
+/**
+ * 为什么粘贴锚点要先 clamp 再 snap：
+ * 先限制在世界矩形内避免半截墙线出界，再吸附网格与手动放置摄像头规则一致，减少「贴进来却看不见」的困惑。
+ */
 function clampPasteTopLeft(point: PlannerPoint, clipboard: PlannerClipboardState) {
   return snapPoint({
     x: clamp(point.x, 0, Math.max(0, FLOOR_PLAN_WORLD_WIDTH - clipboard.width)),
@@ -400,7 +497,10 @@ function clampPasteTopLeft(point: PlannerPoint, clipboard: PlannerClipboardState
   });
 }
 
-// 复制指定选择集，并把新对象生成在原位置，便于 Alt + 拖动直接复制一份后继续移动。
+/**
+ * 为什么原地复制要生成新 id 却仍放在原 bounds：
+ * Alt 拖动复制的交互是「先有一份重叠再拖开」，若直接偏移会改变用户鼠标下的命中点，与常见设计软件行为不一致。
+ */
 function duplicateSelectionAtSource(plan: FloorPlanState, selection: PlannerSelection) {
   const clipboard = buildClipboard(plan, selection);
   if (!clipboard) {
@@ -422,7 +522,10 @@ function duplicateSelectionAtSource(plan: FloorPlanState, selection: PlannerSele
   };
 }
 
-// 收集未被拖动对象的对齐参考值，用于吸附提示线。
+/**
+ * 为什么对齐参考要排除当前拖动选区：
+ * 若把正在移动的点当参考，辅助线会与自己吸附，失去「对齐到其它物体」的意义。
+ */
 function getGuideReferenceValues(plan: FloorPlanState, excludedSelection?: PlannerSelection) {
   const xValues = [0, FLOOR_PLAN_WORLD_WIDTH / 2, FLOOR_PLAN_WORLD_WIDTH];
   const yValues = [0, FLOOR_PLAN_WORLD_HEIGHT / 2, FLOOR_PLAN_WORLD_HEIGHT];
@@ -449,6 +552,10 @@ function getGuideReferenceValues(plan: FloorPlanState, excludedSelection?: Plann
   };
 }
 
+/**
+ * 为什么拖动时还要单独从 snapshot 取参考值：
+ * 拖动过程中 plan 已被改写，用 snapshot 里的原始坐标才能计算「相对起点」的位移，避免累积误差。
+ */
 function getSnapshotGuideValues(snapshot: SelectionDragSnapshot) {
   const xValues = [
     ...Object.values(snapshot.wallOrigins).flatMap((wall) => [wall.x1, wall.x2]),
@@ -465,6 +572,10 @@ function getSnapshotGuideValues(snapshot: SelectionDragSnapshot) {
   };
 }
 
+/**
+ * 为什么在阈值内选最小 delta：
+ * 多参考线可能同时满足吸附，取最近的一条避免在两个等距参考之间抖动。
+ */
 function findGuideAdjustment(movingValues: number[], referenceValues: number[]) {
   let bestDelta: number | null = null;
   let guide: number | null = null;
@@ -488,7 +599,10 @@ function findGuideAdjustment(movingValues: number[], referenceValues: number[]) 
   };
 }
 
-// 按住 Shift 时将墙线约束为水平或垂直，默认允许任意角度斜线。
+/**
+ * 为什么 Shift 锁轴向时比较 |dx| 与 |dy|：
+ * 用户意图是「更像横线还是竖线」，取绝对值大的一侧决定锁定方向，比固定先横后竖更符合手绘习惯。
+ */
 function snapWallEnd(start: PlannerPoint, point: PlannerPoint) {
   const deltaX = point.x - start.x;
   const deltaY = point.y - start.y;
@@ -500,6 +614,10 @@ function snapWallEnd(start: PlannerPoint, point: PlannerPoint) {
   return { x: start.x, y: point.y };
 }
 
+/**
+ * 为什么矩形规范化要交换 min/max：
+ * 拖拽方向任意时 start/end 可能颠倒，不规范化会出现负宽高，后续 Konva Rect 与碰撞检测都会异常。
+ */
 function normalizeRect(start: PlannerPoint, end: PlannerPoint) {
   return {
     x: Math.min(start.x, end.x),
@@ -509,6 +627,10 @@ function normalizeRect(start: PlannerPoint, end: PlannerPoint) {
   };
 }
 
+/**
+ * 为什么框选矩形要附带 x2/y2：
+ * 线段与矩形相交判断需要闭区间边界，重复用 width/height 相加会散落多处计算，容易与 normalizeRect 不一致。
+ */
 function normalizeMarqueeRect(start: PlannerPoint, end: PlannerPoint) {
   const rect = normalizeRect(start, end);
   return {
@@ -518,10 +640,18 @@ function normalizeMarqueeRect(start: PlannerPoint, end: PlannerPoint) {
   };
 }
 
+/**
+ * 为什么点入矩形用闭区间：
+ * 与线段相交的边界情况一致，避免贴边点被排除导致「明明框住了却选不中」。
+ */
 function pointInRect(point: PlannerPoint, rect: ReturnType<typeof normalizeMarqueeRect>) {
   return point.x >= rect.x && point.x <= rect.x2 && point.y >= rect.y && point.y <= rect.y2;
 }
 
+/**
+ * 为什么框选墙线用线段相交判断而不是只看端点：
+ * 长线段可能完全穿过框选区但两端都在外，仅测端点会漏选，用户会认为框选不可靠。
+ */
 function lineSegmentsIntersect(a: PlannerPoint, b: PlannerPoint, c: PlannerPoint, d: PlannerPoint) {
   const direction = (p1: PlannerPoint, p2: PlannerPoint, p3: PlannerPoint) =>
     (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
@@ -556,6 +686,10 @@ function lineSegmentsIntersect(a: PlannerPoint, b: PlannerPoint, c: PlannerPoint
   return false;
 }
 
+/**
+ * 为什么线段与矩形相交要先做快速排斥：
+ * 全量与四条边做相交计算较贵，先与轴对齐包围盒排除大量无关线段，大图元数时更稳。
+ */
 function lineIntersectsRect(
   start: PlannerPoint,
   end: PlannerPoint,
@@ -587,6 +721,10 @@ function lineIntersectsRect(
   ].some(([edgeStart, edgeEnd]) => lineSegmentsIntersect(start, end, edgeStart, edgeEnd));
 }
 
+/**
+ * 为什么过小的框选视为无效：
+ * 误触点击会产生极小矩形，若仍触发选择会清空用户当前 carefully 选中的集合，最小尺寸阈值把点击与框选区分开。
+ */
 function selectionFromRect(plan: FloorPlanState, start: PlannerPoint, end: PlannerPoint) {
   const rect = normalizeMarqueeRect(start, end);
   if (rect.width < 6 && rect.height < 6) {
@@ -609,6 +747,10 @@ function selectionFromRect(plan: FloorPlanState, start: PlannerPoint, end: Plann
   );
 }
 
+/**
+ * 为什么追加框选要合并两个 selection 再 unique：
+ * Ctrl 框选追加时，新矩形选出的 id 需与旧集合并集，直接替换会丢失上一轮选中。
+ */
 function mergeSelections(base: PlannerSelection, addition: PlannerSelection) {
   return createSelection(
     [...(base?.wallIds ?? []), ...(addition?.wallIds ?? [])],
@@ -616,6 +758,10 @@ function mergeSelections(base: PlannerSelection, addition: PlannerSelection) {
   );
 }
 
+/**
+ * 为什么 Shift 拖动时只保留主轴位移：
+ * 与墙线 Shift 锁轴向一致，批量移动多选对象时用户可沿走廊方向平移而不跑偏。
+ */
 function constrainDragDelta(deltaX: number, deltaY: number, constrained: boolean) {
   if (!constrained) {
     return { deltaX, deltaY };
@@ -628,6 +774,10 @@ function constrainDragDelta(deltaX: number, deltaY: number, constrained: boolean
   return { deltaX: 0, deltaY };
 }
 
+/**
+ * 为什么矩形房间有最小宽高阈值：
+ * 与误触点击区分，同时避免生成过短墙线导致端点手柄重叠难以编辑。
+ */
 function createRectangleWalls(start: PlannerPoint, end: PlannerPoint) {
   const rect = normalizeRect(start, end);
   if (rect.width < FLOOR_PLAN_GRID_SIZE || rect.height < FLOOR_PLAN_GRID_SIZE) {
@@ -642,6 +792,10 @@ function createRectangleWalls(start: PlannerPoint, end: PlannerPoint) {
   return createPolygonWalls([topLeft, topRight, bottomRight, bottomLeft]);
 }
 
+/**
+ * 为什么多边形墙用首尾闭合：
+ * 房间轮廓是封闭区域，最后一条边连回起点才能形成可填充的语义闭环，与预设模板一致。
+ */
 function createPolygonWalls(points: PlannerPoint[]) {
   if (points.length < 2) {
     return [] as FloorWall[];
@@ -664,6 +818,10 @@ function createPolygonWalls(points: PlannerPoint[]) {
   return walls;
 }
 
+/**
+ * 为什么预设轮廓要相对 center 平移再裁剪：
+ * 模板定义在局部坐标系，插入到用户当前视口中心才能「一眼看到」；裁剪保证整段轮廓在可编辑世界内。
+ */
 function createPresetWalls(templateId: FloorPlanTemplateId, center: PlannerPoint) {
   const shape: PlannerPoint[] = (() => {
     switch (templateId) {
@@ -718,6 +876,10 @@ function createPresetWalls(templateId: FloorPlanTemplateId, center: PlannerPoint
   );
 }
 
+/**
+ * 为什么视口中心要逆变换到世界坐标：
+ * 预设与「点击放置」共享同一世界系，只有把屏幕中心换算回去，插入位置才与缩放/平移状态无关。
+ */
 function getViewportCenter(view: PlannerView, viewport: { width: number; height: number }) {
   return snapPoint({
     x: (viewport.width / 2 - view.x) / view.scale,
@@ -725,6 +887,10 @@ function getViewportCenter(view: PlannerView, viewport: { width: number; height:
   });
 }
 
+/**
+ * 为什么底部提示条随工具切换：
+ * 平面图能力多，用户容易忘记当前模式；短句提示把「此刻能做什么」绑在工具上，降低反复试错的成本。
+ */
 function toolHint(tool: PlannerTool, t: (key: string) => string) {
   switch (tool) {
     case "select":
@@ -742,6 +908,10 @@ function toolHint(tool: PlannerTool, t: (key: string) => string) {
   }
 }
 
+/**
+ * 为什么工具栏按钮用原生 title 而不是复杂 Tooltip：
+ * 平面图顶部空间紧凑，hover 即显的浏览器 tooltip 不额外占布局，且避免与 Konva 画布事件竞争。
+ */
 function ToolbarButton({
   active,
   disabled,
@@ -774,6 +944,10 @@ function ToolbarButton({
   );
 }
 
+/**
+ * 为什么复制/粘贴等操作用小号文字按钮：
+ * 与图标工具区分层级，避免所有功能都是方块图标导致扫视困难；禁用态仍占位，快捷键提示才能对齐。
+ */
 function CompactActionButton({
   disabled,
   onClick,
@@ -799,18 +973,29 @@ function CompactActionButton({
   );
 }
 
+/**
+ * 为什么预设单独组件而不是内联 onClick：
+ * 右侧多块预设共用同一样式，抽组件避免改圆角/间距时漏改某一格，也便于以后加缩略预览。
+ */
 function PresetButton({
   label,
+  disabled,
   onClick,
 }: {
   label: string;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+      className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+        disabled
+          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+      }`}
     >
       {label}
     </button>
@@ -822,8 +1007,13 @@ interface FloorPlanEditorProps {
   onViewModeChange: (mode: "dataflow" | "2d") => void;
 }
 
+/**
+ * 为什么 2D 编辑器自包含顶栏切换而不复用 ReactFlow 的 Panel：
+ * 2D 模式全屏占用时若仍依赖父级 Panel，切换入口会随数据流卸载而消失；自顶栏保证在纯画布状态下仍能回到拓扑视图。
+ */
 export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorProps) {
   const { t } = useTranslation("desktop");
+  const navigate = useNavigate();
 
   const initialPlan = useMemo(
     () => loadFloorPlanState() ?? createDefaultFloorPlanState(),
@@ -854,6 +1044,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const [hoveredCameraId, setHoveredCameraId] = useState<string | null>(null);
   const [hoverEvent, setHoverEvent] = useState<LatestCameraEvent | null>(null);
   const [hoverLoading, setHoverLoading] = useState(false);
+  const [interactionMode, setInteractionMode] = useState<FloorPlanInteractionMode>(() =>
+    loadFloorPlanInteractionMode(),
+  );
+  const interactionModeRef = useRef(interactionMode);
+  const [channelNameFilter, setChannelNameFilter] = useState("");
+  const [panelLatestEvent, setPanelLatestEvent] = useState<LatestCameraEvent | null>(null);
+  const [panelEventLoading, setPanelEventLoading] = useState(false);
   const [hasClipboard, setHasClipboard] = useState(false);
   const [alignmentGuides, setAlignmentGuides] = useState<PlannerGuides>({
     vertical: [],
@@ -904,6 +1101,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   useEffect(() => {
     selectionRef.current = selection;
   }, [selection]);
+
+  useEffect(() => {
+    interactionModeRef.current = interactionMode;
+    saveFloorPlanInteractionMode(interactionMode);
+  }, [interactionMode]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -976,9 +1178,45 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     return worldToScreen({ x: hoveredCamera.x, y: hoveredCamera.y }, plan.view);
   }, [hoveredCamera, plan.view]);
 
+  /**
+   * 为什么录像入口与列表页拼相同 URL：
+   * 详情页只解析 `cid`+`date`，与录像列表一致可减少「从平面图进入」与「从列表进入」两套行为，排障时也只对一种链接形态。
+   */
+  const navigateToPlayback = useCallback(
+    (channelId: string | null | undefined) => {
+      if (!channelId) {
+        return;
+      }
+      navigate(buildPlaybackDetailHref(channelId));
+    },
+    [navigate],
+  );
+
+  const cameraFilterTrim = channelNameFilter.trim().toLowerCase();
+
+  /**
+   * 为什么过滤同时匹配通道名与设备名：
+   * 用户可能记得设备侧名称而记不清通道后缀，两边都搜能减少「明明绑了却筛不掉」的挫败感。
+   */
+  const cameraMatchesFilter = useCallback(
+    (camera: CameraMarker) => {
+      if (!cameraFilterTrim) {
+        return true;
+      }
+      const name = (camera.channelName || "").toLowerCase();
+      const device = (camera.deviceName || "").toLowerCase();
+      return name.includes(cameraFilterTrim) || device.includes(cameraFilterTrim);
+    },
+    [cameraFilterTrim],
+  );
+
   const canUndo = historyIndexRef.current > 0;
   const canRedo = historyIndexRef.current < historyRef.current.length - 1;
 
+  /**
+   * 为什么历史栈要截断长度并归一化入栈：
+   * 长时间编辑会无限增长内存；归一化保证栈里每一帧都可安全 JSON 化，与撤销/重做和 localStorage 同一套数据契约。
+   */
   const pushHistory = useCallback((next: FloorPlanState) => {
     const normalized = cloneFloorPlanState(normalizeFloorPlanState(next));
     const base = historyRef.current.slice(0, historyIndexRef.current + 1);
@@ -991,6 +1229,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     setHistoryVersion((value) => value + 1);
   }, []);
 
+  /**
+   * 为什么区分 commit：
+   * 平移/缩放等视口操作不应污染「内容撤销栈」，否则用户撤销会把视图也卷回去，与常见编辑器心智冲突。
+   */
   const replacePlan = useCallback(
     (next: FloorPlanState, commit = true) => {
       const normalized = normalizeFloorPlanState({
@@ -1006,6 +1248,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [pushHistory],
   );
 
+  /**
+   * 为什么先 clone 再 recipe：
+   * 可变 draft 直接改 plan 会让 React 与 Konva 难以比较前后差异；不可变快照配合归一化，调试时能打印完整前后状态。
+   */
   const mutatePlan = useCallback(
     (recipe: (draft: FloorPlanState) => void, commit = true) => {
       const draft = cloneFloorPlanState(planRef.current);
@@ -1016,10 +1262,38 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [replacePlan],
   );
 
+  /**
+   * 为什么对齐线要显式清空：
+   * 辅助线是瞬时 UI，若留在状态里会在下一次操作前误导用户以为仍在吸附；结束拖拽或取消时必须归零。
+   */
   const clearGuides = useCallback(() => {
     setAlignmentGuides({ vertical: [], horizontal: [] });
   }, []);
 
+  /**
+   * 为什么切到浏览时强制回到选择工具并清空未提交的拖拽：
+   * 浏览语义下不应停留在「画墙」等破坏性工具；若保留 wallDrawRef，全局 mousemove 仍会继续改预览，造成「已切浏览却仍在画」的错觉。
+   */
+  useEffect(() => {
+    if (interactionMode === "browse") {
+      setTool("select");
+      wallDrawRef.current = null;
+      roomDrawRef.current = null;
+      marqueeRef.current = null;
+      dragSelectionRef.current = null;
+      dragWallHandleRef.current = null;
+      panRef.current = null;
+      setWallPreview(null);
+      setRoomPreview(null);
+      setMarqueeRect(null);
+      clearGuides();
+    }
+  }, [interactionMode, clearGuides]);
+
+  /**
+   * 为什么适配用包围盒加 padding：
+   * 贴边缩放会让墙线贴紧视口边缘难以继续向外编辑，留白给后续拖动与框选留余地。
+   */
   const zoomToFit = useCallback(() => {
     const bounds = getPlanBounds(planRef.current);
     const width = Math.max(240, bounds.maxX - bounds.minX + 280);
@@ -1043,6 +1317,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     );
   }, [replacePlan, viewportSize.height, viewportSize.width]);
 
+  /**
+   * 为什么属性面板只改「当前选中的单个摄像头」：
+   * 批量选中时 FOV 等参数语义不明确（是否应用全部），限制为单选避免静默改多机位引发事故。
+   */
   const updateSelectedCamera = useCallback(
     (recipe: (camera: CameraMarker) => void, commit = true) => {
       if (!selectedCamera) {
@@ -1059,7 +1337,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [mutatePlan, selectedCamera],
   );
 
-  // 删除前先读取当前选择快照，避免异步状态切换后误删其它对象。
+  /**
+   * 为什么删除要用 selectionRef 而不是闭包里的 selection：
+   * 键盘删除与鼠标操作可能在同一 tick 交错，ref 指向「发起删除瞬间」的快照，避免 React 批处理滞后导致删错对象。
+   */
   const deleteSelection = useCallback(() => {
     const currentSelection = selectionRef.current;
     if (!currentSelection) {
@@ -1074,7 +1355,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     setSelection(null);
   }, [mutatePlan]);
 
-  // 复制当前选择集，供粘贴和重复操作复用。
+  /**
+   * 为什么复制只写 ref 并复位 cascade：
+   * 剪贴板与画布状态解耦，用户复制后可能大幅编辑再粘贴，保持一份快照即可；cascade 归零避免与上一次连续粘贴偏移叠加混乱。
+   */
   const copySelection = useCallback(() => {
     const clipboard = buildClipboard(planRef.current, selectionRef.current);
     clipboardRef.current = clipboard;
@@ -1082,7 +1366,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     setHasClipboard(Boolean(clipboard));
   }, []);
 
-  // 优先用鼠标所在位置作为粘贴锚点，能让复制出来的结构直接落在用户当前关注区域，降低二次拖动成本。
+  /**
+   * 为什么优先用鼠标世界坐标作为粘贴锚点：
+   * 用户目光通常跟随光标，把结构落在指针附近比固定落在画布原点减少拖拽校正；拿不到指针时再回退视口中心避免粘贴到视野外。
+   */
   const resolvePasteTopLeft = useCallback((clipboard: PlannerClipboardState) => {
     const pointerWorld = pointerWorldRef.current;
     if (
@@ -1109,7 +1396,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     );
   }, [viewportSize]);
 
-  // 粘贴时优先落在当前鼠标位置，只有拿不到鼠标坐标时才回退到视口中心，避免用户每次粘贴后都要再找副本。
+  /**
+   * 为什么连续粘贴要递增 cascadeOffset：
+   * 多次 Ctrl+V 若落在同一点会完全重叠难以分辨，按网格阶梯偏移让副本呈「栈」状展开，符合常见图形软件行为。
+   */
   const pasteClipboard = useCallback(
     (mode: "pointer" | "duplicate" = "pointer") => {
       const clipboard = clipboardRef.current;
@@ -1149,7 +1439,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [mutatePlan, resolvePasteTopLeft],
   );
 
-  // 直接基于当前选择集生成一个偏移副本，提升重复布置效率。
+  /**
+   * 为什么重复选择在复制后立刻粘贴并固定偏移：
+   * 用户期望「一键多份」比先复制再手动粘贴少一步，固定网格偏移保证不与原物体重叠。
+   */
   const duplicateSelection = useCallback(() => {
     const clipboard = buildClipboard(planRef.current, selectionRef.current);
     if (!clipboard) {
@@ -1181,6 +1474,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     setTool("select");
   }, [mutatePlan]);
 
+  /**
+   * 为什么编组只打 groupId 而不嵌套结构：
+   * 墙与摄像头仍是扁平列表，撤销与序列化逻辑简单；groupId 作为弱引用标签，移动时按 id 批量更新即可。
+   */
   const groupSelection = useCallback(() => {
     const currentSelection = selectionRef.current;
     if (selectionCount(currentSelection) < 2) {
@@ -1201,6 +1498,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     });
   }, [mutatePlan]);
 
+  /**
+   * 为什么解组只清当前选区涉及的实体：
+   * 用户可能只想拆开一部分，全表清空会误伤未选中的同组对象。
+   */
   const ungroupSelection = useCallback(() => {
     const currentSelection = selectionRef.current;
     if (!currentSelection) {
@@ -1220,6 +1521,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     });
   }, [mutatePlan]);
 
+  /**
+   * 为什么撤销要清空选择与辅助线：
+   * 快照回到过去某一帧时，选中的 id 可能已不存在，保留选择会导致指向幽灵实体；辅助线同理。
+   */
   const undo = useCallback(() => {
     if (historyIndexRef.current <= 0) {
       return;
@@ -1233,6 +1538,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     setHistoryVersion((value) => value + 1);
   }, [clearGuides]);
 
+  /**
+   * 为什么重做与撤销对称处理：
+   * 恢复的未来帧同样可能使旧 selection 失效，清空后由用户重新点选成本低于修复不一致状态。
+   */
   const redo = useCallback(() => {
     if (historyIndexRef.current >= historyRef.current.length - 1) {
       return;
@@ -1246,6 +1555,38 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     setHistoryVersion((value) => value + 1);
   }, [clearGuides]);
 
+  /**
+   * 为什么侧栏单独拉一次最近事件：
+   * 用户选中摄像头时期望在右栏直接看到摘要，而不必依赖 hover；与 hover 共用 `getLatestCameraEvent` 缓存，避免重复打后端。
+   */
+  useEffect(() => {
+    if (!selectedCamera?.channelId) {
+      setPanelLatestEvent(null);
+      setPanelEventLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPanelEventLoading(true);
+    setPanelLatestEvent(null);
+
+    void (async () => {
+      const latest = await getLatestCameraEvent(selectedCamera.channelId);
+      if (!cancelled) {
+        setPanelLatestEvent(latest);
+        setPanelEventLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCamera?.channelId, selectedCamera?.id]);
+
+  /**
+   * 为什么 hover 拉事件后写回 camera 上的 latest* 字段：
+   * 橙色状态需要持久化到同一 plan，刷新前多次进入页面能复用已拉取结果；commit=false 避免污染撤销栈。
+   */
   const loadHoverEvent = useCallback(
     async (camera: CameraMarker | null) => {
       if (!camera?.channelId) {
@@ -1256,28 +1597,35 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
       setHoverEvent(null);
       setHoverLoading(true);
-      const latest = await getLatestCameraEvent(camera.channelId);
-      setHoverEvent(latest);
-      setHoverLoading(false);
+      try {
+        const latest = await getLatestCameraEvent(camera.channelId);
+        setHoverEvent(latest);
 
-      if (!latest) {
-        return;
-      }
-
-      mutatePlan((draft) => {
-        const target = draft.cameras.find((item) => item.id === camera.id);
-        if (!target) {
+        if (!latest) {
           return;
         }
-        target.latestEventAt = latest.startedAt;
-        target.latestEventImage = latest.imageSrc;
-        target.latestEventLabel = latest.label;
-        target.latestEventScore = latest.score;
-      }, false);
+
+        mutatePlan((draft) => {
+          const target = draft.cameras.find((item) => item.id === camera.id);
+          if (!target) {
+            return;
+          }
+          target.latestEventAt = latest.startedAt;
+          target.latestEventImage = latest.imageSrc;
+          target.latestEventLabel = latest.label;
+          target.latestEventScore = latest.score;
+        }, false);
+      } finally {
+        setHoverLoading(false);
+      }
     },
     [mutatePlan],
   );
 
+  /**
+   * 为什么插入预设后自动框选并切回选择工具：
+   * 用户下一步通常是微调或编组，停留在墙线工具容易误画；选中全部新墙线提供即时视觉反馈。
+   */
   const insertPreset = useCallback(
     (templateId: FloorPlanTemplateId) => {
       const center = getViewportCenter(planRef.current.view, viewportSize);
@@ -1294,6 +1642,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [mutatePlan, viewportSize],
   );
 
+  /**
+   * 为什么拖动开始要冻结 wallOrigins/cameraOrigins：
+   * 拖动中 mutatePlan 会不断更新坐标，若用实时值作为「起点」会产生反馈回路导致漂移；快照锚定一次拖动周期。
+   */
   const buildDragSelectionSnapshot = useCallback(
     (nextSelection: PlannerSelection, startWorld: PlannerPoint) => {
       if (!nextSelection) {
@@ -1336,7 +1688,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [],
   );
 
-  // 批量拖动时根据附近对象生成吸附偏移和对齐参考线。
+  /**
+   * 为什么拖动增量要先约束在世界范围内再吸附：
+   * 先吸附再裁剪可能导致穿出边界仍显示辅助线，用户会误以为已对齐到墙外；先 clamp 再对齐保证几何一致。
+   */
   const resolveAlignedSelectionDelta = useCallback(
     (snapshot: SelectionDragSnapshot, rawDeltaX: number, rawDeltaY: number, constrained: boolean) => {
       const dragDelta = constrainDragDelta(rawDeltaX, rawDeltaY, constrained);
@@ -1387,7 +1742,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [],
   );
 
-  // 拖动墙体端点时同样支持与其它对象端点/摄像头点位对齐。
+  /**
+   * 为什么端点拖动要排除当前墙自身再取参考：
+   * 若不排除，端点会与自己的另一端虚假对齐，辅助线常驻失去参考意义。
+   */
   const resolveAlignedWallHandlePoint = useCallback(
     (wallId: string, endpoint: "start" | "end", point: PlannerPoint, constrained: boolean, anchor: PlannerPoint) => {
       const nextPoint = constrained ? snapWallEnd(anchor, point) : point;
@@ -1414,6 +1772,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [],
   );
 
+  /**
+   * 为什么把画布级交互挂在 document 的 mousemove/mouseup 上：
+   * 指针快速拖出 Stage 时仍会丢失事件，墙线/框选/平移必须在全局跟踪，否则出现「松手仍以为在拖」的僵死状态。
+   */
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
       const container = containerRef.current;
@@ -1432,6 +1794,34 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         pointerWorldRef.current = clampPointToWorld(
           snapPoint(clientToWorld(event.clientX, event.clientY, container, planRef.current.view)),
         );
+      }
+
+      if (interactionModeRef.current === "browse") {
+        if (panRef.current) {
+          const deltaX = event.clientX - panRef.current.startX;
+          const deltaY = event.clientY - panRef.current.startY;
+          replacePlan(
+            {
+              ...planRef.current,
+              view: {
+                ...planRef.current.view,
+                x: panRef.current.originX + deltaX,
+                y: panRef.current.originY + deltaY,
+              },
+            },
+            false,
+          );
+        } else if (marqueeRef.current) {
+          const current = clampPointToWorld(
+            snapPoint(
+              clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+            ),
+          );
+          marqueeRef.current.current = current;
+          const rect = normalizeRect(marqueeRef.current.start, current);
+          setMarqueeRect(rect);
+        }
+        return;
       }
 
       if (panRef.current) {
@@ -1559,6 +1949,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
     };
 
+    /**
+     * 为什么在 mouseup 才 commit 拖动历史：
+     * 拖动过程中用 mutatePlan(..., false) 避免每一步入撤销栈；仅在松手时 pushHistory，撤销一步即可回到拖动前整帧。
+     */
     const handleMouseUp = () => {
       if (panRef.current) {
         panRef.current = null;
@@ -1643,6 +2037,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     wallPreview,
   ]);
 
+  /**
+   * 为什么平移要记录指针起点与 view 原点：
+   * 用增量差更新 view.x/y 避免浮点累积误差；与缩放矩阵解耦，平移不触发内容历史。
+   */
   const beginPan = useCallback((clientX: number, clientY: number) => {
     panRef.current = {
       startX: clientX,
@@ -1652,6 +2050,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     };
   }, []);
 
+  /**
+   * 为什么方向键微调复用 buildDragSelectionSnapshot 的边界：
+   * 与鼠标拖动共享同一世界边界约束，避免键盘把对象推出可编辑区域而鼠标拖不回来。
+   */
   const nudgeSelection = useCallback(
     (rawDeltaX: number, rawDeltaY: number) => {
       const currentSelection = selectionRef.current;
@@ -1703,6 +2105,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [buildDragSelectionSnapshot, mutatePlan],
   );
 
+  /**
+   * 为什么在 document 监听 keydown 并过滤输入框：
+   * 快捷键需要全局生效，但用户在通道搜索框输入时不能误触删除/全选，否则会造成数据与画布双误操作。
+   */
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -1712,6 +2118,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         target?.tagName === "SELECT" ||
         Boolean(target?.isContentEditable);
       if (isTypingTarget) {
+        return;
+      }
+
+      if (interactionModeRef.current === "browse") {
+        if (event.key === "Escape") {
+          setSelection(null);
+          clearGuides();
+        }
         return;
       }
 
@@ -1825,6 +2239,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     ungroupSelection,
   ]);
 
+  /**
+   * 为什么指针坐标统一走 clientToWorld + snap：
+   * 所有工具共享同一套坐标变换，避免墙线端点与摄像头放置出现系统性半格偏差。
+   */
   const resolvePointerWorld = useCallback((event: MouseEvent) => {
     const container = containerRef.current;
     if (!container) {
@@ -1835,6 +2253,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     );
   }, []);
 
+  /**
+   * 为什么 Stage 的 mousedown 要分流工具与中键：
+   * 画布空白处行为完全由当前工具决定，若放到子图形上处理会漏掉「点在空白」的路径；中键平移需优先于绘制避免浏览器默认滚动。
+   */
   const handleStageMouseDown = useCallback(
     (event: KonvaEventObject<MouseEvent>) => {
       if (event.evt.button === 1 || (tool === "pan" && event.evt.button === 0)) {
@@ -1844,6 +2266,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
 
       if (event.evt.button !== 0) {
+        return;
+      }
+
+      if (interactionModeRef.current === "browse") {
+        clearGuides();
+        const worldPoint = resolvePointerWorld(event.evt);
+        if (!worldPoint) {
+          return;
+        }
+        pointerWorldRef.current = worldPoint;
+        const additive = event.evt.ctrlKey || event.evt.metaKey;
+        marqueeRef.current = {
+          start: worldPoint,
+          current: worldPoint,
+          additive,
+        };
+        setMarqueeRect(normalizeRect(worldPoint, worldPoint));
+        if (!additive) {
+          setSelection(null);
+        }
         return;
       }
 
@@ -1896,6 +2338,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [beginPan, clearGuides, mutatePlan, resolvePointerWorld, tool],
   );
 
+  /**
+   * 为什么摄像头点击要 cancelBubble：
+   * 事件会冒泡到 Stage 触发框选清空，必须先截获再决定是选中/多选/Alt 复制，否则无法稳定选中单个摄像头。
+   */
   const handleCameraMouseDown = useCallback(
     (cameraId: string, event: KonvaEventObject<MouseEvent>) => {
       event.cancelBubble = true;
@@ -1919,6 +2365,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         ? selectionRef.current
         : selectEntity(planRef.current, "camera", cameraId);
       setSelection(baseSelection);
+
+      if (interactionModeRef.current === "browse") {
+        return;
+      }
 
       if (tool !== "select") {
         return;
@@ -1951,6 +2401,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [beginPan, buildDragSelectionSnapshot, clearGuides, resolvePointerWorld, tool],
   );
 
+  /**
+   * 为什么墙线 mousedown 与摄像头逻辑平行：
+   * 墙与摄像头共享多选、编组展开、Alt 复制语义，拆两个 handler 只为命中测试不同，行为一致才能降低学习成本。
+   */
   const handleWallMouseDown = useCallback(
     (wall: FloorWall, event: KonvaEventObject<MouseEvent>) => {
       event.cancelBubble = true;
@@ -1974,6 +2428,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         ? selectionRef.current
         : selectEntity(planRef.current, "wall", wall.id);
       setSelection(baseSelection);
+
+      if (interactionModeRef.current === "browse") {
+        return;
+      }
 
       if (tool !== "select") {
         return;
@@ -2006,6 +2464,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [beginPan, buildDragSelectionSnapshot, clearGuides, resolvePointerWorld, tool],
   );
 
+  /**
+   * 为什么端点 handle 要单独命中圆而不是 Line：
+   * 线段的 hitStrokeWidth 已很宽，端点再共用同一区域会难以区分「拖线」还是「拖端点」，小圆把意图拆开。
+   */
   const handleWallHandleMouseDown = useCallback(
     (wallId: string, endpoint: "start" | "end", event: KonvaEventObject<MouseEvent>) => {
       event.cancelBubble = true;
@@ -2014,6 +2476,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
       clearGuides();
       setSelection(createSelection([wallId], []));
+      if (interactionModeRef.current === "browse") {
+        return;
+      }
       const wall = planRef.current.walls.find((item) => item.id === wallId);
       if (!wall) {
         return;
@@ -2031,6 +2496,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [clearGuides],
   );
 
+  /**
+   * 为什么网格线只生成视口附近一段：
+   * 全图画满网格在万级线段时拖慢帧率；按视口裁剪后仍保持视觉无限网格，因为世界坐标系未变。
+   */
   const gridLines = useMemo(() => {
     const left = clamp((-plan.view.x) / plan.view.scale, 0, FLOOR_PLAN_WORLD_WIDTH);
     const top = clamp((-plan.view.y) / plan.view.scale, 0, FLOOR_PLAN_WORLD_HEIGHT);
@@ -2096,41 +2565,81 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <MapIcon className="h-4 w-4" />
           </ToolbarButton>
           <div className="mx-1 h-6 w-px bg-gray-200" />
-          <ToolbarButton active={tool === "select"} title={t("select_tool")} onClick={() => setTool("select")}>
+          <ToolbarButton
+            active={interactionMode === "browse"}
+            title={t("browse_mode")}
+            onClick={() => setInteractionMode("browse")}
+          >
+            <Eye className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={interactionMode === "edit"}
+            title={t("edit_mode")}
+            onClick={() => setInteractionMode("edit")}
+          >
+            <Pencil className="h-4 w-4" />
+          </ToolbarButton>
+          <div className="mx-1 h-6 w-px bg-gray-200" />
+          <ToolbarButton
+            active={tool === "select"}
+            disabled={interactionMode === "browse"}
+            title={t("select_tool")}
+            onClick={() => setTool("select")}
+          >
             <MousePointer2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "wall"} title={t("wall_tool")} onClick={() => setTool("wall")}>
+          <ToolbarButton
+            active={tool === "wall"}
+            disabled={interactionMode === "browse"}
+            title={t("wall_tool")}
+            onClick={() => setTool("wall")}
+          >
             <Waypoints className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "room"} title={t("room_tool")} onClick={() => setTool("room")}>
+          <ToolbarButton
+            active={tool === "room"}
+            disabled={interactionMode === "browse"}
+            title={t("room_tool")}
+            onClick={() => setTool("room")}
+          >
             <Square className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "camera"} title={t("camera_tool")} onClick={() => setTool("camera")}>
+          <ToolbarButton
+            active={tool === "camera"}
+            disabled={interactionMode === "browse"}
+            title={t("camera_tool")}
+            onClick={() => setTool("camera")}
+          >
             <Camera className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "pan"} title={t("pan_tool")} onClick={() => setTool("pan")}>
+          <ToolbarButton
+            active={tool === "pan"}
+            disabled={interactionMode === "browse"}
+            title={t("pan_tool")}
+            onClick={() => setTool("pan")}
+          >
             <Hand className="h-4 w-4" />
           </ToolbarButton>
           <div className="mx-1 h-6 w-px bg-gray-200" />
-          <ToolbarButton disabled={!canUndo} title={t("undo")} onClick={undo}>
+          <ToolbarButton disabled={interactionMode === "browse" || !canUndo} title={t("undo")} onClick={undo}>
             <Undo2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton disabled={!canRedo} title={t("redo")} onClick={redo}>
+          <ToolbarButton disabled={interactionMode === "browse" || !canRedo} title={t("redo")} onClick={redo}>
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
-          <CompactActionButton disabled={!canCopySelection} onClick={copySelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canCopySelection} onClick={copySelection}>
             {t("copy_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!hasClipboard} onClick={() => pasteClipboard()}>
+          <CompactActionButton disabled={interactionMode === "browse" || !hasClipboard} onClick={() => pasteClipboard()}>
             {t("paste_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!canCopySelection} onClick={duplicateSelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canCopySelection} onClick={duplicateSelection}>
             {t("duplicate_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!canGroup} onClick={groupSelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canGroup} onClick={groupSelection}>
             {t("group_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!canUngroup} onClick={ungroupSelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canUngroup} onClick={ungroupSelection}>
             {t("ungroup_selection")}
           </CompactActionButton>
           <div className="mx-1 h-6 w-px bg-gray-200" />
@@ -2173,6 +2682,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </ToolbarButton>
           <ToolbarButton
             title={t("reset_layout")}
+            disabled={interactionMode === "browse"}
             onClick={() => {
               clearFloorPlanState();
               const next = createDefaultFloorPlanState();
@@ -2195,7 +2705,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         </div>
 
         <div className="absolute bottom-4 left-4 z-20 max-w-4xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
-          {toolHint(tool, t)} · {t("middle_pan_hint")} · {t("multi_select_hint")} · {t("box_select_hint")} · {t("shift_drag_hint")} · {t("alt_drag_hint")} · {t("select_all_hint")} · {t("copy_paste_hint")} · {t("preset_hint")}
+          {interactionMode === "browse"
+            ? t("browse_mode_hint")
+            : `${toolHint(tool, t)} · ${t("middle_pan_hint")} · ${t("multi_select_hint")} · ${t("box_select_hint")} · ${t("shift_drag_hint")} · ${t("alt_drag_hint")} · ${t("select_all_hint")} · ${t("copy_paste_hint")} · ${t("preset_hint")}`}
         </div>
 
         <div ref={containerRef} className="relative flex-1 overflow-hidden select-none">
@@ -2345,6 +2857,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
                 {plan.cameras.map((camera) => {
                   const isSelected = isEntitySelected(selection, "camera", camera.id);
+                  const matchesFilter = cameraMatchesFilter(camera);
                   const hasRecentEvent = Boolean(camera.latestEventAt);
                   const accent = camera.channelId ? (hasRecentEvent ? "#f97316" : "#2563eb") : "#9ca3af";
                   const facingX = camera.x + Math.cos((camera.angle * Math.PI) / 180) * 34;
@@ -2353,7 +2866,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   return (
                     <Group
                       key={camera.id}
+                      opacity={matchesFilter ? 1 : 0.22}
                       onMouseEnter={() => {
+                        if (!matchesFilter) {
+                          return;
+                        }
                         setHoveredCameraId(camera.id);
                         void loadHoverEvent(camera);
                       }}
@@ -2401,13 +2918,20 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             </Layer>
           </Stage>
 
-          {hoveredCamera && hoveredCameraScreenPosition ? (
+          {hoveredCamera && hoveredCameraScreenPosition && cameraMatchesFilter(hoveredCamera) ? (
             <CameraHoverCard
               camera={hoveredCamera}
               latestEvent={hoverEvent}
               loading={hoverLoading}
-              x={hoveredCameraScreenPosition.x + 18}
-              y={hoveredCameraScreenPosition.y + 18}
+              anchorX={hoveredCameraScreenPosition.x}
+              anchorY={hoveredCameraScreenPosition.y}
+              containerWidth={viewportSize.width}
+              containerHeight={viewportSize.height}
+              onOpenPlayback={
+                hoveredCamera.channelId
+                  ? () => navigateToPlayback(hoveredCamera.channelId)
+                  : undefined
+              }
             />
           ) : null}
         </div>
@@ -2437,10 +2961,22 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             {t("preset_shapes")}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <PresetButton label={t("preset_small_room")} onClick={() => insertPreset("small_room")} />
-            <PresetButton label={t("preset_corridor")} onClick={() => insertPreset("corridor")} />
+            <PresetButton
+              label={t("preset_small_room")}
+              disabled={interactionMode === "browse"}
+              onClick={() => insertPreset("small_room")}
+            />
+            <PresetButton
+              label={t("preset_corridor")}
+              disabled={interactionMode === "browse"}
+              onClick={() => insertPreset("corridor")}
+            />
             <div className="col-span-2">
-              <PresetButton label={t("preset_l_room")} onClick={() => insertPreset("l_room")} />
+              <PresetButton
+                label={t("preset_l_room")}
+                disabled={interactionMode === "browse"}
+                onClick={() => insertPreset("l_room")}
+              />
             </div>
           </div>
           <div className="mt-3 text-xs leading-5 text-gray-500">{t("preset_description")}</div>
@@ -2451,6 +2987,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           channelOptions={channelOptions}
           channelsLoading={channelQuery.isLoading}
           channelsError={channelQuery.isError ? String(channelQuery.error) : null}
+          interactionMode={interactionMode}
+          channelFilter={channelNameFilter}
+          onChannelFilterChange={setChannelNameFilter}
+          selectedLatestEvent={panelLatestEvent}
+          selectedEventLoading={panelEventLoading}
+          onOpenPlayback={
+            selectedCamera?.channelId
+              ? () => navigateToPlayback(selectedCamera.channelId)
+              : undefined
+          }
           onBindChannel={(channelId) => {
             updateSelectedCamera((camera) => {
               const option = channelOptions.find((item) => item.value === channelId);
@@ -2492,10 +3038,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                disabled={!canGroup}
+                disabled={interactionMode === "browse" || !canGroup}
                 onClick={groupSelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canGroup
+                  interactionMode !== "browse" && canGroup
                     ? "bg-gray-900 text-white hover:bg-gray-800"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2504,10 +3050,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!canUngroup}
+                disabled={interactionMode === "browse" || !canUngroup}
                 onClick={ungroupSelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canUngroup
+                  interactionMode !== "browse" && canUngroup
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2516,10 +3062,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!canCopySelection}
+                disabled={interactionMode === "browse" || !canCopySelection}
                 onClick={copySelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canCopySelection
+                  interactionMode !== "browse" && canCopySelection
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2528,10 +3074,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!canCopySelection}
+                disabled={interactionMode === "browse" || !canCopySelection}
                 onClick={duplicateSelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canCopySelection
+                  interactionMode !== "browse" && canCopySelection
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2540,10 +3086,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!hasClipboard}
+                disabled={interactionMode === "browse" || !hasClipboard}
                 onClick={() => pasteClipboard()}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  hasClipboard
+                  interactionMode !== "browse" && hasClipboard
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2552,8 +3098,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
+                disabled={interactionMode === "browse"}
                 onClick={deleteSelection}
-                className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white hover:bg-red-600"
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  interactionMode === "browse"
+                    ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                    : "bg-red-500 text-white hover:bg-red-600"
+                }`}
               >
                 {t("delete_selected")}
               </button>

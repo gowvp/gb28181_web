@@ -95,5 +95,13 @@
   "copy_paste_hint": "Ctrl/Cmd + C copies, Ctrl/Cmd + V pastes, Ctrl/Cmd + D quickly duplicates the current selection",
   "alt_drag_hint": "In select mode, hold Alt while dragging to duplicate the current selection and move the copy",
   "channel_count_loaded": "{{count}} channels loaded",
-  "channel_load_warning": "The channel list may be incomplete. The current result already falls back to the safest available data."
+  "channel_load_warning": "The channel list may be incomplete. The current result already falls back to the safest available data.",
+  "browse_mode": "Browse",
+  "edit_mode": "Edit",
+  "browse_mode_hint": "Browse: box-select, use the side panel and hover card; use Open playback for recordings. Switch to Edit to change the plan.",
+  "open_playback": "Open playback",
+  "filter_cameras": "Filter cameras",
+  "filter_cameras_placeholder": "Filter by channel or device name",
+  "filter_cameras_hint": "Non-matching cameras are faded on the canvas.",
+  "panel_latest_ai_event": "Panel preview"
 }
