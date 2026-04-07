@@ -1,5 +1,7 @@
 import { Spin } from "antd";
 import { Bell, ExternalLink } from "lucide-react";
+import type { RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import type { CameraMarker, LatestCameraEvent } from "~/pages/desktop/floor_plan.types";
@@ -23,23 +25,20 @@ function formatEventTime(timestamp: number | null | undefined) {
 }
 
 /**
- * 为什么根据视口裁剪卡片坐标：
- * 绝对定位的悬浮层不参与 Konva 变换，靠右/靠下时若不翻转会被裁切，用户会误以为没有事件图。
+ * 为什么按视口裁剪：
+ * 卡片用 fixed 贴在视口上，必须用 window 尺寸裁剪，避免贴边被裁切。
  */
-function clampCardPosition(
-  left: number,
-  top: number,
-  containerWidth: number,
-  containerHeight: number,
-) {
+function clampCardPositionViewport(left: number, top: number) {
   const pad = 8;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
   let x = left;
   let y = top;
-  if (x + CARD_WIDTH > containerWidth - pad) {
-    x = containerWidth - CARD_WIDTH - pad;
+  if (x + CARD_WIDTH > vw - pad) {
+    x = vw - CARD_WIDTH - pad;
   }
-  if (y + CARD_HEIGHT_ESTIMATE > containerHeight - pad) {
-    y = containerHeight - CARD_HEIGHT_ESTIMATE - pad;
+  if (y + CARD_HEIGHT_ESTIMATE > vh - pad) {
+    y = vh - CARD_HEIGHT_ESTIMATE - pad;
   }
   if (x < pad) {
     x = pad;
@@ -51,8 +50,10 @@ function clampCardPosition(
 }
 
 /**
- * 为什么 hover 卡片对按钮局部放开 pointer-events：
- * 画布编辑依赖下层 Konva 命中，整张卡片拦截会打断操作；快捷跳转类控件单独放开 pointer-events，避免整张卡片抢命中。
+ * 为什么用 Portal + fixed + 高于 FAB 的 z-index：
+ * 卡片若在画布容器内 absolute，层叠上下文低于右下角 fixed z-50 的 FAB，且关闭菜单的透明层仍会占位拦截；挂到 body 并 z-[100] 才能保证链接可点。
+ * 为什么用画布容器的 getBoundingClientRect + 锚点：
+ * Konva 内坐标需换算成视口像素，才能与 fixed 对齐。
  */
 export function CameraHoverCard({
   camera,
@@ -60,34 +61,48 @@ export function CameraHoverCard({
   loading,
   anchorX,
   anchorY,
-  containerWidth,
-  containerHeight,
+  canvasContainerRef,
   channelOnline = null,
   playbackTo = null,
   alertsTo = null,
+  onCardPointerEnter,
+  onCardPointerLeave,
 }: {
   camera: CameraMarker;
   latestEvent: LatestCameraEvent | null;
   loading: boolean;
+  /** 相对画布容器左上角的屏幕对齐坐标（与 Stage 内 worldToScreen 一致） */
   anchorX: number;
   anchorY: number;
-  containerWidth: number;
-  containerHeight: number;
-  /** 来自当前通道列表；`undefined` 表示列表中暂无该 id */
+  canvasContainerRef: RefObject<HTMLDivElement | null>;
   channelOnline?: boolean | null | undefined;
   playbackTo?: { pathname: string; search: string } | null;
   alertsTo?: { pathname: string; search: string } | null;
+  /** 鼠标移入卡片时取消「离开摄像头」的延时清除，否则移向按钮途中卡片会消失 */
+  onCardPointerEnter?: () => void;
+  onCardPointerLeave?: () => void;
 }) {
   const { t } = useTranslation("desktop");
 
-  const { x, y } = clampCardPosition(anchorX + 18, anchorY + 18, containerWidth, containerHeight);
+  let left = 0;
+  let top = 0;
+  const el = canvasContainerRef.current;
+  if (el && typeof window !== "undefined") {
+    const rect = el.getBoundingClientRect();
+    const clamped = clampCardPositionViewport(rect.left + anchorX + 18, rect.top + anchorY + 18);
+    left = clamped.x;
+    top = clamped.y;
+  }
+
   const canPlayback = Boolean(camera.channelId && playbackTo);
   const canAlerts = Boolean(camera.channelId && alertsTo);
 
-  return (
+  const node = (
     <div
-      className="pointer-events-none absolute z-20 w-72 rounded-xl border border-gray-200 bg-white/95 p-3 shadow-xl backdrop-blur"
-      style={{ left: x, top: y }}
+      className="pointer-events-none fixed z-[100] w-72 rounded-xl border border-gray-200 bg-white/95 p-3 shadow-xl backdrop-blur"
+      style={{ left, top }}
+      onMouseEnter={onCardPointerEnter}
+      onMouseLeave={onCardPointerLeave}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1 text-sm font-semibold text-gray-900">
@@ -167,4 +182,9 @@ export function CameraHoverCard({
       )}
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+  return createPortal(node, document.body);
 }

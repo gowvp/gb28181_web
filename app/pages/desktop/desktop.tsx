@@ -634,47 +634,51 @@ function DesktopFab({ i18n }: { i18n: any }) {
     { icon: Sparkles, label: "Gitee", action: () => window.open("https://gitee.com/gowvp/gb28181") },
   ];
 
+  /**
+   * 为什么外层 pointer-events-none、仅头像与展开菜单可点：
+   * 关闭时若仍渲染占位列（opacity-0），在 flex column 里会挡住画布右下角，悬停卡片与 Konva 命中被吞；关闭则完全不占位。
+   */
   return (
-    <div ref={containerRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
-      {/* 展开的菜单项 */}
-      <div
-        className={`flex flex-col gap-1 transition-all duration-200 origin-bottom ${
-          open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
-        }`}
-      >
-        <div className="bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[160px]">
-          {menuItems.map((item) => (
+    <div ref={containerRef} className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
+      {open ? (
+        <div className="pointer-events-auto flex flex-col gap-1 transition-all duration-200 origin-bottom opacity-100 scale-100">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[160px]">
+            {menuItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => {
+                  item.action();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <item.icon className="w-4 h-4 text-gray-500" />
+                {item.label}
+              </button>
+            ))}
+            <div className="border-t border-gray-200 my-1" />
             <button
-              key={item.label}
               type="button"
-              onClick={() => { item.action(); setOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => {
+                localStorage.removeItem("token");
+                navigate("/");
+              }}
+              className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
             >
-              <item.icon className="w-4 h-4 text-gray-500" />
-              {item.label}
+              <LogOut className="w-4 h-4" />
+              {t("logout")}
             </button>
-          ))}
-          <div className="border-t border-gray-200 my-1" />
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.removeItem("token");
-              navigate("/");
-            }}
-            className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            {t("logout")}
-          </button>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {/* 头像按钮 */}
       <button
         type="button"
         onClick={() => setOpen(!open)}
         className={`
-          w-12 h-12 rounded-full shadow-lg border-2 transition-all duration-200
+          pointer-events-auto w-12 h-12 rounded-full shadow-lg border-2 transition-all duration-200
           flex items-center justify-center overflow-hidden
           ${open ? "border-gray-900 ring-2 ring-gray-900/20" : "border-white hover:border-gray-300"}
         `}

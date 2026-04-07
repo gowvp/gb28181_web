@@ -48,6 +48,7 @@
 
 - [x] 悬停卡片与侧栏 **「打开告警」**：跳转 `/alerts?cid=…`，告警页读取 query 并预选通道筛选（与平面图 `channelId` 一致）
 - [x] 跳转实现使用 **`<Link to={{ pathname, search }}>`**（与 `buildPlaybackDetailTo` / `buildAlertsTo`），避免在 `basename`（如 `/web`）下 `navigate` 字符串与 query 解析不一致导致「点了不跳」
+- [x] 悬停卡片 **Portal + `fixed` + z-index 高于 FAB**，离开摄像头 **短延时清除** + 移入卡片取消清除，避免被右下角菜单占位挡住或移向按钮时卡片消失
 
 ## 5. 关键文件
 

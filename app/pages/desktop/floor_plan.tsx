@@ -1087,6 +1087,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyRef = useRef<FloorPlanState[]>([cloneFloorPlanState(initialPlan)]);
   const historyIndexRef = useRef(0);
   const clipboardRef = useRef<PlannerClipboardState | null>(null);
@@ -1127,6 +1128,35 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     planRef.current = plan;
     saveFloorPlanState(plan);
   }, [plan]);
+
+  useEffect(() => {
+    return () => {
+      if (hoverLeaveTimerRef.current) {
+        clearTimeout(hoverLeaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  const cancelHoverClear = useCallback(() => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current);
+      hoverLeaveTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * 为什么离开摄像头要延时再清 hover：
+   * 卡片通过 Portal 画在 body 上，指针从圆点移到按钮必经「画布外」间隙，会立刻触发 Group onMouseLeave；短延时让用户有时间移入卡片，否则链接永远点不到。
+   */
+  const scheduleHoverClear = useCallback(() => {
+    cancelHoverClear();
+    hoverLeaveTimerRef.current = setTimeout(() => {
+      hoverLeaveTimerRef.current = null;
+      setHoveredCameraId(null);
+      setHoverEvent(null);
+      setHoverLoading(false);
+    }, 220);
+  }, [cancelHoverClear]);
 
   useEffect(() => {
     selectionRef.current = selection;
@@ -3101,11 +3131,15 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                         if (!matchesFilter) {
                           return;
                         }
+                        cancelHoverClear();
                         setHoveredCameraId(camera.id);
                         void loadHoverEvent(camera);
                       }}
                       onMouseLeave={() => {
-                        setHoveredCameraId((current) => (current === camera.id ? null : current));
+                        if (!matchesFilter) {
+                          return;
+                        }
+                        scheduleHoverClear();
                       }}
                     >
                       <Line
@@ -3155,8 +3189,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               loading={hoverLoading}
               anchorX={hoveredCameraScreenPosition.x}
               anchorY={hoveredCameraScreenPosition.y}
-              containerWidth={viewportSize.width}
-              containerHeight={viewportSize.height}
+              canvasContainerRef={containerRef}
+              onCardPointerEnter={cancelHoverClear}
+              onCardPointerLeave={scheduleHoverClear}
               channelOnline={
                 hoveredCamera.channelId != null
                   ? channelOnlineById.has(hoveredCamera.channelId)
