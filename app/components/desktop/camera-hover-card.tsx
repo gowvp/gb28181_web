@@ -61,6 +61,7 @@ export function CameraHoverCard({
   anchorY,
   containerWidth,
   containerHeight,
+  channelOnline = null,
   onOpenPlayback,
 }: {
   camera: CameraMarker;
@@ -70,6 +71,8 @@ export function CameraHoverCard({
   anchorY: number;
   containerWidth: number;
   containerHeight: number;
+  /** 来自当前通道列表；`undefined` 表示列表中暂无该 id */
+  channelOnline?: boolean | null | undefined;
   onOpenPlayback?: () => void;
 }) {
   const { t } = useTranslation("desktop");
@@ -100,6 +103,16 @@ export function CameraHoverCard({
           </button>
         ) : null}
       </div>
+      {camera.channelId != null ? (
+        <div className="mb-2 text-xs text-gray-600">
+          <span className="font-medium text-gray-900">{t("channel_status")}: </span>
+          {channelOnline === undefined
+            ? t("channel_online_unknown")
+            : channelOnline
+              ? t("channel_online")
+              : t("channel_offline")}
+        </div>
+      ) : null}
       {loading ? (
         <div className="flex min-h-24 items-center justify-center">
           <Spin size="small" />

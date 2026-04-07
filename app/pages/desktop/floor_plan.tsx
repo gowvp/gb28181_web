@@ -319,6 +319,30 @@ function worldToScreen(point: PlannerPoint, view: PlannerView): PlannerPoint {
 }
 
 /**
+ * 为什么缩放要以指针下世界坐标为锚点：
+ * 若只改 scale 不改 x/y，视口会向一角漂移，用户会以为「缩放中心不对」；保持光标下一点钉在地上是地图类交互的默认预期。
+ */
+function zoomViewAtScreenPoint(
+  plan: FloorPlanState,
+  screenX: number,
+  screenY: number,
+  factor: number,
+): FloorPlanState {
+  const { view } = plan;
+  const worldX = (screenX - view.x) / view.scale;
+  const worldY = (screenY - view.y) / view.scale;
+  const newScale = clamp(view.scale * factor, 0.35, 3.2);
+  return {
+    ...plan,
+    view: {
+      scale: newScale,
+      x: screenX - worldX * newScale,
+      y: screenY - worldY * newScale,
+    },
+  };
+}
+
+/**
  * 为什么角度展示要取整：
  * 浮点角度在 UI 上无业务意义却增加噪音，取整与滑杆步进心智一致，也避免国际化字符串过长。
  */
@@ -1092,6 +1116,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
     | null
   >(null);
+  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
 
   useEffect(() => {
     planRef.current = plan;
@@ -1136,12 +1161,32 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     [channelQuery.data],
   );
 
+  /**
+   * 为什么在线状态来自当前拉取的通道列表而不是写进平面图：
+   * `is_online` 会随设备心跳变化，持久化到 localStorage 会长期显示过期状态；用 channelId 查映射即可与绑定面板同源。
+   */
+  const channelOnlineById = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const option of channelOptions) {
+      map.set(option.value, option.isOnline);
+    }
+    return map;
+  }, [channelOptions]);
+
   const selectedCamera = useMemo(() => {
     if (!selection || selection.cameraIds.length !== 1 || selection.wallIds.length > 0) {
       return null;
     }
     return plan.cameras.find((camera) => camera.id === selection.cameraIds[0]) ?? null;
   }, [plan.cameras, selection]);
+
+  const selectedChannelOnline = useMemo(() => {
+    const cid = selectedCamera?.channelId;
+    if (!cid) {
+      return null;
+    }
+    return channelOnlineById.has(cid) ? channelOnlineById.get(cid) ?? null : null;
+  }, [channelOnlineById, selectedCamera?.channelId]);
 
   const selectedWall = useMemo(() => {
     if (!selection || selection.wallIds.length !== 1 || selection.cameraIds.length > 0) {
@@ -1247,6 +1292,107 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     },
     [pushHistory],
   );
+
+  /**
+   * 为什么用非 passive 的 wheel 并 preventDefault：
+   * 浏览器默认滚轮会滚动整页，画布需要把滚轮变成缩放；不阻止时大屏平面图无法稳定操作。
+   */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const sx = event.clientX - rect.left;
+      const sy = event.clientY - rect.top;
+      const delta = -event.deltaY;
+      const factor = Math.exp(delta * 0.0012);
+      replacePlan(zoomViewAtScreenPoint(planRef.current, sx, sy, factor), false);
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [replacePlan]);
+
+  /**
+   * 为什么双指缩放挂在容器的 touch 上：
+   * Konva 与单指拖动共存时，双指需在容器层统一处理，避免与节点命中竞争；锚点取两指中点与当前 scale 推导平移。
+   */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) {
+      return;
+    }
+
+    const touchMid = (touches: TouchList, rect: DOMRect) => {
+      if (touches.length < 2) {
+        return null;
+      }
+      const a = touches[0];
+      const b = touches[1];
+      const mx = (a.clientX + b.clientX) / 2 - rect.left;
+      const my = (a.clientY + b.clientY) / 2 - rect.top;
+      const dist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+      return { mx, my, dist };
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 2) {
+        const rect = el.getBoundingClientRect();
+        const mid = touchMid(event.touches, rect);
+        if (mid && mid.dist > 8) {
+          pinchRef.current = { startDist: mid.dist, startScale: planRef.current.view.scale };
+        }
+      }
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length === 2 && pinchRef.current) {
+        event.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const mid = touchMid(event.touches, rect);
+        if (!mid || mid.dist < 8) {
+          return;
+        }
+        const { startDist, startScale } = pinchRef.current;
+        const newScale = clamp(startScale * (mid.dist / startDist), 0.35, 3.2);
+        const view = planRef.current.view;
+        const worldX = (mid.mx - view.x) / view.scale;
+        const worldY = (mid.my - view.y) / view.scale;
+        replacePlan(
+          {
+            ...planRef.current,
+            view: {
+              scale: newScale,
+              x: mid.mx - worldX * newScale,
+              y: mid.my - worldY * newScale,
+            },
+          },
+          false,
+        );
+      }
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length < 2) {
+        pinchRef.current = null;
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [replacePlan]);
 
   /**
    * 为什么先 clone 再 recipe：
@@ -2707,7 +2853,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         <div className="absolute bottom-4 left-4 z-20 max-w-4xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
           {interactionMode === "browse"
             ? t("browse_mode_hint")
-            : `${toolHint(tool, t)} · ${t("middle_pan_hint")} · ${t("multi_select_hint")} · ${t("box_select_hint")} · ${t("shift_drag_hint")} · ${t("alt_drag_hint")} · ${t("select_all_hint")} · ${t("copy_paste_hint")} · ${t("preset_hint")}`}
+            : `${toolHint(tool, t)} · ${t("middle_pan_hint")} · ${t("wheel_pinch_zoom_hint")} · ${t("multi_select_hint")} · ${t("box_select_hint")} · ${t("shift_drag_hint")} · ${t("alt_drag_hint")} · ${t("select_all_hint")} · ${t("copy_paste_hint")} · ${t("preset_hint")}`}
         </div>
 
         <div ref={containerRef} className="relative flex-1 overflow-hidden select-none">
@@ -2862,6 +3008,19 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   const accent = camera.channelId ? (hasRecentEvent ? "#f97316" : "#2563eb") : "#9ca3af";
                   const facingX = camera.x + Math.cos((camera.angle * Math.PI) / 180) * 34;
                   const facingY = camera.y + Math.sin((camera.angle * Math.PI) / 180) * 34;
+                  const onlineKnown =
+                    camera.channelId != null && channelOnlineById.has(camera.channelId);
+                  const isChannelOnline = camera.channelId
+                    ? channelOnlineById.get(camera.channelId)
+                    : undefined;
+                  const ringStroke =
+                    !camera.channelId
+                      ? "#ffffff"
+                      : !onlineKnown
+                        ? "#e2e8f0"
+                        : isChannelOnline
+                          ? "#22c55e"
+                          : "#ef4444";
 
                   return (
                     <Group
@@ -2898,8 +3057,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                         y={camera.y}
                         radius={isSelected ? 15 : 12}
                         fill={accent}
-                        stroke={isSelected ? "#111827" : "#ffffff"}
-                        strokeWidth={3}
+                        stroke={isSelected ? "#111827" : ringStroke}
+                        strokeWidth={isSelected ? 3 : onlineKnown ? 4 : 3}
                         onMouseDown={(event) => handleCameraMouseDown(camera.id, event)}
                       />
                       <Text
@@ -2927,6 +3086,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               anchorY={hoveredCameraScreenPosition.y}
               containerWidth={viewportSize.width}
               containerHeight={viewportSize.height}
+              channelOnline={
+                hoveredCamera.channelId != null
+                  ? channelOnlineById.has(hoveredCamera.channelId)
+                    ? channelOnlineById.get(hoveredCamera.channelId)
+                    : undefined
+                  : null
+              }
               onOpenPlayback={
                 hoveredCamera.channelId
                   ? () => navigateToPlayback(hoveredCamera.channelId)
@@ -2992,6 +3158,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           onChannelFilterChange={setChannelNameFilter}
           selectedLatestEvent={panelLatestEvent}
           selectedEventLoading={panelEventLoading}
+          channelOnline={selectedChannelOnline}
           onOpenPlayback={
             selectedCamera?.channelId
               ? () => navigateToPlayback(selectedCamera.channelId)
