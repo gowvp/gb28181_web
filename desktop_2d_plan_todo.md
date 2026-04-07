@@ -44,6 +44,10 @@
 - [x] 触控/缩放：画布容器 **滚轮** 以指针为锚缩放；**双指 pinch** 以两指中点为锚缩放（与工具栏缩放共用 0.35–3.2 范围）
 - [x] 平面图内已绑定通道的**最近事件预取**：无专用批量接口时，用 `FindEvents` 按 `started_at desc` 分页，在客户端为每个 `cid` 保留首见的一条并写入缓存与 `CameraMarker.latestEvent*`（与单通道查询共用 `MapEventToLatestChannelEvent`）；绑定集合变化时重新预取
 
+### 阶段 D — 跨页跳转（延续原 MVP「告警」方向）
+
+- [x] 悬停卡片与侧栏 **「打开告警」**：跳转 `/alerts?cid=…`，告警页读取 query 并预选通道筛选（与平面图 `channelId` 一致）
+
 ## 5. 关键文件
 
 | 文件 | 职责 |
@@ -53,6 +57,8 @@
 | `app/pages/desktop/floor_plan.storage.ts` | 平面图与浏览/编辑模式本地存储 |
 | `app/pages/desktop/desktop-view-mode.ts` | 数据流 / 2D 视图记忆 |
 | `app/pages/desktop/floor_plan.playback.ts` | 录像详情 URL 与列表页对齐 |
+| `app/pages/desktop/floor_plan.alerts.ts` | 告警页深链接 `/alerts?cid=` |
+| `app/pages/alerts/alerts.tsx` | 支持 URL `cid` 初始化通道筛选 |
 | `app/pages/desktop/floor_plan.events.ts` | 最近 AI 事件查询、缓存与批量预取 |
 | `app/service/api/event/event.ts` | `MapEventToLatestChannelEvent` 与单通道/批量字段一致 |
 | `app/components/desktop/camera-hover-card.tsx` | 悬停卡片 |

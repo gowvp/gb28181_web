@@ -60,6 +60,7 @@ import {
   type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
 import { getLatestCameraEvent, prefetchLatestEventsForChannelIds } from "./floor_plan.events";
+import { buildAlertsHref } from "./floor_plan.alerts";
 import { buildPlaybackDetailHref } from "./floor_plan.playback";
 import type {
   CameraMarker,
@@ -1233,6 +1234,20 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
       navigate(buildPlaybackDetailHref(channelId));
+    },
+    [navigate],
+  );
+
+  /**
+   * 为什么告警与录像分两个入口：
+   * 告警列表按事件流浏览，录像按日回放；用户从平面图切入时常只想先看该通道告警，与产品里「告警页 / 回放页」分工一致。
+   */
+  const navigateToAlerts = useCallback(
+    (channelId: string | null | undefined) => {
+      if (!channelId) {
+        return;
+      }
+      navigate(buildAlertsHref(channelId));
     },
     [navigate],
   );
@@ -3156,6 +3171,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   ? () => navigateToPlayback(hoveredCamera.channelId)
                   : undefined
               }
+              onOpenAlerts={
+                hoveredCamera.channelId
+                  ? () => navigateToAlerts(hoveredCamera.channelId)
+                  : undefined
+              }
             />
           ) : null}
         </div>
@@ -3220,6 +3240,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           onOpenPlayback={
             selectedCamera?.channelId
               ? () => navigateToPlayback(selectedCamera.channelId)
+              : undefined
+          }
+          onOpenAlerts={
+            selectedCamera?.channelId
+              ? () => navigateToAlerts(selectedCamera.channelId)
               : undefined
           }
           onBindChannel={(channelId) => {

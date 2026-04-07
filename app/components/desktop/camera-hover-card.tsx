@@ -1,10 +1,10 @@
 import { Spin } from "antd";
-import { ExternalLink } from "lucide-react";
+import { Bell, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { CameraMarker, LatestCameraEvent } from "~/pages/desktop/floor_plan.types";
 
 const CARD_WIDTH = 288;
-const CARD_HEIGHT_ESTIMATE = 280;
+const CARD_HEIGHT_ESTIMATE = 320;
 
 /**
  * 为什么单独做时间格式化并包 try：
@@ -51,7 +51,7 @@ function clampCardPosition(
 
 /**
  * 为什么 hover 卡片对按钮局部放开 pointer-events：
- * 画布编辑依赖下层 Konva 命中，整张卡片拦截会打断操作；仅「打开录像」需要点击，故只对按钮启用事件。
+ * 画布编辑依赖下层 Konva 命中，整张卡片拦截会打断操作；快捷跳转类控件单独放开 pointer-events，避免整张卡片抢命中。
  */
 export function CameraHoverCard({
   camera,
@@ -63,6 +63,7 @@ export function CameraHoverCard({
   containerHeight,
   channelOnline = null,
   onOpenPlayback,
+  onOpenAlerts,
 }: {
   camera: CameraMarker;
   latestEvent: LatestCameraEvent | null;
@@ -74,11 +75,13 @@ export function CameraHoverCard({
   /** 来自当前通道列表；`undefined` 表示列表中暂无该 id */
   channelOnline?: boolean | null | undefined;
   onOpenPlayback?: () => void;
+  onOpenAlerts?: () => void;
 }) {
   const { t } = useTranslation("desktop");
 
   const { x, y } = clampCardPosition(anchorX + 18, anchorY + 18, containerWidth, containerHeight);
   const canPlayback = Boolean(camera.channelId && onOpenPlayback);
+  const canAlerts = Boolean(camera.channelId && onOpenAlerts);
 
   return (
     <div
@@ -89,19 +92,34 @@ export function CameraHoverCard({
         <div className="min-w-0 flex-1 text-sm font-semibold text-gray-900">
           {camera.channelName || t("camera_unbound")}
         </div>
-        {canPlayback ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenPlayback?.();
-            }}
-            className="pointer-events-auto inline-flex shrink-0 items-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            {t("open_playback")}
-          </button>
-        ) : null}
+        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+          {canAlerts ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenAlerts?.();
+              }}
+              className="pointer-events-auto inline-flex items-center gap-1 rounded-lg bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700"
+            >
+              <Bell className="h-3.5 w-3.5" />
+              {t("open_alerts")}
+            </button>
+          ) : null}
+          {canPlayback ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenPlayback?.();
+              }}
+              className="pointer-events-auto inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              {t("open_playback")}
+            </button>
+          ) : null}
+        </div>
       </div>
       {camera.channelId != null ? (
         <div className="mb-2 text-xs text-gray-600">

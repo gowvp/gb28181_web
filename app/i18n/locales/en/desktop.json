@@ -100,6 +100,7 @@
   "edit_mode": "Edit",
   "browse_mode_hint": "Browse: box-select, scroll/pinch to zoom, use the side panel and hover card; Open playback for recordings. Switch to Edit to change the plan.",
   "open_playback": "Open playback",
+  "open_alerts": "Open alerts",
   "filter_cameras": "Filter cameras",
   "filter_cameras_placeholder": "Filter by channel or device name",
   "filter_cameras_hint": "Non-matching cameras are faded on the canvas.",

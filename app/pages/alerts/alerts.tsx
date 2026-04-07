@@ -5,6 +5,7 @@ import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import {
@@ -19,6 +20,7 @@ const PAGE_SIZE = 20;
 
 export default function AlertsView() {
   const { t } = useTranslation("common");
+  const [searchParams] = useSearchParams();
 
   // 筛选状态
   const [selectedChannel, setSelectedChannel] = useState<string>("");
@@ -43,6 +45,17 @@ export default function AlertsView() {
 
   // 滚动容器引用
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * 为什么从 URL 初始化通道而不是只在组件外传参：
+   * 平面图等入口通过 `/alerts?cid=` 深链接进来时，需与下拉框同一状态源，否则用户会看到列表未筛选但 URL 带参的不一致。
+   */
+  useEffect(() => {
+    const cid = searchParams.get("cid");
+    if (cid) {
+      setSelectedChannel(cid);
+    }
+  }, [searchParams]);
 
   // 获取通道列表
   const { data: channelsData } = useQuery({

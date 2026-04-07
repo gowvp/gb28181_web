@@ -1,5 +1,5 @@
 import { Input, Select, Slider, Spin } from "antd";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { Bell, ExternalLink, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { CameraMarker, LatestCameraEvent } from "~/pages/desktop/floor_plan.types";
@@ -59,6 +59,7 @@ export function CameraBindingPanel({
   selectedEventLoading = false,
   channelOnline = null,
   onOpenPlayback,
+  onOpenAlerts,
 }: {
   camera: CameraMarker | null;
   channelOptions: FlatDeviceChannelOption[];
@@ -76,6 +77,7 @@ export function CameraBindingPanel({
   selectedEventLoading?: boolean;
   channelOnline?: boolean | null;
   onOpenPlayback?: () => void;
+  onOpenAlerts?: () => void;
 }) {
   const { t } = useTranslation("desktop");
 
@@ -103,18 +105,30 @@ export function CameraBindingPanel({
 
       {camera ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm font-semibold text-gray-900">{t("panel_latest_ai_event")}</div>
-            {camera.channelId && onOpenPlayback ? (
-              <button
-                type="button"
-                onClick={onOpenPlayback}
-                className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                {t("open_playback")}
-              </button>
-            ) : null}
+            <div className="flex flex-wrap justify-end gap-1">
+              {camera.channelId && onOpenAlerts ? (
+                <button
+                  type="button"
+                  onClick={onOpenAlerts}
+                  className="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-2 py-1 text-xs font-medium text-white hover:bg-amber-700"
+                >
+                  <Bell className="h-3.5 w-3.5" />
+                  {t("open_alerts")}
+                </button>
+              ) : null}
+              {camera.channelId && onOpenPlayback ? (
+                <button
+                  type="button"
+                  onClick={onOpenPlayback}
+                  className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-xs font-medium text-white hover:bg-gray-800"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  {t("open_playback")}
+                </button>
+              ) : null}
+            </div>
           </div>
           {selectedEventLoading ? (
             <div className="flex min-h-20 items-center justify-center">
