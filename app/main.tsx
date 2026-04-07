@@ -101,10 +101,20 @@ const router = createBrowserRouter(
   { basename: getBasename() },
 );
 
+/**
+ * 为什么把 root 挂在 globalThis：
+ * Vite HMR 会重新执行本模块，模块级变量会丢失；若再次 createRoot 同一 DOM 会告警。全局单例在热更新后仍指向已创建的 root，只重复 render。
+ */
+const REACT_ROOT_KEY = "__gowvp_react_root__" as const;
+type AppRoot = ReturnType<typeof ReactDOM.createRoot>;
+const globalStore = globalThis as typeof globalThis & { [REACT_ROOT_KEY]?: AppRoot };
+
 const rootElement = document.getElementById("app");
-if (rootElement && !rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
+if (rootElement) {
+  if (!globalStore[REACT_ROOT_KEY]) {
+    globalStore[REACT_ROOT_KEY] = ReactDOM.createRoot(rootElement);
+  }
+  globalStore[REACT_ROOT_KEY]!.render(
     <StrictMode>
       <RouterProvider router={router} />
     </StrictMode>,

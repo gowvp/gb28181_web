@@ -31,6 +31,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -75,6 +76,12 @@ import type {
 } from "./floor_plan.types";
 
 const ALIGNMENT_SNAP_THRESHOLD = FLOOR_PLAN_GRID_SIZE * 0.45;
+
+/**
+ * 为什么 Konva Stage 禁止 0 宽高：
+ * react-konva 在虚线 Line 等场景会用内部 canvas 做纹理；Stage 为 0×0 时衍生 canvas 仍为 0，浏览器 drawImage 抛 InvalidStateError，整棵 FloorPlanEditor 被 ErrorBoundary 卸掉，hover 按钮随之失效。
+ */
+const KONVA_MIN_STAGE_SIZE = 1;
 
 type SelectionDragSnapshot = {
   wallIds: string[];
@@ -1144,11 +1151,29 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (!rect) {
         return;
       }
-      setViewportSize({ width: rect.width, height: rect.height });
+      const width = Math.max(KONVA_MIN_STAGE_SIZE, Math.floor(rect.width));
+      const height = Math.max(KONVA_MIN_STAGE_SIZE, Math.floor(rect.height));
+      setViewportSize({ width, height });
     });
 
     observer.observe(element);
     return () => observer.disconnect();
+  }, []);
+
+  /**
+   * 为什么首帧再量一次 clientWidth/Height：
+   * flex 子项在首 paint 前 contentRect 可能为 0，仅依赖 ResizeObserver 会留下 0×0 一帧；layout 后同步测量可避免 Konva 首次 mount 就崩。
+   */
+  useLayoutEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+    const width = Math.max(KONVA_MIN_STAGE_SIZE, Math.floor(element.clientWidth));
+    const height = Math.max(KONVA_MIN_STAGE_SIZE, Math.floor(element.clientHeight));
+    setViewportSize((previous) =>
+      previous.width === width && previous.height === height ? previous : { width, height },
+    );
   }, []);
 
   const channelQuery = useQuery({
