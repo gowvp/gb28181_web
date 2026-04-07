@@ -98,10 +98,15 @@
   "channel_load_warning": "The channel list may be incomplete. The current result already falls back to the safest available data.",
   "browse_mode": "Browse",
   "edit_mode": "Edit",
-  "browse_mode_hint": "Browse: box-select, use the side panel and hover card; use Open playback for recordings. Switch to Edit to change the plan.",
+  "browse_mode_hint": "Browse: box-select, scroll/pinch to zoom, use the side panel and hover card; Open playback for recordings. Switch to Edit to change the plan.",
   "open_playback": "Open playback",
   "filter_cameras": "Filter cameras",
   "filter_cameras_placeholder": "Filter by channel or device name",
   "filter_cameras_hint": "Non-matching cameras are faded on the canvas.",
-  "panel_latest_ai_event": "Panel preview"
+  "panel_latest_ai_event": "Panel preview",
+  "channel_status": "Channel status",
+  "channel_online": "Online",
+  "channel_offline": "Offline",
+  "channel_online_unknown": "Unknown (channel not in current list)",
+  "wheel_pinch_zoom_hint": "Scroll or pinch to zoom toward the pointer"
 }

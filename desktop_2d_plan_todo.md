@@ -1,4 +1,4 @@
-# `/web/desktop` 2D 平面图 — 开发计划与现状（替代旧版计划文档）
+# `/web/desktop` 2D 平面图 — 开发计划与现状（替代旧版开发文档）
 
 > 本文档替代仓库内此前的 2D 开发/说明类文档，作为**唯一**跟进源。实现以当前代码为准（`FloorPlanState` v3、世界坐标 + 网格吸附、墙线/房间/Konva 等）。
 
@@ -25,7 +25,7 @@
 
 ## 4. 迭代计划（按优先级）
 
-### 阶段 A — 闭环与首屏体验（进行中 / P0）
+### 阶段 A — 闭环与首屏体验（P0）
 
 - [x] 数据流 ↔ 2D **视图模式** `localStorage` 记忆（`desktop-view-mode.ts`，键 `desktop-view-mode`）
 - [x] **浏览 / 编辑** 模式：浏览下禁止改墙/摄像头、禁止绘制；编辑下保持现有能力（`floor_plan.storage`：`desktop-floor-plan-interaction-mode`）
@@ -40,9 +40,9 @@
 
 ### 阶段 C — 增强（P2+）
 
-- [ ] 通道在线/离线（依赖后端字段）
-- [ ] 触控/双指缩放体验
-- [ ] 若需首页批量「最近事件」：再评估 owl 批量接口或受控轮询
+- [x] 通道在线/离线：由 `FindPlannerChannelOptions` 拉平的 `isOnline` 映射到已绑定 `channelId`（画布描边绿/红；侧栏与悬停卡片展示文案）
+- [x] 触控/缩放：画布容器 **滚轮** 以指针为锚缩放；**双指 pinch** 以两指中点为锚缩放（与工具栏缩放共用 0.35–3.2 范围）
+- [x] 平面图内已绑定通道的**最近事件预取**：无专用批量接口时，用 `FindEvents` 按 `started_at desc` 分页，在客户端为每个 `cid` 保留首见的一条并写入缓存与 `CameraMarker.latestEvent*`（与单通道查询共用 `MapEventToLatestChannelEvent`）；绑定集合变化时重新预取
 
 ## 5. 关键文件
 
@@ -53,7 +53,8 @@
 | `app/pages/desktop/floor_plan.storage.ts` | 平面图与浏览/编辑模式本地存储 |
 | `app/pages/desktop/desktop-view-mode.ts` | 数据流 / 2D 视图记忆 |
 | `app/pages/desktop/floor_plan.playback.ts` | 录像详情 URL 与列表页对齐 |
-| `app/pages/desktop/floor_plan.events.ts` | 最近 AI 事件查询与缓存 |
+| `app/pages/desktop/floor_plan.events.ts` | 最近 AI 事件查询、缓存与批量预取 |
+| `app/service/api/event/event.ts` | `MapEventToLatestChannelEvent` 与单通道/批量字段一致 |
 | `app/components/desktop/camera-hover-card.tsx` | 悬停卡片 |
 | `app/components/desktop/camera-binding-panel.tsx` | 绑定与参数、侧栏最近事件展示 |
 
@@ -63,10 +64,11 @@
 
 ## 7. 验收清单（2D）
 
-- [ ] 刷新后仍保持上次「数据流 / 2D」选择
-- [ ] 浏览模式下无法误改平面图；编辑模式可完整编辑
-- [ ] 已绑定通道的摄像头可从平面图进入录像详情（当日日期）
-- [ ] 悬停卡片在边缘不被裁切；侧栏可看到与 hover 一致的最近事件信息（有通道时）
+- [x] 刷新后仍保持上次「数据流 / 2D」选择
+- [x] 浏览模式下无法误改平面图；编辑模式可完整编辑
+- [x] 已绑定通道的摄像头可从平面图进入录像详情（当日日期）
+- [x] 悬停卡片在边缘不被裁切；侧栏可看到与 hover 一致的最近事件信息（有通道时）
+- [x] 滚轮 / 双指缩放可用；已绑定通道显示在线状态（列表能解析时）
 
 ---
 

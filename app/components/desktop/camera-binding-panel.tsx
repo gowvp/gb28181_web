@@ -57,6 +57,7 @@ export function CameraBindingPanel({
   onChannelFilterChange,
   selectedLatestEvent = null,
   selectedEventLoading = false,
+  channelOnline = null,
   onOpenPlayback,
 }: {
   camera: CameraMarker | null;
@@ -73,6 +74,7 @@ export function CameraBindingPanel({
   onChannelFilterChange?: (value: string) => void;
   selectedLatestEvent?: LatestCameraEvent | null;
   selectedEventLoading?: boolean;
+  channelOnline?: boolean | null;
   onOpenPlayback?: () => void;
 }) {
   const { t } = useTranslation("desktop");
@@ -156,6 +158,12 @@ export function CameraBindingPanel({
             <div className="text-xs text-gray-500">
               {t("position")}: {Math.round(camera.x)}, {Math.round(camera.y)}
             </div>
+            {camera.channelId != null ? (
+              <div className="mt-1 text-xs text-gray-600">
+                <span className="font-medium text-gray-900">{t("channel_status")}: </span>
+                {channelOnline === null ? t("channel_online_unknown") : channelOnline ? t("channel_online") : t("channel_offline")}
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
