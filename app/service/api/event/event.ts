@@ -24,6 +24,21 @@ export type LatestChannelEvent = {
   raw: Event;
 };
 
+/**
+ * 为什么单独导出映射函数：
+ * 批量预取与单通道查询共用同一字段语义，避免「列表页一条」与「详情一条」展示字段漂移。
+ */
+export function MapEventToLatestChannelEvent(item: Event, cid: string): LatestChannelEvent {
+  return {
+    channelId: cid,
+    startedAt: item.started_at,
+    imageSrc: GetEventImageUrl(item.image_path),
+    label: item.label,
+    score: item.score,
+    raw: item,
+  };
+}
+
 export async function FindLatestChannelEvent(cid: string): Promise<LatestChannelEvent | null> {
   const response = await FindEvents({
     page: 1,
@@ -37,12 +52,5 @@ export async function FindLatestChannelEvent(cid: string): Promise<LatestChannel
     return null;
   }
 
-  return {
-    channelId: cid,
-    startedAt: item.started_at,
-    imageSrc: GetEventImageUrl(item.image_path),
-    label: item.label,
-    score: item.score,
-    raw: item,
-  };
+  return MapEventToLatestChannelEvent(item, cid);
 }

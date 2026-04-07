@@ -42,7 +42,7 @@
 
 - [x] 通道在线/离线：由 `FindPlannerChannelOptions` 拉平的 `isOnline` 映射到已绑定 `channelId`（画布描边绿/红；侧栏与悬停卡片展示文案）
 - [x] 触控/缩放：画布容器 **滚轮** 以指针为锚缩放；**双指 pinch** 以两指中点为锚缩放（与工具栏缩放共用 0.35–3.2 范围）
-- [ ] 若需首页批量「最近事件」：再评估 owl 批量接口或受控轮询
+- [x] 平面图内已绑定通道的**最近事件预取**：无专用批量接口时，用 `FindEvents` 按 `started_at desc` 分页，在客户端为每个 `cid` 保留首见的一条并写入缓存与 `CameraMarker.latestEvent*`（与单通道查询共用 `MapEventToLatestChannelEvent`）；绑定集合变化时重新预取
 
 ## 5. 关键文件
 
@@ -53,7 +53,8 @@
 | `app/pages/desktop/floor_plan.storage.ts` | 平面图与浏览/编辑模式本地存储 |
 | `app/pages/desktop/desktop-view-mode.ts` | 数据流 / 2D 视图记忆 |
 | `app/pages/desktop/floor_plan.playback.ts` | 录像详情 URL 与列表页对齐 |
-| `app/pages/desktop/floor_plan.events.ts` | 最近 AI 事件查询与缓存 |
+| `app/pages/desktop/floor_plan.events.ts` | 最近 AI 事件查询、缓存与批量预取 |
+| `app/service/api/event/event.ts` | `MapEventToLatestChannelEvent` 与单通道/批量字段一致 |
 | `app/components/desktop/camera-hover-card.tsx` | 悬停卡片 |
 | `app/components/desktop/camera-binding-panel.tsx` | 绑定与参数、侧栏最近事件展示 |
 

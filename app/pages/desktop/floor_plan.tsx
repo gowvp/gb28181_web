@@ -59,7 +59,7 @@ import {
   saveFloorPlanState,
   type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
-import { getLatestCameraEvent } from "./floor_plan.events";
+import { getLatestCameraEvent, prefetchLatestEventsForChannelIds } from "./floor_plan.events";
 import { buildPlaybackDetailHref } from "./floor_plan.playback";
 import type {
   CameraMarker,
@@ -1407,6 +1407,64 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     },
     [replacePlan],
   );
+
+  const boundChannelIdsKey = useMemo(() => {
+    const ids = plan.cameras
+      .map((camera) => camera.channelId)
+      .filter((id): id is string => Boolean(id));
+    return ids.sort().join("\0");
+  }, [plan.cameras]);
+
+  const lastEventPrefetchKeyRef = useRef("");
+
+  /**
+   * 为什么在进入平面图后批量预取最近事件：
+   * 专用批量接口缺失时，仍可用时间排序的全局列表在客户端按 cid 归并；预取结果写入缓存与 marker，橙色状态与 hover 首屏即可对齐而无需逐个通道打 /events。
+   */
+  useEffect(() => {
+    if (!boundChannelIdsKey) {
+      lastEventPrefetchKeyRef.current = "";
+      return;
+    }
+    if (boundChannelIdsKey === lastEventPrefetchKeyRef.current) {
+      return;
+    }
+
+    const channelIds = boundChannelIdsKey.split("\0").filter(Boolean);
+    let cancelled = false;
+
+    void (async () => {
+      const map = await prefetchLatestEventsForChannelIds(channelIds);
+      if (cancelled) {
+        return;
+      }
+      lastEventPrefetchKeyRef.current = boundChannelIdsKey;
+
+      if (map.size === 0) {
+        return;
+      }
+
+      mutatePlan((draft) => {
+        for (const camera of draft.cameras) {
+          if (!camera.channelId) {
+            continue;
+          }
+          const latest = map.get(camera.channelId);
+          if (!latest) {
+            continue;
+          }
+          camera.latestEventAt = latest.startedAt;
+          camera.latestEventImage = latest.imageSrc;
+          camera.latestEventLabel = latest.label;
+          camera.latestEventScore = latest.score;
+        }
+      }, false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boundChannelIdsKey, mutatePlan]);
 
   /**
    * 为什么对齐线要显式清空：
