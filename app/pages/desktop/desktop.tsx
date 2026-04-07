@@ -40,6 +40,10 @@ import { EditForm } from "./media/edit";
 
 // ── 节点组件 ──────────────────────────
 
+/**
+ * 为什么拓扑节点用独立小组件而不是内联 data 渲染：
+ * React Flow 按 node type 查找组件，拆分后才能在节点内局部使用 hooks（如导航）而不把 Desktop 主组件撑成巨石。
+ */
 const SimpleNode = ({ data }: { data: any }) => {
   const navigate = useNavigate();
   const { t } = useTranslation("desktop");
@@ -72,6 +76,10 @@ const SimpleNode = ({ data }: { data: any }) => {
   );
 };
 
+/**
+ * 为什么流媒体节点内嵌编辑表单：
+ * 现场改端口/IP 是高频操作，跳转到独立页会打断拓扑扫视；就地编辑成功后失效查询即可与列表页数据对齐。
+ */
 const ZLMNode = ({ data }: { data: any }) => {
   const editRef = useRef<any>(null);
   const queryClient = useQueryClient();
@@ -207,6 +215,10 @@ const ZLMNode = ({ data }: { data: any }) => {
   );
 };
 
+/**
+ * 为什么 GoWVP 节点只展示静态端口示意：
+ * 该节点表达的是「能力入口」而非实时连接状态，避免与 ZLM 的运行态指示混淆，减少误读为「已连通」。
+ */
 const GoWVPNode = ({ data }: { data: { version?: string } }) => {
   const { t } = useTranslation("desktop");
 
@@ -296,6 +308,10 @@ const GoWVPNode = ({ data }: { data: { version?: string } }) => {
   );
 };
 
+/**
+ * 为什么单独画「浏览器客户端」节点：
+ * 拓扑上用户终端与信令/媒体路径并列，单独成节点能强调「管理端从哪进」，与设备侧入口区分。
+ */
 const ClientNode = () => {
   const { t } = useTranslation("desktop");
 
@@ -385,6 +401,10 @@ const getInitialNodes = (t: any): Node[] => [
   },
 ];
 
+/**
+ * 为什么初始边写死在模块级：
+ * 首页拓扑是静态示意而非实时链路，避免为展示图拉取图数据增加首屏请求；媒体服务器数据只增强 ZLM 节点。
+ */
 const initialEdges: Edge[] = [
   { id: "rtmp->zlm", source: "rtmp", target: "zlm", sourceHandle: "output", targetHandle: "rtmp-input", animated: true, style: { stroke: "#1890ff", strokeWidth: 2 } },
   { id: "rtsp->zlm", source: "rtsp", target: "zlm", sourceHandle: "output", targetHandle: "rtsp-input", animated: true, style: { stroke: "#52c41a", strokeWidth: 2 } },
@@ -397,6 +417,10 @@ const initialEdges: Edge[] = [
 
 // ── 主组件 ──────────────────────────
 
+/**
+ * 为什么桌面页同时挂载数据流与 2D 编辑器却条件渲染：
+ * 2D 编辑器含 Konva 与大量监听，常驻双实例会拖慢低配机；按模式挂载保留首屏性能，又避免两套路由重复拉权限。
+ */
 export default function DesktopView() {
   const { t, i18n } = useTranslation(["desktop", "common"]);
   const [viewMode, setViewMode] = useState<"dataflow" | "2d">("dataflow");
@@ -494,6 +518,10 @@ export default function DesktopView() {
 
 // ── 左上角视图切换栏（数据流 tab 使用 Panel，2D tab 由 FloorPlanEditor 自行渲染） ──
 
+/**
+ * 为什么数据流模式仍保留顶栏切换：
+ * 用户在 ReactFlow 内时无法使用 FloorPlanEditor 内嵌切换，必须在 Panel 提供等价入口，否则切到 2D 后难以返回。
+ */
 function ViewSwitchBar({
   viewMode,
   onViewModeChange,
@@ -516,13 +544,17 @@ function ViewSwitchBar({
           icon={<MapIcon style={{ width: 16, height: 16 }} />}
           active={viewMode === "2d"}
           onClick={() => onViewModeChange("2d")}
-          tooltip="2D"
+          tooltip={t("desktop:floor_plan_mode")}
         />
       </div>
     </div>
   );
 }
 
+/**
+ * 为什么用原生 title 做 tooltip：
+ * 切换按钮极窄，Ant Tooltip 包裹会改变布局；title 零依赖且满足桌面端 hover 说明需求。
+ */
 function ViewSwitchButton({
   icon,
   active,
@@ -554,13 +586,20 @@ function ViewSwitchButton({
 
 // ── 右下角悬浮操作按钮（FAB） ──────────────────────────
 
+/**
+ * 为什么快捷入口用 FAB 而不是顶栏铺满：
+ * 桌面页主体已被拓扑/2D 占满，顶栏再堆链接会抢视线；FAB 聚合低频跳转，避免打断主画布。
+ */
 function DesktopFab({ i18n }: { i18n: any }) {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 点击外部关闭菜单
+  /**
+   * 为什么用 mousedown 监听 document 关菜单：
+   * 菜单展开时用户可能去点画布或其它区域，若只 toggle 头像会留下遮罩层挡住操作；捕获阶段外点击更符合弹层习惯。
+   */
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
