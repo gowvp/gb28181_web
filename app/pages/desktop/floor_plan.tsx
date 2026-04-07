@@ -1,8 +1,10 @@
 import type { KonvaEventObject } from "konva/lib/Node";
 import { Empty } from "antd";
 import {
+  Bell,
   Camera,
   Eye,
+  ExternalLink,
   Hand,
   Layers,
   LayoutTemplate,
@@ -38,6 +40,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { CameraBindingPanel } from "~/components/desktop/camera-binding-panel";
 import { CameraHoverCard } from "~/components/desktop/camera-hover-card";
 import {
@@ -1240,6 +1243,19 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     }
     return channelOnlineById.has(cid) ? channelOnlineById.get(cid) ?? null : null;
   }, [channelOnlineById, selectedCamera?.channelId]);
+
+  /**
+   * 为什么工具栏再挂一份录像/告警入口：
+   * 悬停卡片在 Portal 与 FAB 叠层场景下仍可能被现场浏览器差异影响命中；选中摄像头后顶部始终可点的图标链接与侧栏同源路由对象，给用户一条不依赖悬停的稳定跳转路径。
+   */
+  const selectedPlaybackTo = useMemo(
+    () => (selectedCamera?.channelId ? buildPlaybackDetailTo(selectedCamera.channelId) : null),
+    [selectedCamera?.channelId],
+  );
+  const selectedAlertsTo = useMemo(
+    () => (selectedCamera?.channelId ? buildAlertsTo(selectedCamera.channelId) : null),
+    [selectedCamera?.channelId],
+  );
 
   const selectedWall = useMemo(() => {
     if (!selection || selection.wallIds.length !== 1 || selection.cameraIds.length > 0) {
@@ -2927,6 +2943,25 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           <ToolbarButton title={t("zoom_to_fit")} onClick={zoomToFit}>
             <WandSparkles className="h-4 w-4" />
           </ToolbarButton>
+          {selectedPlaybackTo && selectedAlertsTo ? (
+            <>
+              <div className="mx-1 h-6 w-px bg-gray-200" />
+              <Link
+                to={selectedPlaybackTo}
+                title={t("open_playback")}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+              <Link
+                to={selectedAlertsTo}
+                title={t("open_alerts")}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-800 transition-colors hover:bg-amber-100"
+              >
+                <Bell className="h-4 w-4" />
+              </Link>
+            </>
+          ) : null}
           <ToolbarButton
             title={t("reset_layout")}
             disabled={interactionMode === "browse"}
