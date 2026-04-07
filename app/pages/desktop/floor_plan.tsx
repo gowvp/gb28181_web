@@ -2,11 +2,13 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import { Empty } from "antd";
 import {
   Camera,
+  Eye,
   Hand,
   Layers,
   LayoutTemplate,
   Map as MapIcon,
   MousePointer2,
+  Pencil,
   Redo2,
   RotateCcw,
   Square,
@@ -35,6 +37,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router";
 import { CameraBindingPanel } from "~/components/desktop/camera-binding-panel";
 import { CameraHoverCard } from "~/components/desktop/camera-hover-card";
 import {
@@ -49,11 +52,15 @@ import {
   cloneFloorPlanState,
   createCameraMarker,
   createDefaultFloorPlanState,
+  loadFloorPlanInteractionMode,
   loadFloorPlanState,
   normalizeFloorPlanState,
+  saveFloorPlanInteractionMode,
   saveFloorPlanState,
+  type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
 import { getLatestCameraEvent } from "./floor_plan.events";
+import { buildPlaybackDetailHref } from "./floor_plan.playback";
 import type {
   CameraMarker,
   FloorPlanState,
@@ -972,16 +979,23 @@ function CompactActionButton({
  */
 function PresetButton({
   label,
+  disabled,
   onClick,
 }: {
   label: string;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+      className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+        disabled
+          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+      }`}
     >
       {label}
     </button>
@@ -999,6 +1013,7 @@ interface FloorPlanEditorProps {
  */
 export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorProps) {
   const { t } = useTranslation("desktop");
+  const navigate = useNavigate();
 
   const initialPlan = useMemo(
     () => loadFloorPlanState() ?? createDefaultFloorPlanState(),
@@ -1029,6 +1044,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const [hoveredCameraId, setHoveredCameraId] = useState<string | null>(null);
   const [hoverEvent, setHoverEvent] = useState<LatestCameraEvent | null>(null);
   const [hoverLoading, setHoverLoading] = useState(false);
+  const [interactionMode, setInteractionMode] = useState<FloorPlanInteractionMode>(() =>
+    loadFloorPlanInteractionMode(),
+  );
+  const interactionModeRef = useRef(interactionMode);
+  const [channelNameFilter, setChannelNameFilter] = useState("");
+  const [panelLatestEvent, setPanelLatestEvent] = useState<LatestCameraEvent | null>(null);
+  const [panelEventLoading, setPanelEventLoading] = useState(false);
   const [hasClipboard, setHasClipboard] = useState(false);
   const [alignmentGuides, setAlignmentGuides] = useState<PlannerGuides>({
     vertical: [],
@@ -1079,6 +1101,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   useEffect(() => {
     selectionRef.current = selection;
   }, [selection]);
+
+  useEffect(() => {
+    interactionModeRef.current = interactionMode;
+    saveFloorPlanInteractionMode(interactionMode);
+  }, [interactionMode]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -1151,6 +1178,38 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     return worldToScreen({ x: hoveredCamera.x, y: hoveredCamera.y }, plan.view);
   }, [hoveredCamera, plan.view]);
 
+  /**
+   * 为什么录像入口与列表页拼相同 URL：
+   * 详情页只解析 `cid`+`date`，与录像列表一致可减少「从平面图进入」与「从列表进入」两套行为，排障时也只对一种链接形态。
+   */
+  const navigateToPlayback = useCallback(
+    (channelId: string | null | undefined) => {
+      if (!channelId) {
+        return;
+      }
+      navigate(buildPlaybackDetailHref(channelId));
+    },
+    [navigate],
+  );
+
+  const cameraFilterTrim = channelNameFilter.trim().toLowerCase();
+
+  /**
+   * 为什么过滤同时匹配通道名与设备名：
+   * 用户可能记得设备侧名称而记不清通道后缀，两边都搜能减少「明明绑了却筛不掉」的挫败感。
+   */
+  const cameraMatchesFilter = useCallback(
+    (camera: CameraMarker) => {
+      if (!cameraFilterTrim) {
+        return true;
+      }
+      const name = (camera.channelName || "").toLowerCase();
+      const device = (camera.deviceName || "").toLowerCase();
+      return name.includes(cameraFilterTrim) || device.includes(cameraFilterTrim);
+    },
+    [cameraFilterTrim],
+  );
+
   const canUndo = historyIndexRef.current > 0;
   const canRedo = historyIndexRef.current < historyRef.current.length - 1;
 
@@ -1210,6 +1269,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const clearGuides = useCallback(() => {
     setAlignmentGuides({ vertical: [], horizontal: [] });
   }, []);
+
+  /**
+   * 为什么切到浏览时强制回到选择工具并清空未提交的拖拽：
+   * 浏览语义下不应停留在「画墙」等破坏性工具；若保留 wallDrawRef，全局 mousemove 仍会继续改预览，造成「已切浏览却仍在画」的错觉。
+   */
+  useEffect(() => {
+    if (interactionMode === "browse") {
+      setTool("select");
+      wallDrawRef.current = null;
+      roomDrawRef.current = null;
+      marqueeRef.current = null;
+      dragSelectionRef.current = null;
+      dragWallHandleRef.current = null;
+      panRef.current = null;
+      setWallPreview(null);
+      setRoomPreview(null);
+      setMarqueeRect(null);
+      clearGuides();
+    }
+  }, [interactionMode, clearGuides]);
 
   /**
    * 为什么适配用包围盒加 padding：
@@ -1477,6 +1556,34 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   }, [clearGuides]);
 
   /**
+   * 为什么侧栏单独拉一次最近事件：
+   * 用户选中摄像头时期望在右栏直接看到摘要，而不必依赖 hover；与 hover 共用 `getLatestCameraEvent` 缓存，避免重复打后端。
+   */
+  useEffect(() => {
+    if (!selectedCamera?.channelId) {
+      setPanelLatestEvent(null);
+      setPanelEventLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPanelEventLoading(true);
+    setPanelLatestEvent(null);
+
+    void (async () => {
+      const latest = await getLatestCameraEvent(selectedCamera.channelId);
+      if (!cancelled) {
+        setPanelLatestEvent(latest);
+        setPanelEventLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCamera?.channelId, selectedCamera?.id]);
+
+  /**
    * 为什么 hover 拉事件后写回 camera 上的 latest* 字段：
    * 橙色状态需要持久化到同一 plan，刷新前多次进入页面能复用已拉取结果；commit=false 避免污染撤销栈。
    */
@@ -1687,6 +1794,34 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         pointerWorldRef.current = clampPointToWorld(
           snapPoint(clientToWorld(event.clientX, event.clientY, container, planRef.current.view)),
         );
+      }
+
+      if (interactionModeRef.current === "browse") {
+        if (panRef.current) {
+          const deltaX = event.clientX - panRef.current.startX;
+          const deltaY = event.clientY - panRef.current.startY;
+          replacePlan(
+            {
+              ...planRef.current,
+              view: {
+                ...planRef.current.view,
+                x: panRef.current.originX + deltaX,
+                y: panRef.current.originY + deltaY,
+              },
+            },
+            false,
+          );
+        } else if (marqueeRef.current) {
+          const current = clampPointToWorld(
+            snapPoint(
+              clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+            ),
+          );
+          marqueeRef.current.current = current;
+          const rect = normalizeRect(marqueeRef.current.start, current);
+          setMarqueeRect(rect);
+        }
+        return;
       }
 
       if (panRef.current) {
@@ -1986,6 +2121,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
+      if (interactionModeRef.current === "browse") {
+        if (event.key === "Escape") {
+          setSelection(null);
+          clearGuides();
+        }
+        return;
+      }
+
       const isMeta = event.ctrlKey || event.metaKey;
 
       if (isMeta && event.key.toLowerCase() === "z" && event.shiftKey) {
@@ -2126,6 +2269,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
+      if (interactionModeRef.current === "browse") {
+        clearGuides();
+        const worldPoint = resolvePointerWorld(event.evt);
+        if (!worldPoint) {
+          return;
+        }
+        pointerWorldRef.current = worldPoint;
+        const additive = event.evt.ctrlKey || event.evt.metaKey;
+        marqueeRef.current = {
+          start: worldPoint,
+          current: worldPoint,
+          additive,
+        };
+        setMarqueeRect(normalizeRect(worldPoint, worldPoint));
+        if (!additive) {
+          setSelection(null);
+        }
+        return;
+      }
+
       clearGuides();
       const worldPoint = resolvePointerWorld(event.evt);
       if (!worldPoint) {
@@ -2203,6 +2366,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         : selectEntity(planRef.current, "camera", cameraId);
       setSelection(baseSelection);
 
+      if (interactionModeRef.current === "browse") {
+        return;
+      }
+
       if (tool !== "select") {
         return;
       }
@@ -2262,6 +2429,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         : selectEntity(planRef.current, "wall", wall.id);
       setSelection(baseSelection);
 
+      if (interactionModeRef.current === "browse") {
+        return;
+      }
+
       if (tool !== "select") {
         return;
       }
@@ -2305,6 +2476,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
       clearGuides();
       setSelection(createSelection([wallId], []));
+      if (interactionModeRef.current === "browse") {
+        return;
+      }
       const wall = planRef.current.walls.find((item) => item.id === wallId);
       if (!wall) {
         return;
@@ -2391,41 +2565,81 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <MapIcon className="h-4 w-4" />
           </ToolbarButton>
           <div className="mx-1 h-6 w-px bg-gray-200" />
-          <ToolbarButton active={tool === "select"} title={t("select_tool")} onClick={() => setTool("select")}>
+          <ToolbarButton
+            active={interactionMode === "browse"}
+            title={t("browse_mode")}
+            onClick={() => setInteractionMode("browse")}
+          >
+            <Eye className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={interactionMode === "edit"}
+            title={t("edit_mode")}
+            onClick={() => setInteractionMode("edit")}
+          >
+            <Pencil className="h-4 w-4" />
+          </ToolbarButton>
+          <div className="mx-1 h-6 w-px bg-gray-200" />
+          <ToolbarButton
+            active={tool === "select"}
+            disabled={interactionMode === "browse"}
+            title={t("select_tool")}
+            onClick={() => setTool("select")}
+          >
             <MousePointer2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "wall"} title={t("wall_tool")} onClick={() => setTool("wall")}>
+          <ToolbarButton
+            active={tool === "wall"}
+            disabled={interactionMode === "browse"}
+            title={t("wall_tool")}
+            onClick={() => setTool("wall")}
+          >
             <Waypoints className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "room"} title={t("room_tool")} onClick={() => setTool("room")}>
+          <ToolbarButton
+            active={tool === "room"}
+            disabled={interactionMode === "browse"}
+            title={t("room_tool")}
+            onClick={() => setTool("room")}
+          >
             <Square className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "camera"} title={t("camera_tool")} onClick={() => setTool("camera")}>
+          <ToolbarButton
+            active={tool === "camera"}
+            disabled={interactionMode === "browse"}
+            title={t("camera_tool")}
+            onClick={() => setTool("camera")}
+          >
             <Camera className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={tool === "pan"} title={t("pan_tool")} onClick={() => setTool("pan")}>
+          <ToolbarButton
+            active={tool === "pan"}
+            disabled={interactionMode === "browse"}
+            title={t("pan_tool")}
+            onClick={() => setTool("pan")}
+          >
             <Hand className="h-4 w-4" />
           </ToolbarButton>
           <div className="mx-1 h-6 w-px bg-gray-200" />
-          <ToolbarButton disabled={!canUndo} title={t("undo")} onClick={undo}>
+          <ToolbarButton disabled={interactionMode === "browse" || !canUndo} title={t("undo")} onClick={undo}>
             <Undo2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton disabled={!canRedo} title={t("redo")} onClick={redo}>
+          <ToolbarButton disabled={interactionMode === "browse" || !canRedo} title={t("redo")} onClick={redo}>
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
-          <CompactActionButton disabled={!canCopySelection} onClick={copySelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canCopySelection} onClick={copySelection}>
             {t("copy_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!hasClipboard} onClick={() => pasteClipboard()}>
+          <CompactActionButton disabled={interactionMode === "browse" || !hasClipboard} onClick={() => pasteClipboard()}>
             {t("paste_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!canCopySelection} onClick={duplicateSelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canCopySelection} onClick={duplicateSelection}>
             {t("duplicate_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!canGroup} onClick={groupSelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canGroup} onClick={groupSelection}>
             {t("group_selection")}
           </CompactActionButton>
-          <CompactActionButton disabled={!canUngroup} onClick={ungroupSelection}>
+          <CompactActionButton disabled={interactionMode === "browse" || !canUngroup} onClick={ungroupSelection}>
             {t("ungroup_selection")}
           </CompactActionButton>
           <div className="mx-1 h-6 w-px bg-gray-200" />
@@ -2468,6 +2682,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </ToolbarButton>
           <ToolbarButton
             title={t("reset_layout")}
+            disabled={interactionMode === "browse"}
             onClick={() => {
               clearFloorPlanState();
               const next = createDefaultFloorPlanState();
@@ -2490,7 +2705,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         </div>
 
         <div className="absolute bottom-4 left-4 z-20 max-w-4xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
-          {toolHint(tool, t)} · {t("middle_pan_hint")} · {t("multi_select_hint")} · {t("box_select_hint")} · {t("shift_drag_hint")} · {t("alt_drag_hint")} · {t("select_all_hint")} · {t("copy_paste_hint")} · {t("preset_hint")}
+          {interactionMode === "browse"
+            ? t("browse_mode_hint")
+            : `${toolHint(tool, t)} · ${t("middle_pan_hint")} · ${t("multi_select_hint")} · ${t("box_select_hint")} · ${t("shift_drag_hint")} · ${t("alt_drag_hint")} · ${t("select_all_hint")} · ${t("copy_paste_hint")} · ${t("preset_hint")}`}
         </div>
 
         <div ref={containerRef} className="relative flex-1 overflow-hidden select-none">
@@ -2640,6 +2857,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
                 {plan.cameras.map((camera) => {
                   const isSelected = isEntitySelected(selection, "camera", camera.id);
+                  const matchesFilter = cameraMatchesFilter(camera);
                   const hasRecentEvent = Boolean(camera.latestEventAt);
                   const accent = camera.channelId ? (hasRecentEvent ? "#f97316" : "#2563eb") : "#9ca3af";
                   const facingX = camera.x + Math.cos((camera.angle * Math.PI) / 180) * 34;
@@ -2648,7 +2866,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   return (
                     <Group
                       key={camera.id}
+                      opacity={matchesFilter ? 1 : 0.22}
                       onMouseEnter={() => {
+                        if (!matchesFilter) {
+                          return;
+                        }
                         setHoveredCameraId(camera.id);
                         void loadHoverEvent(camera);
                       }}
@@ -2696,13 +2918,20 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             </Layer>
           </Stage>
 
-          {hoveredCamera && hoveredCameraScreenPosition ? (
+          {hoveredCamera && hoveredCameraScreenPosition && cameraMatchesFilter(hoveredCamera) ? (
             <CameraHoverCard
               camera={hoveredCamera}
               latestEvent={hoverEvent}
               loading={hoverLoading}
-              x={hoveredCameraScreenPosition.x + 18}
-              y={hoveredCameraScreenPosition.y + 18}
+              anchorX={hoveredCameraScreenPosition.x}
+              anchorY={hoveredCameraScreenPosition.y}
+              containerWidth={viewportSize.width}
+              containerHeight={viewportSize.height}
+              onOpenPlayback={
+                hoveredCamera.channelId
+                  ? () => navigateToPlayback(hoveredCamera.channelId)
+                  : undefined
+              }
             />
           ) : null}
         </div>
@@ -2732,10 +2961,22 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             {t("preset_shapes")}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <PresetButton label={t("preset_small_room")} onClick={() => insertPreset("small_room")} />
-            <PresetButton label={t("preset_corridor")} onClick={() => insertPreset("corridor")} />
+            <PresetButton
+              label={t("preset_small_room")}
+              disabled={interactionMode === "browse"}
+              onClick={() => insertPreset("small_room")}
+            />
+            <PresetButton
+              label={t("preset_corridor")}
+              disabled={interactionMode === "browse"}
+              onClick={() => insertPreset("corridor")}
+            />
             <div className="col-span-2">
-              <PresetButton label={t("preset_l_room")} onClick={() => insertPreset("l_room")} />
+              <PresetButton
+                label={t("preset_l_room")}
+                disabled={interactionMode === "browse"}
+                onClick={() => insertPreset("l_room")}
+              />
             </div>
           </div>
           <div className="mt-3 text-xs leading-5 text-gray-500">{t("preset_description")}</div>
@@ -2746,6 +2987,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           channelOptions={channelOptions}
           channelsLoading={channelQuery.isLoading}
           channelsError={channelQuery.isError ? String(channelQuery.error) : null}
+          interactionMode={interactionMode}
+          channelFilter={channelNameFilter}
+          onChannelFilterChange={setChannelNameFilter}
+          selectedLatestEvent={panelLatestEvent}
+          selectedEventLoading={panelEventLoading}
+          onOpenPlayback={
+            selectedCamera?.channelId
+              ? () => navigateToPlayback(selectedCamera.channelId)
+              : undefined
+          }
           onBindChannel={(channelId) => {
             updateSelectedCamera((camera) => {
               const option = channelOptions.find((item) => item.value === channelId);
@@ -2787,10 +3038,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                disabled={!canGroup}
+                disabled={interactionMode === "browse" || !canGroup}
                 onClick={groupSelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canGroup
+                  interactionMode !== "browse" && canGroup
                     ? "bg-gray-900 text-white hover:bg-gray-800"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2799,10 +3050,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!canUngroup}
+                disabled={interactionMode === "browse" || !canUngroup}
                 onClick={ungroupSelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canUngroup
+                  interactionMode !== "browse" && canUngroup
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2811,10 +3062,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!canCopySelection}
+                disabled={interactionMode === "browse" || !canCopySelection}
                 onClick={copySelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canCopySelection
+                  interactionMode !== "browse" && canCopySelection
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2823,10 +3074,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!canCopySelection}
+                disabled={interactionMode === "browse" || !canCopySelection}
                 onClick={duplicateSelection}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  canCopySelection
+                  interactionMode !== "browse" && canCopySelection
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2835,10 +3086,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
-                disabled={!hasClipboard}
+                disabled={interactionMode === "browse" || !hasClipboard}
                 onClick={() => pasteClipboard()}
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  hasClipboard
+                  interactionMode !== "browse" && hasClipboard
                     ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
                     : "cursor-not-allowed bg-gray-200 text-gray-400"
                 }`}
@@ -2847,8 +3098,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </button>
               <button
                 type="button"
+                disabled={interactionMode === "browse"}
                 onClick={deleteSelection}
-                className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white hover:bg-red-600"
+                className={`rounded-lg px-3 py-2 text-xs font-medium ${
+                  interactionMode === "browse"
+                    ? "cursor-not-allowed bg-gray-200 text-gray-400"
+                    : "bg-red-500 text-white hover:bg-red-600"
+                }`}
               >
                 {t("delete_selected")}
               </button>

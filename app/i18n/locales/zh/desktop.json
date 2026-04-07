@@ -95,5 +95,13 @@
   "copy_paste_hint": "Ctrl/Cmd + C 复制，Ctrl/Cmd + V 粘贴，Ctrl/Cmd + D 快速重复所选",
   "alt_drag_hint": "选择模式下按住 Alt 拖动，可直接复制当前选择并拖动副本",
   "channel_count_loaded": "已加载 {{count}} 路通道",
-  "channel_load_warning": "通道列表可能未完整加载，当前结果已尽力回退到可用数据。"
+  "channel_load_warning": "通道列表可能未完整加载，当前结果已尽力回退到可用数据。",
+  "browse_mode": "浏览",
+  "edit_mode": "编辑",
+  "browse_mode_hint": "浏览模式：可框选、查看侧栏与悬停卡片；使用「打开录像」跳转回放。切换到「编辑」可改平面图。",
+  "open_playback": "打开录像",
+  "filter_cameras": "筛选摄像头",
+  "filter_cameras_placeholder": "按通道名或设备名筛选",
+  "filter_cameras_hint": "未匹配名称的摄像头在画布上会淡化显示。",
+  "panel_latest_ai_event": "侧栏预览"
 }

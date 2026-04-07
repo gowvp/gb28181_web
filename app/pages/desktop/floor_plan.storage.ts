@@ -177,3 +177,37 @@ export function clearFloorPlanState() {
   }
   window.localStorage.removeItem(FLOOR_PLAN_STORAGE_KEY);
 }
+
+export const FLOOR_PLAN_INTERACTION_MODE_KEY = "desktop-floor-plan-interaction-mode";
+
+export type FloorPlanInteractionMode = "browse" | "edit";
+
+/**
+ * 为什么浏览/编辑模式单独 key 而不塞进 FloorPlanState：
+ * 这是壳层交互偏好，与画布几何无关；写进 plan 会让撤销栈与导出混淆，且用户期望「切回编辑」不撤销。
+ */
+export function loadFloorPlanInteractionMode(): FloorPlanInteractionMode {
+  if (typeof window === "undefined") {
+    return "edit";
+  }
+  try {
+    const raw = window.localStorage.getItem(FLOOR_PLAN_INTERACTION_MODE_KEY);
+    if (raw === "browse" || raw === "edit") {
+      return raw;
+    }
+  } catch (error) {
+    console.warn("[floor-plan] failed to read interaction mode", error);
+  }
+  return "edit";
+}
+
+export function saveFloorPlanInteractionMode(mode: FloorPlanInteractionMode) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(FLOOR_PLAN_INTERACTION_MODE_KEY, mode);
+  } catch (error) {
+    console.warn("[floor-plan] failed to save interaction mode", error);
+  }
+}

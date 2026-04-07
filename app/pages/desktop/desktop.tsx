@@ -29,6 +29,11 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import FloorPlanEditor from "./floor_plan";
+import {
+  loadDesktopViewMode,
+  saveDesktopViewMode,
+  type DesktopViewMode,
+} from "./desktop-view-mode";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   FindMediaServers,
@@ -423,7 +428,7 @@ const initialEdges: Edge[] = [
  */
 export default function DesktopView() {
   const { t, i18n } = useTranslation(["desktop", "common"]);
-  const [viewMode, setViewMode] = useState<"dataflow" | "2d">("dataflow");
+  const [viewMode, setViewMode] = useState<DesktopViewMode>(() => loadDesktopViewMode() ?? "dataflow");
   const [nodes, setNodes] = useState<Node[]>(getInitialNodes(t));
   const [edges] = useState<Edge[]>(initialEdges);
 
@@ -457,6 +462,10 @@ export default function DesktopView() {
       }),
     );
   }, [versionData]);
+
+  useEffect(() => {
+    saveDesktopViewMode(viewMode);
+  }, [viewMode]);
 
   useEffect(() => {
     if (!data?.data.items[0]) return;
