@@ -134,5 +134,13 @@
   "event_time_relative_hours": "{{count}} 小时前",
   "event_time_relative_days": "{{count}} 天前",
   "minimap_title": "鸟瞰",
-  "minimap_hint": "点击缩略图可将该点移到视野中心"
+  "minimap_hint": "轻点跳到该区域，拖拽可平移主视野",
+  "floor_plan_export_tooltip": "导出布局 JSON 备份",
+  "floor_plan_import_tooltip": "从 JSON 文件恢复布局",
+  "floor_plan_export_success": "已下载布局备份文件",
+  "floor_plan_export_failed": "导出失败，请查看控制台",
+  "floor_plan_import_success": "已从文件恢复布局",
+  "floor_plan_import_failed": "导入失败：文件格式不正确或已损坏",
+  "floor_plan_guide_backup_shortcuts": "顶栏可导出/导入 JSON 布局备份（便于换机与版本对比）。浏览模式下可用 [ / ] 或 PgUp / PgDn 切换筛选匹配，F 键框入全部匹配；Esc 可清空筛选。",
+  "filter_keyboard_hint": "浏览模式快捷键：[ ] / PgUp PgDn 切换匹配，F 框入全部"
 }

@@ -134,5 +134,13 @@
   "event_time_relative_hours": "{{count}} h ago",
   "event_time_relative_days": "{{count}} d ago",
   "minimap_title": "Overview",
-  "minimap_hint": "Click the minimap to center the viewport on that point"
+  "minimap_hint": "Click to jump; drag to pan the main view",
+  "floor_plan_export_tooltip": "Export layout JSON backup",
+  "floor_plan_import_tooltip": "Restore layout from JSON file",
+  "floor_plan_export_success": "Layout backup downloaded",
+  "floor_plan_export_failed": "Export failed; see console",
+  "floor_plan_import_success": "Layout restored from file",
+  "floor_plan_import_failed": "Import failed: invalid or corrupted file",
+  "floor_plan_guide_backup_shortcuts": "Use the toolbar to export/import a JSON layout backup. In browse mode, [ / ] or PgUp / PgDn cycle filter matches; F frames all matches; Esc clears the filter.",
+  "filter_keyboard_hint": "Browse shortcuts: [ ] / PgUp PgDn for matches, F to frame all"
 }

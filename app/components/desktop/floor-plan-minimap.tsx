@@ -1,9 +1,11 @@
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CameraMarker, FloorWall, PlannerView } from "~/pages/desktop/floor_plan.types";
 import { FLOOR_PLAN_WORLD_HEIGHT, FLOOR_PLAN_WORLD_WIDTH } from "~/pages/desktop/floor_plan.storage";
 
 const MAP_W = 168;
 const MAP_H = 105;
+const DRAG_THRESHOLD_PX = 5;
 
 type FloorPlanMinimapProps = {
   walls: FloorWall[];
@@ -12,11 +14,14 @@ type FloorPlanMinimapProps = {
   viewportWidth: number;
   viewportHeight: number;
   onCenterWorld: (worldX: number, worldY: number) => void;
+  onPanViewByScreenDelta: (dx: number, dy: number) => void;
 };
 
 /**
  * 为什么小地图用 SVG + viewBox：
- * 墙线在世界坐标是任意斜线，用百分比 div 旋转容易算错；SVG 线段与圆点与 Konva 世界系一一对应，点击再反算世界坐标即可平移主视口。
+ * 墙线在世界坐标是任意斜线；SVG 与 Konva 世界系一致，便于点击/拖拽换算。
+ * 为什么区分轻点与拖拽：
+ * 轻点仍用于「跳到该大致区域」，拖拽用于连续平移主视口，两者手势不同，阈值避免误触。
  */
 export function FloorPlanMinimap({
   walls,
@@ -25,8 +30,10 @@ export function FloorPlanMinimap({
   viewportWidth,
   viewportHeight,
   onCenterWorld,
+  onPanViewByScreenDelta,
 }: FloorPlanMinimapProps) {
   const { t } = useTranslation("desktop");
+  const [isDragging, setIsDragging] = useState(false);
 
   const worldW = FLOOR_PLAN_WORLD_WIDTH;
   const worldH = FLOOR_PLAN_WORLD_HEIGHT;
@@ -36,12 +43,79 @@ export function FloorPlanMinimap({
   const vpW = viewportWidth / view.scale;
   const vpH = viewportHeight / view.scale;
 
-  const handleSvgClick = (event: React.MouseEvent<SVGSVGElement>) => {
-    const svg = event.currentTarget;
+  const sessionRef = useRef<{
+    pointerId: number;
+    lastClientX: number;
+    lastClientY: number;
+    startClientX: number;
+    startClientY: number;
+    startedDrag: boolean;
+  } | null>(null);
+
+  const clientToWorld = useCallback((clientX: number, clientY: number, svg: SVGSVGElement) => {
     const rect = svg.getBoundingClientRect();
-    const nx = (event.clientX - rect.left) / rect.width;
-    const ny = (event.clientY - rect.top) / rect.height;
-    onCenterWorld(nx * worldW, ny * worldH);
+    const nx = (clientX - rect.left) / rect.width;
+    const ny = (clientY - rect.top) / rect.height;
+    return { wx: nx * worldW, wy: ny * worldH };
+  }, [worldW, worldH]);
+
+  const endSession = useCallback((svg: SVGSVGElement, pointerId: number) => {
+    try {
+      svg.releasePointerCapture(pointerId);
+    } catch {
+      /* noop */
+    }
+    sessionRef.current = null;
+    setIsDragging(false);
+  }, []);
+
+  const onPointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
+    event.preventDefault();
+    const svg = event.currentTarget;
+    svg.setPointerCapture(event.pointerId);
+    sessionRef.current = {
+      pointerId: event.pointerId,
+      lastClientX: event.clientX,
+      lastClientY: event.clientY,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startedDrag: false,
+    };
+  };
+
+  const onPointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
+    const session = sessionRef.current;
+    if (!session || event.pointerId !== session.pointerId) {
+      return;
+    }
+    const dx = event.clientX - session.lastClientX;
+    const dy = event.clientY - session.lastClientY;
+    const distFromStart = Math.hypot(
+      event.clientX - session.startClientX,
+      event.clientY - session.startClientY,
+    );
+    if (distFromStart > DRAG_THRESHOLD_PX) {
+      if (!session.startedDrag) {
+        session.startedDrag = true;
+        setIsDragging(true);
+      }
+      onPanViewByScreenDelta(dx, dy);
+      session.lastClientX = event.clientX;
+      session.lastClientY = event.clientY;
+    }
+  };
+
+  const onPointerUp = (event: React.PointerEvent<SVGSVGElement>) => {
+    const session = sessionRef.current;
+    const svg = event.currentTarget;
+    if (!session || event.pointerId !== session.pointerId) {
+      return;
+    }
+    if (!session.startedDrag) {
+      const { wx, wy } = clientToWorld(session.startClientX, session.startClientY, svg);
+      onCenterWorld(wx, wy);
+    }
+    endSession(svg, event.pointerId);
   };
 
   return (
@@ -56,9 +130,12 @@ export function FloorPlanMinimap({
         width={MAP_W}
         height={MAP_H}
         viewBox={`0 0 ${worldW} ${worldH}`}
-        className="cursor-crosshair rounded border border-gray-200 bg-slate-50"
+        className={`rounded border border-gray-200 bg-slate-50 touch-none ${isDragging ? "cursor-grabbing" : "cursor-crosshair"}`}
         preserveAspectRatio="none"
-        onClick={handleSvgClick}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
         {walls.map((wall) => (
           <line

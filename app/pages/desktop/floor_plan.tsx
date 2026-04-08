@@ -1,10 +1,11 @@
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Button, Empty, Modal } from "antd";
+import { Button, Empty, Modal, message } from "antd";
 import {
   Bell,
   Camera,
   ChevronLeft,
   ChevronRight,
+  Download,
   Eye,
   ExternalLink,
   Focus,
@@ -20,6 +21,7 @@ import {
   ScanSearch,
   Square,
   Undo2,
+  Upload,
   WandSparkles,
   Waypoints,
   ZoomIn,
@@ -73,6 +75,7 @@ import {
 import { clearLatestCameraEventCache, getLatestCameraEvent, prefetchLatestEventsForChannelIds } from "./floor_plan.events";
 import { formatTimeAgoFromMs } from "./floor_plan.relative-time";
 import { buildAlertsTo } from "./floor_plan.alerts";
+import { buildFloorPlanExportPayload, parseFloorPlanImportJson } from "./floor_plan.export";
 import { buildPlaybackDetailTo } from "./floor_plan.playback";
 import type {
   CameraMarker,
@@ -1729,6 +1732,113 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     zoomToFitCameras(filterMatches);
   }, [filterMatches, zoomToFitCameras]);
 
+  const navigateFilterMatchRef = useRef(navigateFilterMatch);
+  navigateFilterMatchRef.current = navigateFilterMatch;
+  const frameFilterMatchesRef = useRef(frameFilterMatches);
+  frameFilterMatchesRef.current = frameFilterMatches;
+
+  /**
+   * 为什么平移与主画布一致只改 view.x/y：
+   * 与中键拖动画布同一套变换，小地图拖拽才是「移动视野」而不是改世界坐标。
+   */
+  const panViewByScreenDelta = useCallback(
+    (dx: number, dy: number) => {
+      const view = planRef.current.view;
+      replacePlan(
+        {
+          ...planRef.current,
+          view: {
+            ...view,
+            x: view.x + dx,
+            y: view.y + dy,
+          },
+        },
+        false,
+      );
+    },
+    [replacePlan],
+  );
+
+  const importFloorPlanInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * 为什么导入要清事件缓存并重置历史栈：
+   * 通道 id 与布局可能整体替换，旧缓存会张冠李戴；新文件作为单一快照入栈，避免撤销穿回导入前的混合状态。
+   */
+  const applyImportedFloorPlan = useCallback(
+    (next: FloorPlanState) => {
+      clearLatestCameraEventCache();
+      const normalized = normalizeFloorPlanState(next);
+      historyRef.current = [cloneFloorPlanState(normalized)];
+      historyIndexRef.current = 0;
+      setHistoryVersion((value) => value + 1);
+      planRef.current = normalized;
+      setPlan(normalized);
+      setSelection(null);
+      setHoveredCameraId(null);
+      setHoverEvent(null);
+      setHoverLoading(false);
+      setHoverEventFetchedAt(null);
+      wallDrawRef.current = null;
+      roomDrawRef.current = null;
+      marqueeRef.current = null;
+      dragSelectionRef.current = null;
+      dragWallHandleRef.current = null;
+      panRef.current = null;
+      setWallPreview(null);
+      setRoomPreview(null);
+      setMarqueeRect(null);
+      clearGuides();
+    },
+    [clearGuides],
+  );
+
+  const exportFloorPlanFile = useCallback(() => {
+    try {
+      const payload = buildFloorPlanExportPayload(planRef.current);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `floor-plan-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      message.success(t("floor_plan_export_success"));
+    } catch (error) {
+      console.warn("[floor-plan] export failed", error);
+      message.error(t("floor_plan_export_failed"));
+    }
+  }, [t]);
+
+  const onImportFloorPlanFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = String(reader.result ?? "");
+          const parsed = parseFloorPlanImportJson(text);
+          applyImportedFloorPlan(parsed);
+          message.success(t("floor_plan_import_success"));
+        } catch (error) {
+          console.warn("[floor-plan] import failed", error);
+          message.error(t("floor_plan_import_failed"));
+        }
+      };
+      reader.onerror = () => {
+        message.error(t("floor_plan_import_failed"));
+      };
+      reader.readAsText(file, "utf-8");
+    },
+    [applyImportedFloorPlan, t],
+  );
+
   const hoverCardEventAgo = useMemo(
     () =>
       hoverEvent?.startedAt
@@ -2575,6 +2685,23 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         if (event.key === "Escape") {
           setSelection(null);
           clearGuides();
+          setChannelNameFilter("");
+          return;
+        }
+        if (event.key === "[" || event.key === "PageUp") {
+          event.preventDefault();
+          navigateFilterMatchRef.current(-1);
+          return;
+        }
+        if (event.key === "]" || event.key === "PageDown") {
+          event.preventDefault();
+          navigateFilterMatchRef.current(1);
+          return;
+        }
+        if (event.key.toLowerCase() === "f") {
+          event.preventDefault();
+          frameFilterMatchesRef.current();
+          return;
         }
         return;
       }
@@ -3045,6 +3172,22 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           <ToolbarButton title={t("floor_plan_help_tooltip")} onClick={() => setGuideModalOpen(true)}>
             <MapPinned className="h-4 w-4" />
           </ToolbarButton>
+          <ToolbarButton title={t("floor_plan_export_tooltip")} onClick={exportFloorPlanFile}>
+            <Download className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            title={t("floor_plan_import_tooltip")}
+            onClick={() => importFloorPlanInputRef.current?.click()}
+          >
+            <Upload className="h-4 w-4" />
+          </ToolbarButton>
+          <input
+            ref={importFloorPlanInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={onImportFloorPlanFileChange}
+          />
           {showEditToolButtons ? (
             <>
               <div className="mx-1 h-6 w-px bg-gray-200" />
@@ -3215,6 +3358,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <p>{t("floor_plan_guide_filter_nav")}</p>
             <p>{t("floor_plan_guide_event_refresh")}</p>
             <p>{t("floor_plan_guide_minimap")}</p>
+            <p>{t("floor_plan_guide_backup_shortcuts")}</p>
             <p className="text-xs text-gray-400">{t("floor_plan_guide_storage_note")}</p>
           </div>
         </Modal>
@@ -3487,6 +3631,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             viewportWidth={viewportSize.width}
             viewportHeight={viewportSize.height}
             onCenterWorld={centerViewOnWorld}
+            onPanViewByScreenDelta={panViewByScreenDelta}
           />
         </div>
       </div>

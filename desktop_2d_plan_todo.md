@@ -57,6 +57,12 @@
 - [x] **事件可信度**：侧栏 **刷新**（`clearLatestCameraEventCache` + 重拉）；悬停卡片与侧栏展示 **事件发生相对时间** 与 **数据拉取相对时间**（30s tick）
 - [x] **鸟瞰小地图**：`FloorPlanMinimap` 点击平移视口；顶栏 **框选全部已绑定摄像头**（`zoomToFitCameras`）
 
+### 阶段 F — 纯前端续（备份与快捷）
+
+- [x] **布局 JSON 导出 / 导入**：顶栏下载/上传，`floor_plan.export.ts` 包装版本与时间；导入后清空事件缓存并重置撤销栈
+- [x] **浏览模式筛选快捷键**：`[` / `]`、`PgUp` / `PgDn` 切换匹配，`F` 框入全部，`Esc` 额外清空筛选关键词
+- [x] **小地图拖拽**：轻点仍居中，移动超过阈值则按像素平移主视口（与 `view.x/y` 一致）
+
 ## 5. 关键文件
 
 | 文件 | 职责 |
@@ -74,6 +80,7 @@
 | `app/components/desktop/camera-binding-panel.tsx` | 绑定与参数、侧栏最近事件展示 |
 | `app/components/desktop/floor-plan-minimap.tsx` | 左下角鸟瞰与视口框 |
 | `app/pages/desktop/floor_plan.relative-time.ts` | 事件/拉取时间的相对文案与绝对时间格式化 |
+| `app/pages/desktop/floor_plan.export.ts` | 导出包装与导入解析（兼容裸 `FloorPlanState` JSON） |
 
 ## 6. 后端参考
 
@@ -103,6 +110,7 @@
 - [x] 悬停卡片在边缘不被裁切；侧栏可看到与 hover 一致的最近事件信息（有通道时）
 - [x] 滚轮 / 双指缩放可用；已绑定通道显示在线状态（列表能解析时）
 - [x] 首次进入可看到引导（可关闭并记忆）；筛选支持匹配间跳转与框入全部匹配；侧栏可刷新事件并显示相对时间；小地图可点击导航
+- [x] 可导出/导入布局 JSON；浏览模式下筛选快捷键可用
 
 ---
 

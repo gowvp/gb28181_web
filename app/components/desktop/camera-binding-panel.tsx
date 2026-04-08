@@ -139,6 +139,7 @@ export function CameraBindingPanel({
                   <Button type="default" size="small" icon={<ScanSearch className="h-3.5 w-3.5" />} onClick={onFilterFrameAll}>
                     {t("filter_frame_all")}
                   </Button>
+                  <span className="w-full text-[11px] text-gray-400">{t("filter_keyboard_hint")}</span>
                 </>
               ) : (
                 <span className="text-xs text-amber-700">{t("filter_no_matches")}</span>
