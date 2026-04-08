@@ -1,5 +1,5 @@
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Button, Empty, Modal, message } from "antd";
+import { Button, Drawer, Empty, Modal, message } from "antd";
 import {
   Bell,
   Camera,
@@ -15,6 +15,7 @@ import {
   Map as MapIcon,
   MapPinned,
   MousePointer2,
+  PanelRight,
   Pencil,
   Redo2,
   RotateCcw,
@@ -1077,6 +1078,29 @@ interface FloorPlanEditorProps {
  */
 export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorProps) {
   const { t } = useTranslation("desktop");
+
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobileLayout(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileLayout) {
+      setMobilePanelOpen(false);
+    }
+  }, [isMobileLayout]);
+
+  const isMobileLayoutRef = useRef(false);
+  useEffect(() => {
+    isMobileLayoutRef.current = isMobileLayout;
+  }, [isMobileLayout]);
+
   const initialPlan = useMemo(
     () => loadFloorPlanState() ?? createDefaultFloorPlanState(),
     [],
@@ -2333,11 +2357,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   );
 
   /**
-   * 为什么把画布级交互挂在 document 的 mousemove/mouseup 上：
-   * 指针快速拖出 Stage 时仍会丢失事件，墙线/框选/平移必须在全局跟踪，否则出现「松手仍以为在拖」的僵死状态。
+   * 为什么用 Pointer 事件而不是仅 mouse：
+   * 触摸/笔在 Konva 上会合成 mouse 序列，但 document 级 mousemove 在手指移出 Stage 后常不连续，导致平移/框选/画墙在手机上「拖不动」；Pointer 事件把触摸与鼠标统一在同一套 client 坐标里，与桌面逻辑一致。
    */
   useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
+    const handlePointerMove = (event: PointerEvent) => {
       const container = containerRef.current;
       if (!container) {
         return;
@@ -2510,10 +2534,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     };
 
     /**
-     * 为什么在 mouseup 才 commit 拖动历史：
+     * 为什么在 pointerup 才 commit 拖动历史：
      * 拖动过程中用 mutatePlan(..., false) 避免每一步入撤销栈；仅在松手时 pushHistory，撤销一步即可回到拖动前整帧。
      */
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       if (panRef.current) {
         panRef.current = null;
       }
@@ -2580,11 +2604,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
     };
 
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
     };
   }, [
     clearGuides,
@@ -2854,6 +2880,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         }
         pointerWorldRef.current = worldPoint;
         const additive = event.evt.ctrlKey || event.evt.metaKey;
+        // 小屏无修饰键框选几乎不可用，空白处单指拖动改为平移视口，与地图类 App 手势一致；桌面仍保留框选。
+        if (isMobileLayoutRef.current && !additive) {
+          beginPan(event.evt.clientX, event.evt.clientY);
+          return;
+        }
         marqueeRef.current = {
           start: worldPoint,
           current: worldPoint,
@@ -3144,10 +3175,238 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     isEditMode &&
     (canCopySelection || hasClipboard || canGroup || canUngroup);
 
+  /**
+   * 为什么把侧栏抽成内联子组件：
+   * 小屏用底部 Drawer 复用同一段 JSX，避免复制粘贴导致后续改一侧漏改另一侧；大屏仍用固定侧栏，避免抽屉遮挡画布手势。
+   */
+  function SidePanel() {
+    return (
+      <>
+        <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+          <div className="mb-2 text-sm font-semibold text-gray-900">{t("planner_overview")}</div>
+          <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+            <div className="rounded-xl bg-white p-3 shadow-sm">
+              <div className="text-xs text-gray-500">{t("wall_count")}</div>
+              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.walls.length}</div>
+            </div>
+            <div className="rounded-xl bg-white p-3 shadow-sm">
+              <div className="text-xs text-gray-500">{t("camera_count")}</div>
+              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.cameras.length}</div>
+            </div>
+            <div className="col-span-2 rounded-xl bg-white p-3 shadow-sm text-xs text-gray-500">
+              {t("current_scale")}: {(plan.view.scale * 100).toFixed(0)}%
+            </div>
+          </div>
+        </div>
+
+        {isEditMode ? (
+          <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <LayoutTemplate className="h-4 w-4" />
+              {t("preset_shapes")}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <PresetButton label={t("preset_small_room")} onClick={() => insertPreset("small_room")} />
+              <PresetButton label={t("preset_corridor")} onClick={() => insertPreset("corridor")} />
+              <div className="col-span-2">
+                <PresetButton label={t("preset_l_room")} onClick={() => insertPreset("l_room")} />
+              </div>
+            </div>
+            <div className="mt-3 text-xs leading-5 text-gray-500">{t("preset_description")}</div>
+          </div>
+        ) : null}
+
+        <CameraBindingPanel
+          camera={selectedCamera}
+          channelOptions={channelOptions}
+          channelsLoading={channelQuery.isLoading}
+          channelsError={channelQuery.isError ? String(channelQuery.error) : null}
+          interactionMode={interactionMode}
+          channelFilter={channelNameFilter}
+          onChannelFilterChange={setChannelNameFilter}
+          selectedLatestEvent={panelLatestEvent}
+          selectedEventLoading={panelEventLoading}
+          channelOnline={selectedChannelOnline}
+          playbackTo={
+            selectedCamera?.channelId ? buildPlaybackDetailTo(selectedCamera.channelId) : null
+          }
+          alertsTo={
+            selectedCamera?.channelId ? buildAlertsTo(selectedCamera.channelId) : null
+          }
+          eventOccurredAgo={panelEventOccurredAgo}
+          dataFetchedAgo={panelDataFetchedAgo}
+          onRefreshEvent={selectedCamera?.channelId ? refreshPanelEvent : undefined}
+          filterMatchCount={filterMatches.length}
+          filterMatchActiveIndex={filterMatchIndex}
+          onFilterPrev={() => navigateFilterMatch(-1)}
+          onFilterNext={() => navigateFilterMatch(1)}
+          onFilterFrameAll={frameFilterMatches}
+          onBindChannel={(channelId) => {
+            updateSelectedCamera((camera) => {
+              const option = channelOptions.find((item) => item.value === channelId);
+              camera.channelId = channelId;
+              camera.channelName = option?.channelName ?? null;
+              camera.deviceName = option?.deviceName ?? null;
+            });
+          }}
+          onAngleChange={(value) =>
+            updateSelectedCamera((camera) => {
+              camera.angle = value;
+            })
+          }
+          onFovChange={(value) =>
+            updateSelectedCamera((camera) => {
+              camera.fov = value;
+            })
+          }
+          onRangeChange={(value) =>
+            updateSelectedCamera((camera) => {
+              camera.range = value;
+            })
+          }
+          onDelete={deleteSelection}
+        />
+
+        {isBatchSelection ? (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            <div className="mb-1 font-medium text-gray-900">{t("batch_selected")}</div>
+            <div className="mb-2 text-xs text-gray-500">
+              {t("batch_selected_summary", {
+                walls: selectedWallCount,
+                cameras: selectedCameraCount,
+              })}
+            </div>
+            <div className="mb-3 text-xs leading-5 text-gray-500">
+              {selectedGroupIds.length > 0 ? t("grouped_selection_hint") : t("multi_select_hint")}
+            </div>
+            {isBrowseMode ? (
+              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {canGroup ? (
+                  <button
+                    type="button"
+                    onClick={groupSelection}
+                    className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-medium text-white hover:bg-gray-800"
+                  >
+                    {t("group_selection")}
+                  </button>
+                ) : null}
+                {canUngroup ? (
+                  <button
+                    type="button"
+                    onClick={ungroupSelection}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("ungroup_selection")}
+                  </button>
+                ) : null}
+                {canCopySelection ? (
+                  <button
+                    type="button"
+                    onClick={copySelection}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("copy_selection")}
+                  </button>
+                ) : null}
+                {canCopySelection ? (
+                  <button
+                    type="button"
+                    onClick={duplicateSelection}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("duplicate_selection")}
+                  </button>
+                ) : null}
+                {hasClipboard ? (
+                  <button
+                    type="button"
+                    onClick={() => pasteClipboard()}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("paste_selection")}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={deleteSelection}
+                  className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white hover:bg-red-600"
+                >
+                  {t("delete_selected")}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : selectedCamera ? (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
+            <div className="mb-1 font-medium text-gray-900">{t("camera_summary")}</div>
+            <div>
+              {t("direction")}: {formatAngle(selectedCamera.angle)}
+            </div>
+            <div>
+              {t("fov")}: {Math.round(selectedCamera.fov)}°
+            </div>
+            <div>
+              {t("range")}: {Math.round(selectedCamera.range)}
+            </div>
+            <div className="mt-2 text-[11px] text-gray-500">
+              {selectedCamera.groupId ? t("grouped_item_hint") : t("single_item_hint")}
+            </div>
+          </div>
+        ) : selectedWall ? (
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            <div className="mb-1 font-medium text-gray-900">{t("wall_selected")}</div>
+            <div className="mb-2 text-xs text-gray-500">#{selectedWall.id}</div>
+            {isEditMode ? (
+              <div className="mb-3 text-xs leading-5 text-gray-500">{t("wall_edit_tip")}</div>
+            ) : null}
+            <div className="mb-3 text-[11px] leading-5 text-gray-500">
+              {selectedWall.groupId ? t("grouped_item_hint") : t("single_item_hint")}
+            </div>
+            {isBrowseMode ? (
+              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={copySelection}
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+                  >
+                    {t("copy_selection")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={duplicateSelection}
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+                  >
+                    {t("duplicate_selection")}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={deleteSelection}
+                  className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+                >
+                  {t("delete_wall")}
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4">
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("selection_empty_description_v3")} />
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
-    <div className="flex h-full min-h-screen bg-[#f5f7fb] text-gray-900">
-      <div className="relative flex min-w-0 flex-1 flex-col">
-        <div className="absolute left-4 top-4 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-sm backdrop-blur">
+    <div className="flex min-h-[100dvh] min-h-screen flex-col bg-[#f5f7fb] text-gray-900 md:min-h-screen md:flex-row">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="sticky top-0 z-30 flex max-w-[100vw] gap-1.5 overflow-x-auto overflow-y-visible border-b border-gray-200/80 bg-white/95 px-2 py-2 shadow-sm backdrop-blur md:absolute md:left-4 md:right-auto md:top-4 md:max-w-none md:flex-wrap md:gap-2 md:rounded-xl md:border md:p-2 md:shadow-sm">
           <ToolbarButton title={t("dataflow")} onClick={() => onViewModeChange("dataflow")}>
             <Layers className="h-4 w-4" />
           </ToolbarButton>
@@ -3334,6 +3593,18 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           ) : null}
         </div>
 
+        {isMobileLayout ? (
+          <button
+            type="button"
+            onClick={() => setMobilePanelOpen(true)}
+            className="fixed bottom-[max(5rem,env(safe-area-inset-bottom))] right-4 z-40 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white shadow-lg md:hidden"
+            title={t("floor_plan_mobile_panel_open")}
+            aria-label={t("floor_plan_mobile_panel_open")}
+          >
+            <PanelRight className="h-5 w-5 text-gray-800" />
+          </button>
+        ) : null}
+
         <Modal
           open={guideModalOpen}
           title={t("floor_plan_guide_title")}
@@ -3363,13 +3634,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </div>
         </Modal>
 
-        <div className="absolute bottom-4 left-4 z-20 max-w-4xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
+        <div className="absolute bottom-2 left-2 right-2 z-20 max-h-[4.5rem] overflow-y-auto rounded-lg border border-gray-200 bg-white/95 px-2 py-1.5 text-[10px] leading-snug text-gray-600 shadow-sm backdrop-blur sm:bottom-4 sm:left-4 sm:right-auto sm:max-h-none sm:max-w-4xl sm:rounded-xl sm:px-4 sm:py-2 sm:text-xs">
           {interactionMode === "browse"
             ? t("browse_mode_hint")
             : `${toolHint(tool, t)} · ${t("middle_pan_hint")} · ${t("wheel_pinch_zoom_hint")} · ${t("multi_select_hint")} · ${t("box_select_hint")} · ${t("shift_drag_hint")} · ${t("alt_drag_hint")} · ${t("select_all_hint")} · ${t("copy_paste_hint")} · ${t("preset_hint")}`}
         </div>
 
-        <div ref={containerRef} className="relative flex-1 overflow-hidden select-none">
+        <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden select-none touch-pan-y touch-pinch-zoom">
           <Stage
             width={viewportSize.width}
             height={viewportSize.height}
@@ -3632,229 +3903,29 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             viewportHeight={viewportSize.height}
             onCenterWorld={centerViewOnWorld}
             onPanViewByScreenDelta={panViewByScreenDelta}
+            compact={isMobileLayout}
           />
         </div>
       </div>
 
-      <aside className="w-[340px] shrink-0 border-l border-gray-200 bg-white/90 p-4 backdrop-blur">
-        <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-          <div className="mb-2 text-sm font-semibold text-gray-900">{t("planner_overview")}</div>
-          <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-            <div className="rounded-xl bg-white p-3 shadow-sm">
-              <div className="text-xs text-gray-500">{t("wall_count")}</div>
-              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.walls.length}</div>
-            </div>
-            <div className="rounded-xl bg-white p-3 shadow-sm">
-              <div className="text-xs text-gray-500">{t("camera_count")}</div>
-              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.cameras.length}</div>
-            </div>
-            <div className="col-span-2 rounded-xl bg-white p-3 shadow-sm text-xs text-gray-500">
-              {t("current_scale")}: {(plan.view.scale * 100).toFixed(0)}%
-            </div>
+      {!isMobileLayout ? (
+        <aside className="w-[340px] shrink-0 border-l border-gray-200 bg-white/90 p-4 backdrop-blur">
+          <SidePanel />
+        </aside>
+      ) : (
+        <Drawer
+          title={t("floor_plan_mobile_panel_title")}
+          placement="bottom"
+          height="78%"
+          open={mobilePanelOpen}
+          onClose={() => setMobilePanelOpen(false)}
+          styles={{ body: { paddingBottom: "max(1rem, env(safe-area-inset-bottom))" } }}
+        >
+          <div className="pb-2">
+            <SidePanel />
           </div>
-        </div>
-
-        {isEditMode ? (
-          <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
-              <LayoutTemplate className="h-4 w-4" />
-              {t("preset_shapes")}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <PresetButton label={t("preset_small_room")} onClick={() => insertPreset("small_room")} />
-              <PresetButton label={t("preset_corridor")} onClick={() => insertPreset("corridor")} />
-              <div className="col-span-2">
-                <PresetButton label={t("preset_l_room")} onClick={() => insertPreset("l_room")} />
-              </div>
-            </div>
-            <div className="mt-3 text-xs leading-5 text-gray-500">{t("preset_description")}</div>
-          </div>
-        ) : null}
-
-        <CameraBindingPanel
-          camera={selectedCamera}
-          channelOptions={channelOptions}
-          channelsLoading={channelQuery.isLoading}
-          channelsError={channelQuery.isError ? String(channelQuery.error) : null}
-          interactionMode={interactionMode}
-          channelFilter={channelNameFilter}
-          onChannelFilterChange={setChannelNameFilter}
-          selectedLatestEvent={panelLatestEvent}
-          selectedEventLoading={panelEventLoading}
-          channelOnline={selectedChannelOnline}
-          playbackTo={
-            selectedCamera?.channelId ? buildPlaybackDetailTo(selectedCamera.channelId) : null
-          }
-          alertsTo={
-            selectedCamera?.channelId ? buildAlertsTo(selectedCamera.channelId) : null
-          }
-          eventOccurredAgo={panelEventOccurredAgo}
-          dataFetchedAgo={panelDataFetchedAgo}
-          onRefreshEvent={selectedCamera?.channelId ? refreshPanelEvent : undefined}
-          filterMatchCount={filterMatches.length}
-          filterMatchActiveIndex={filterMatchIndex}
-          onFilterPrev={() => navigateFilterMatch(-1)}
-          onFilterNext={() => navigateFilterMatch(1)}
-          onFilterFrameAll={frameFilterMatches}
-          onBindChannel={(channelId) => {
-            updateSelectedCamera((camera) => {
-              const option = channelOptions.find((item) => item.value === channelId);
-              camera.channelId = channelId;
-              camera.channelName = option?.channelName ?? null;
-              camera.deviceName = option?.deviceName ?? null;
-            });
-          }}
-          onAngleChange={(value) =>
-            updateSelectedCamera((camera) => {
-              camera.angle = value;
-            })
-          }
-          onFovChange={(value) =>
-            updateSelectedCamera((camera) => {
-              camera.fov = value;
-            })
-          }
-          onRangeChange={(value) =>
-            updateSelectedCamera((camera) => {
-              camera.range = value;
-            })
-          }
-          onDelete={deleteSelection}
-        />
-
-        {isBatchSelection ? (
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            <div className="mb-1 font-medium text-gray-900">{t("batch_selected")}</div>
-            <div className="mb-2 text-xs text-gray-500">
-              {t("batch_selected_summary", {
-                walls: selectedWallCount,
-                cameras: selectedCameraCount,
-              })}
-            </div>
-            <div className="mb-3 text-xs leading-5 text-gray-500">
-              {selectedGroupIds.length > 0 ? t("grouped_selection_hint") : t("multi_select_hint")}
-            </div>
-            {isBrowseMode ? (
-              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {canGroup ? (
-                  <button
-                    type="button"
-                    onClick={groupSelection}
-                    className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-medium text-white hover:bg-gray-800"
-                  >
-                    {t("group_selection")}
-                  </button>
-                ) : null}
-                {canUngroup ? (
-                  <button
-                    type="button"
-                    onClick={ungroupSelection}
-                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                  >
-                    {t("ungroup_selection")}
-                  </button>
-                ) : null}
-                {canCopySelection ? (
-                  <button
-                    type="button"
-                    onClick={copySelection}
-                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                  >
-                    {t("copy_selection")}
-                  </button>
-                ) : null}
-                {canCopySelection ? (
-                  <button
-                    type="button"
-                    onClick={duplicateSelection}
-                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                  >
-                    {t("duplicate_selection")}
-                  </button>
-                ) : null}
-                {hasClipboard ? (
-                  <button
-                    type="button"
-                    onClick={() => pasteClipboard()}
-                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                  >
-                    {t("paste_selection")}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={deleteSelection}
-                  className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white hover:bg-red-600"
-                >
-                  {t("delete_selected")}
-                </button>
-              </div>
-            )}
-          </div>
-        ) : selectedCamera ? (
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-            <div className="mb-1 font-medium text-gray-900">{t("camera_summary")}</div>
-            <div>
-              {t("direction")}: {formatAngle(selectedCamera.angle)}
-            </div>
-            <div>
-              {t("fov")}: {Math.round(selectedCamera.fov)}°
-            </div>
-            <div>
-              {t("range")}: {Math.round(selectedCamera.range)}
-            </div>
-            <div className="mt-2 text-[11px] text-gray-500">
-              {selectedCamera.groupId ? t("grouped_item_hint") : t("single_item_hint")}
-            </div>
-          </div>
-        ) : selectedWall ? (
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            <div className="mb-1 font-medium text-gray-900">{t("wall_selected")}</div>
-            <div className="mb-2 text-xs text-gray-500">#{selectedWall.id}</div>
-            {isEditMode ? (
-              <div className="mb-3 text-xs leading-5 text-gray-500">{t("wall_edit_tip")}</div>
-            ) : null}
-            <div className="mb-3 text-[11px] leading-5 text-gray-500">
-              {selectedWall.groupId ? t("grouped_item_hint") : t("single_item_hint")}
-            </div>
-            {isBrowseMode ? (
-              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={copySelection}
-                    className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
-                  >
-                    {t("copy_selection")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={duplicateSelection}
-                    className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
-                  >
-                    {t("duplicate_selection")}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={deleteSelection}
-                  className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
-                >
-                  {t("delete_wall")}
-                </button>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("selection_empty_description_v3")} />
-          </div>
-        )}
-      </aside>
+        </Drawer>
+      )}
     </div>
   );
 }
