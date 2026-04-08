@@ -100,6 +100,7 @@
   "edit_mode": "Edit",
   "browse_mode_hint": "Browse: box-select, scroll/pinch to zoom, use the side panel and hover card; Open playback for recordings. Switch to Edit to change the plan.",
   "browse_side_actions_hidden_hint": "In browse mode, copy/delete and other edit actions are hidden. Switch to Edit to use them.",
+  "browse_camera_panel_edit_hidden_hint": "Binding, orientation sliders, and delete are hidden in browse mode. Switch to Edit to change them.",
   "open_playback": "Open playback",
   "open_alerts": "Open alerts",
   "filter_cameras": "Filter cameras",

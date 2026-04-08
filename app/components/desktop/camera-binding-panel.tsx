@@ -177,81 +177,81 @@ export function CameraBindingPanel({
                 {channelOnline === null ? t("channel_online_unknown") : channelOnline ? t("channel_online") : t("channel_offline")}
               </div>
             ) : null}
+            {editLocked ? (
+              <div className="mt-2 text-xs leading-5 text-gray-500">{t("browse_camera_panel_edit_hidden_hint")}</div>
+            ) : null}
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="mb-2 text-sm font-medium text-gray-900">{t("bind_channel")}</div>
-            {channelsLoading ? (
-              <div className="flex min-h-14 items-center justify-center">
-                <Spin size="small" />
-              </div>
-            ) : (
-              <>
-                <Select
-                  className="w-full"
-                  showSearch
-                  allowClear
-                  disabled={editLocked}
-                  placeholder={t("bind_channel_placeholder")}
-                  optionFilterProp="label"
-                  value={camera.channelId ?? undefined}
-                  options={groupedChannelOptions}
-                  onChange={(value) => onBindChannel(value ?? null)}
-                />
+          {editLocked ? null : (
+            <>
+              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="mb-2 text-sm font-medium text-gray-900">{t("bind_channel")}</div>
+                {channelsLoading ? (
+                  <div className="flex min-h-14 items-center justify-center">
+                    <Spin size="small" />
+                  </div>
+                ) : (
+                  <>
+                    <Select
+                      className="w-full"
+                      showSearch
+                      allowClear
+                      placeholder={t("bind_channel_placeholder")}
+                      optionFilterProp="label"
+                      value={camera.channelId ?? undefined}
+                      options={groupedChannelOptions}
+                      onChange={(value) => onBindChannel(value ?? null)}
+                    />
+                    <div className="mt-2 text-xs text-gray-500">
+                      {t("channel_count_loaded", { count: channelOptions.length })}
+                    </div>
+                    {channelsError ? (
+                      <div className="mt-1 text-xs text-amber-600">{t("channel_load_warning")}</div>
+                    ) : null}
+                  </>
+                )}
                 <div className="mt-2 text-xs text-gray-500">
-                  {t("channel_count_loaded", { count: channelOptions.length })}
+                  {camera.channelName || t("camera_unbound")}
                 </div>
-                {channelsError ? (
-                  <div className="mt-1 text-xs text-amber-600">{t("channel_load_warning")}</div>
-                ) : null}
-              </>
-            )}
-            <div className="mt-2 text-xs text-gray-500">
-              {camera.channelName || t("camera_unbound")}
-            </div>
-          </div>
+              </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 text-sm font-medium text-gray-900">{t("direction")}</div>
-            <Slider
-              min={0}
-              max={359}
-              disabled={editLocked}
-              value={camera.angle}
-              onChange={(value) => onAngleChange(Number(value))}
-            />
+              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 text-sm font-medium text-gray-900">{t("direction")}</div>
+                <Slider
+                  min={0}
+                  max={359}
+                  value={camera.angle}
+                  onChange={(value) => onAngleChange(Number(value))}
+                />
 
-            <div className="mb-3 mt-4 text-sm font-medium text-gray-900">{t("fov")}</div>
-            <Slider
-              min={20}
-              max={160}
-              disabled={editLocked}
-              value={camera.fov}
-              onChange={(value) => onFovChange(Number(value))}
-            />
+                <div className="mb-3 mt-4 text-sm font-medium text-gray-900">{t("fov")}</div>
+                <Slider
+                  min={20}
+                  max={160}
+                  value={camera.fov}
+                  onChange={(value) => onFovChange(Number(value))}
+                />
 
-            <div className="mb-3 mt-4 text-sm font-medium text-gray-900">{t("range")}</div>
-            <Slider
-              min={80}
-              max={800}
-              step={10}
-              disabled={editLocked}
-              value={camera.range}
-              onChange={(value) => onRangeChange(Number(value))}
-            />
-          </div>
+                <div className="mb-3 mt-4 text-sm font-medium text-gray-900">{t("range")}</div>
+                <Slider
+                  min={80}
+                  max={800}
+                  step={10}
+                  value={camera.range}
+                  onChange={(value) => onRangeChange(Number(value))}
+                />
+              </div>
 
-          <button
-            type="button"
-            disabled={editLocked}
-            onClick={onDelete}
-            className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
-              editLocked ? "cursor-not-allowed bg-gray-300" : "bg-red-500 hover:bg-red-600"
-            }`}
-          >
-            <Trash2 className="h-4 w-4" />
-            {t("delete_camera")}
-          </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+                {t("delete_camera")}
+              </button>
+            </>
+          )}
         </>
       )}
     </div>
