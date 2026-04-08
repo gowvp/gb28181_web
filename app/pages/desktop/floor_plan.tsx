@@ -2817,6 +2817,19 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
   void historyVersion;
 
+  /**
+   * 为什么按模式/可用性隐藏按钮而不是统一置灰：
+   * 浏览态下大量永不可点的控件只会挤占注意力并让人反复尝试点击；编辑态下随选择动态出现的「撤销/编组」等若常驻禁用，同样像在展示残缺功能。只渲染当前有意义的控件，信息密度更接近用户此刻能做的事。
+   */
+  const isBrowseMode = interactionMode === "browse";
+  const isEditMode = interactionMode === "edit";
+  const showEditToolButtons = isEditMode;
+  const showUndoRedo =
+    isEditMode && (canUndo || canRedo);
+  const showClipboardGroup =
+    isEditMode &&
+    (canCopySelection || hasClipboard || canGroup || canUngroup);
+
   return (
     <div className="flex h-full min-h-screen bg-[#f5f7fb] text-gray-900">
       <div className="relative flex min-w-0 flex-1 flex-col">
@@ -2842,69 +2855,65 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           >
             <Pencil className="h-4 w-4" />
           </ToolbarButton>
-          <div className="mx-1 h-6 w-px bg-gray-200" />
-          <ToolbarButton
-            active={tool === "select"}
-            disabled={interactionMode === "browse"}
-            title={t("select_tool")}
-            onClick={() => setTool("select")}
-          >
-            <MousePointer2 className="h-4 w-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            active={tool === "wall"}
-            disabled={interactionMode === "browse"}
-            title={t("wall_tool")}
-            onClick={() => setTool("wall")}
-          >
-            <Waypoints className="h-4 w-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            active={tool === "room"}
-            disabled={interactionMode === "browse"}
-            title={t("room_tool")}
-            onClick={() => setTool("room")}
-          >
-            <Square className="h-4 w-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            active={tool === "camera"}
-            disabled={interactionMode === "browse"}
-            title={t("camera_tool")}
-            onClick={() => setTool("camera")}
-          >
-            <Camera className="h-4 w-4" />
-          </ToolbarButton>
-          <ToolbarButton
-            active={tool === "pan"}
-            disabled={interactionMode === "browse"}
-            title={t("pan_tool")}
-            onClick={() => setTool("pan")}
-          >
-            <Hand className="h-4 w-4" />
-          </ToolbarButton>
-          <div className="mx-1 h-6 w-px bg-gray-200" />
-          <ToolbarButton disabled={interactionMode === "browse" || !canUndo} title={t("undo")} onClick={undo}>
-            <Undo2 className="h-4 w-4" />
-          </ToolbarButton>
-          <ToolbarButton disabled={interactionMode === "browse" || !canRedo} title={t("redo")} onClick={redo}>
-            <Redo2 className="h-4 w-4" />
-          </ToolbarButton>
-          <CompactActionButton disabled={interactionMode === "browse" || !canCopySelection} onClick={copySelection}>
-            {t("copy_selection")}
-          </CompactActionButton>
-          <CompactActionButton disabled={interactionMode === "browse" || !hasClipboard} onClick={() => pasteClipboard()}>
-            {t("paste_selection")}
-          </CompactActionButton>
-          <CompactActionButton disabled={interactionMode === "browse" || !canCopySelection} onClick={duplicateSelection}>
-            {t("duplicate_selection")}
-          </CompactActionButton>
-          <CompactActionButton disabled={interactionMode === "browse" || !canGroup} onClick={groupSelection}>
-            {t("group_selection")}
-          </CompactActionButton>
-          <CompactActionButton disabled={interactionMode === "browse" || !canUngroup} onClick={ungroupSelection}>
-            {t("ungroup_selection")}
-          </CompactActionButton>
+          {showEditToolButtons ? (
+            <>
+              <div className="mx-1 h-6 w-px bg-gray-200" />
+              <ToolbarButton
+                active={tool === "select"}
+                title={t("select_tool")}
+                onClick={() => setTool("select")}
+              >
+                <MousePointer2 className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton active={tool === "wall"} title={t("wall_tool")} onClick={() => setTool("wall")}>
+                <Waypoints className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton active={tool === "room"} title={t("room_tool")} onClick={() => setTool("room")}>
+                <Square className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton active={tool === "camera"} title={t("camera_tool")} onClick={() => setTool("camera")}>
+                <Camera className="h-4 w-4" />
+              </ToolbarButton>
+              <ToolbarButton active={tool === "pan"} title={t("pan_tool")} onClick={() => setTool("pan")}>
+                <Hand className="h-4 w-4" />
+              </ToolbarButton>
+            </>
+          ) : null}
+          {showUndoRedo ? (
+            <>
+              <div className="mx-1 h-6 w-px bg-gray-200" />
+              {canUndo ? (
+                <ToolbarButton title={t("undo")} onClick={undo}>
+                  <Undo2 className="h-4 w-4" />
+                </ToolbarButton>
+              ) : null}
+              {canRedo ? (
+                <ToolbarButton title={t("redo")} onClick={redo}>
+                  <Redo2 className="h-4 w-4" />
+                </ToolbarButton>
+              ) : null}
+            </>
+          ) : null}
+          {showClipboardGroup ? (
+            <>
+              <div className="mx-1 h-6 w-px bg-gray-200" />
+              {canCopySelection ? (
+                <CompactActionButton onClick={copySelection}>{t("copy_selection")}</CompactActionButton>
+              ) : null}
+              {hasClipboard ? (
+                <CompactActionButton onClick={() => pasteClipboard()}>{t("paste_selection")}</CompactActionButton>
+              ) : null}
+              {canCopySelection ? (
+                <CompactActionButton onClick={duplicateSelection}>{t("duplicate_selection")}</CompactActionButton>
+              ) : null}
+              {canGroup ? (
+                <CompactActionButton onClick={groupSelection}>{t("group_selection")}</CompactActionButton>
+              ) : null}
+              {canUngroup ? (
+                <CompactActionButton onClick={ungroupSelection}>{t("ungroup_selection")}</CompactActionButton>
+              ) : null}
+            </>
+          ) : null}
           <div className="mx-1 h-6 w-px bg-gray-200" />
           <ToolbarButton
             title={t("zoom_out")}
@@ -2962,28 +2971,29 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </Link>
             </>
           ) : null}
-          <ToolbarButton
-            title={t("reset_layout")}
-            disabled={interactionMode === "browse"}
-            onClick={() => {
-              clearFloorPlanState();
-              const next = createDefaultFloorPlanState();
-              historyRef.current = [cloneFloorPlanState(next)];
-              historyIndexRef.current = 0;
-              setHistoryVersion((value) => value + 1);
-              setSelection(null);
-              setWallPreview(null);
-              setRoomPreview(null);
-              wallDrawRef.current = null;
-              roomDrawRef.current = null;
-              dragSelectionRef.current = null;
-              dragWallHandleRef.current = null;
-              clearGuides();
-              replacePlan(next, false);
-            }}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </ToolbarButton>
+          {isEditMode ? (
+            <ToolbarButton
+              title={t("reset_layout")}
+              onClick={() => {
+                clearFloorPlanState();
+                const next = createDefaultFloorPlanState();
+                historyRef.current = [cloneFloorPlanState(next)];
+                historyIndexRef.current = 0;
+                setHistoryVersion((value) => value + 1);
+                setSelection(null);
+                setWallPreview(null);
+                setRoomPreview(null);
+                wallDrawRef.current = null;
+                roomDrawRef.current = null;
+                dragSelectionRef.current = null;
+                dragWallHandleRef.current = null;
+                clearGuides();
+                replacePlan(next, false);
+              }}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </ToolbarButton>
+          ) : null}
         </div>
 
         <div className="absolute bottom-4 left-4 z-20 max-w-4xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
@@ -3265,32 +3275,22 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </div>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <LayoutTemplate className="h-4 w-4" />
-            {t("preset_shapes")}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <PresetButton
-              label={t("preset_small_room")}
-              disabled={interactionMode === "browse"}
-              onClick={() => insertPreset("small_room")}
-            />
-            <PresetButton
-              label={t("preset_corridor")}
-              disabled={interactionMode === "browse"}
-              onClick={() => insertPreset("corridor")}
-            />
-            <div className="col-span-2">
-              <PresetButton
-                label={t("preset_l_room")}
-                disabled={interactionMode === "browse"}
-                onClick={() => insertPreset("l_room")}
-              />
+        {isEditMode ? (
+          <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <LayoutTemplate className="h-4 w-4" />
+              {t("preset_shapes")}
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <PresetButton label={t("preset_small_room")} onClick={() => insertPreset("small_room")} />
+              <PresetButton label={t("preset_corridor")} onClick={() => insertPreset("corridor")} />
+              <div className="col-span-2">
+                <PresetButton label={t("preset_l_room")} onClick={() => insertPreset("l_room")} />
+              </div>
+            </div>
+            <div className="mt-3 text-xs leading-5 text-gray-500">{t("preset_description")}</div>
           </div>
-          <div className="mt-3 text-xs leading-5 text-gray-500">{t("preset_description")}</div>
-        </div>
+        ) : null}
 
         <CameraBindingPanel
           camera={selectedCamera}
@@ -3347,80 +3347,64 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <div className="mb-3 text-xs leading-5 text-gray-500">
               {selectedGroupIds.length > 0 ? t("grouped_selection_hint") : t("multi_select_hint")}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={interactionMode === "browse" || !canGroup}
-                onClick={groupSelection}
-                className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  interactionMode !== "browse" && canGroup
-                    ? "bg-gray-900 text-white hover:bg-gray-800"
-                    : "cursor-not-allowed bg-gray-200 text-gray-400"
-                }`}
-              >
-                {t("group_selection")}
-              </button>
-              <button
-                type="button"
-                disabled={interactionMode === "browse" || !canUngroup}
-                onClick={ungroupSelection}
-                className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  interactionMode !== "browse" && canUngroup
-                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                    : "cursor-not-allowed bg-gray-200 text-gray-400"
-                }`}
-              >
-                {t("ungroup_selection")}
-              </button>
-              <button
-                type="button"
-                disabled={interactionMode === "browse" || !canCopySelection}
-                onClick={copySelection}
-                className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  interactionMode !== "browse" && canCopySelection
-                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                    : "cursor-not-allowed bg-gray-200 text-gray-400"
-                }`}
-              >
-                {t("copy_selection")}
-              </button>
-              <button
-                type="button"
-                disabled={interactionMode === "browse" || !canCopySelection}
-                onClick={duplicateSelection}
-                className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  interactionMode !== "browse" && canCopySelection
-                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                    : "cursor-not-allowed bg-gray-200 text-gray-400"
-                }`}
-              >
-                {t("duplicate_selection")}
-              </button>
-              <button
-                type="button"
-                disabled={interactionMode === "browse" || !hasClipboard}
-                onClick={() => pasteClipboard()}
-                className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  interactionMode !== "browse" && hasClipboard
-                    ? "bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
-                    : "cursor-not-allowed bg-gray-200 text-gray-400"
-                }`}
-              >
-                {t("paste_selection")}
-              </button>
-              <button
-                type="button"
-                disabled={interactionMode === "browse"}
-                onClick={deleteSelection}
-                className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  interactionMode === "browse"
-                    ? "cursor-not-allowed bg-gray-200 text-gray-400"
-                    : "bg-red-500 text-white hover:bg-red-600"
-                }`}
-              >
-                {t("delete_selected")}
-              </button>
-            </div>
+            {isBrowseMode ? (
+              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {canGroup ? (
+                  <button
+                    type="button"
+                    onClick={groupSelection}
+                    className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-medium text-white hover:bg-gray-800"
+                  >
+                    {t("group_selection")}
+                  </button>
+                ) : null}
+                {canUngroup ? (
+                  <button
+                    type="button"
+                    onClick={ungroupSelection}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("ungroup_selection")}
+                  </button>
+                ) : null}
+                {canCopySelection ? (
+                  <button
+                    type="button"
+                    onClick={copySelection}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("copy_selection")}
+                  </button>
+                ) : null}
+                {canCopySelection ? (
+                  <button
+                    type="button"
+                    onClick={duplicateSelection}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("duplicate_selection")}
+                  </button>
+                ) : null}
+                {hasClipboard ? (
+                  <button
+                    type="button"
+                    onClick={() => pasteClipboard()}
+                    className="rounded-lg bg-white px-3 py-2 text-xs font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50"
+                  >
+                    {t("paste_selection")}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={deleteSelection}
+                  className="rounded-lg bg-red-500 px-3 py-2 text-xs font-medium text-white hover:bg-red-600"
+                >
+                  {t("delete_selected")}
+                </button>
+              </div>
+            )}
           </div>
         ) : selectedCamera ? (
           <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
@@ -3442,33 +3426,41 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
             <div className="mb-1 font-medium text-gray-900">{t("wall_selected")}</div>
             <div className="mb-2 text-xs text-gray-500">#{selectedWall.id}</div>
-            <div className="mb-3 text-xs leading-5 text-gray-500">{t("wall_edit_tip")}</div>
+            {isEditMode ? (
+              <div className="mb-3 text-xs leading-5 text-gray-500">{t("wall_edit_tip")}</div>
+            ) : null}
             <div className="mb-3 text-[11px] leading-5 text-gray-500">
               {selectedWall.groupId ? t("grouped_item_hint") : t("single_item_hint")}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={copySelection}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
-              >
-                {t("copy_selection")}
-              </button>
-              <button
-                type="button"
-                onClick={duplicateSelection}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
-              >
-                {t("duplicate_selection")}
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={deleteSelection}
-              className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
-            >
-              {t("delete_wall")}
-            </button>
+            {isBrowseMode ? (
+              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={copySelection}
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+                  >
+                    {t("copy_selection")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={duplicateSelection}
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 transition-colors hover:bg-gray-50"
+                  >
+                    {t("duplicate_selection")}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={deleteSelection}
+                  className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+                >
+                  {t("delete_wall")}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4">

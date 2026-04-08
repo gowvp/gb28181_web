@@ -99,6 +99,7 @@
   "browse_mode": "浏览",
   "edit_mode": "编辑",
   "browse_mode_hint": "浏览模式：可框选、滚轮/双指缩放、查看侧栏与悬停卡片；使用「打开录像」跳转回放。切换到「编辑」可改平面图。",
+  "browse_side_actions_hidden_hint": "当前为浏览模式，复制、删除等编辑操作已隐藏；切换到「编辑」后可使用这些功能。",
   "open_playback": "打开录像",
   "open_alerts": "打开告警",
   "filter_cameras": "筛选摄像头",
