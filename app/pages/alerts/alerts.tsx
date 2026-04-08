@@ -1,12 +1,13 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { DatePicker, Modal, Select, Spin } from "antd";
-import { Masonry } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { AlertThumbnail } from "~/components/alerts/alert-thumbnail";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import {
   FindEvents,
@@ -17,12 +18,13 @@ import type { Event } from "~/service/api/event/state";
 
 const { RangePicker } = DatePicker;
 const PAGE_SIZE = 20;
+/** 虚拟行固定高度（卡片图区 aspect-video + 文案区近似高度） */
+const ROW_HEIGHT = 248;
 
 export default function AlertsView() {
   const { t } = useTranslation("common");
   const [searchParams] = useSearchParams();
 
-  // 筛选状态
   const [selectedChannel, setSelectedChannel] = useState<string>("");
   const [selectedLabel, setSelectedLabel] = useState<string>("");
   const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([
@@ -30,7 +32,6 @@ export default function AlertsView() {
     null,
   ]);
 
-  // 标签选项
   const labelOptions = [
     { label: t("all_labels"), value: "" },
     { label: t("label_person"), value: "person" },
@@ -39,17 +40,37 @@ export default function AlertsView() {
     { label: t("label_dog"), value: "dog" },
   ];
 
-  // 预览状态
   const [previewVisible, setPreviewVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // 滚动容器引用
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
+  const scrollRefCallback = useCallback((node: HTMLDivElement | null) => {
+    scrollContainerRef.current = node;
+    setScrollRoot(node);
+  }, []);
 
-  /**
-   * 为什么从 URL 初始化通道而不是只在组件外传参：
-   * 平面图等入口通过 `/alerts?cid=` 深链接进来时，需与下拉框同一状态源，否则用户会看到列表未筛选但 URL 带参的不一致。
-   */
+  const [columnCount, setColumnCount] = useState(4);
+  useEffect(() => {
+    const updateCols = () => {
+      const w = window.innerWidth;
+      if (w >= 1280) {
+        setColumnCount(5);
+      } else if (w >= 1024) {
+        setColumnCount(4);
+      } else if (w >= 768) {
+        setColumnCount(3);
+      } else if (w >= 640) {
+        setColumnCount(2);
+      } else {
+        setColumnCount(1);
+      }
+    };
+    updateCols();
+    window.addEventListener("resize", updateCols);
+    return () => window.removeEventListener("resize", updateCols);
+  }, []);
+
   useEffect(() => {
     const cid = searchParams.get("cid");
     if (cid) {
@@ -57,7 +78,6 @@ export default function AlertsView() {
     }
   }, [searchParams]);
 
-  // 获取通道列表
   const { data: channelsData } = useQuery({
     queryKey: [findChannelsKey, { page: 1, size: 1000 }],
     queryFn: () => FindChannels({ page: 1, size: 1000 }),
@@ -65,7 +85,6 @@ export default function AlertsView() {
 
   const channels = channelsData?.data?.items || [];
 
-  // 构建查询参数
   const queryParams = useMemo(() => {
     const params: Record<string, unknown> = {
       size: PAGE_SIZE,
@@ -85,7 +104,6 @@ export default function AlertsView() {
     return params;
   }, [selectedChannel, selectedLabel, timeRange]);
 
-  // 无限滚动查询事件列表
   const {
     data: eventsData,
     fetchNextPage,
@@ -116,21 +134,28 @@ export default function AlertsView() {
     initialPageParam: 1,
   });
 
-  // 合并所有页面的事件
   const allEvents = useMemo(() => {
     return eventsData?.pages.flatMap((page) => page.items) || [];
   }, [eventsData]);
 
-  // 事件总数
   const totalEvents = eventsData?.pages[0]?.total || 0;
 
-  // 滚动到底部时加载更多
+  const rowCount = Math.max(0, Math.ceil(allEvents.length / columnCount));
+
+  const virtualizer = useVirtualizer({
+    count: rowCount,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 3,
+  });
+
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
 
     const { scrollTop, scrollHeight, clientHeight } = container;
-    // 当滚动到距离底部 200px 时触发加载
     if (
       scrollHeight - scrollTop - clientHeight < 200 &&
       hasNextPage &&
@@ -148,7 +173,6 @@ export default function AlertsView() {
     }
   }, [handleScroll]);
 
-  // 预览时切换到上一条/下一条
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
@@ -158,16 +182,16 @@ export default function AlertsView() {
   const handleNext = useCallback(() => {
     if (currentIndex < allEvents.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      // 当接近最后一条时自动加载更多
       if (currentIndex >= allEvents.length - 3 && hasNextPage) {
         fetchNextPage();
       }
     }
   }, [currentIndex, allEvents.length, hasNextPage, fetchNextPage]);
 
-  // 键盘导航
   useEffect(() => {
-    if (!previewVisible) return;
+    if (!previewVisible) {
+      return;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
@@ -183,18 +207,15 @@ export default function AlertsView() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [previewVisible, handlePrev, handleNext]);
 
-  // 点击卡片打开预览
   const handleCardClick = (index: number) => {
     setCurrentIndex(index);
     setPreviewVisible(true);
   };
 
-  // 格式化时间
   const formatTime = (timestamp: number) => {
     return dayjs(timestamp).format("YYYY-MM-DD HH:mm:ss");
   };
 
-  // 格式化标签显示
   const formatLabel = (label: string) => {
     const labelMap: Record<string, string> = {
       person: t("label_person"),
@@ -205,67 +226,13 @@ export default function AlertsView() {
     return labelMap[label] || label;
   };
 
-  // 当前预览的事件
   const currentEvent = allEvents[currentIndex];
 
-  // Masonry items 配置 - 使用 data 存储事件数据和索引
-  const masonryItems = allEvents.map((event, index) => ({
-    key: event.id,
-    data: { event, index },
-  }));
-
-  // 使用 itemRender 统一渲染卡片
-  const renderItem = (item: {
-    key: React.Key;
-    data: { event: Event; index: number };
-    index: number;
-  }) => {
-    const { event, index: eventIndex } = item.data;
-    return (
-      <div
-        className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-gray-200"
-        onClick={() => handleCardClick(eventIndex)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            handleCardClick(eventIndex);
-          }
-        }}
-      >
-        {/* 图片 */}
-        <div className="relative aspect-video bg-gray-100">
-          <img
-            src={GetEventImageUrl(event.image_path)}
-            alt={event.label}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
-          {/* 标签角标 */}
-          <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
-            {formatLabel(event.label)}
-          </div>
-          {/* 置信度 */}
-          <div className="absolute top-2 right-2 px-2 py-0.5 bg-emerald-500/80 text-white text-xs rounded">
-            {(event.score * 100).toFixed(0)}%
-          </div>
-        </div>
-        {/* 信息 */}
-        <div className="p-3 space-y-1">
-          <div className="text-sm text-gray-600 truncate">
-            {t("alert_channel")}: {event.cid}
-          </div>
-          <div className="text-xs text-gray-400">
-            {formatTime(event.started_at)}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const virtualItems = virtualizer.getVirtualItems();
 
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col">
-      {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-3 p-4 bg-white border-b border-gray-100">
-        {/* 通道筛选 - 使用 id 作为 cid 进行筛选 */}
         <Select
           placeholder={t("alert_filter_channel")}
           allowClear
@@ -281,7 +248,6 @@ export default function AlertsView() {
           ]}
         />
 
-        {/* 类型筛选 */}
         <Select
           placeholder={t("alert_filter_label")}
           allowClear
@@ -291,7 +257,6 @@ export default function AlertsView() {
           options={labelOptions}
         />
 
-        {/* 时间范围 */}
         <RangePicker
           placeholder={[t("alert_filter_time"), t("alert_filter_time")]}
           value={timeRange}
@@ -321,7 +286,6 @@ export default function AlertsView() {
           ]}
         />
 
-        {/* 刷新按钮 */}
         <button
           type="button"
           onClick={() => refetch()}
@@ -336,11 +300,7 @@ export default function AlertsView() {
         </button>
       </div>
 
-      {/* 瀑布流内容区 */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-auto p-4 bg-gray-50/50"
-      >
+      <div ref={scrollRefCallback} className="flex-1 overflow-auto p-4 bg-gray-50/50">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Spin size="large" />
@@ -351,13 +311,54 @@ export default function AlertsView() {
           </div>
         ) : (
           <>
-            <Masonry
-              columns={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
-              gutter={16}
-              items={masonryItems}
-              itemRender={renderItem}
-            />
-            {/* 加载更多指示器 */}
+            <div
+              className="relative w-full"
+              style={{ height: virtualizer.getTotalSize() }}
+            >
+              {virtualItems.map((virtualRow) => (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  className="absolute left-0 top-0 w-full px-0"
+                  style={{
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <div
+                    className="grid gap-4"
+                    style={{
+                      gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {Array.from({ length: columnCount }).map((_, col) => {
+                      const eventIndex = virtualRow.index * columnCount + col;
+                      if (eventIndex >= allEvents.length) {
+                        return (
+                          <div
+                            key={`pad-${virtualRow.index}-${col}`}
+                            className="min-h-0"
+                          />
+                        );
+                      }
+                      const event = allEvents[eventIndex]!;
+                      const imageUrl = GetEventImageUrl(event.image_path);
+                      return (
+                        <AlertCard
+                          key={event.id}
+                          event={event}
+                          imageUrl={imageUrl}
+                          scrollRoot={scrollRoot}
+                          formatLabel={formatLabel}
+                          formatTime={formatTime}
+                          onOpen={() => handleCardClick(eventIndex)}
+                          t={t}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
             {isFetchingNextPage && (
               <div className="flex justify-center py-4">
                 <Spin />
@@ -367,7 +368,6 @@ export default function AlertsView() {
         )}
       </div>
 
-      {/* 预览弹窗 */}
       <Modal
         open={previewVisible}
         onCancel={() => setPreviewVisible(false)}
@@ -381,7 +381,6 @@ export default function AlertsView() {
       >
         {currentEvent && (
           <div className="relative flex flex-col md:flex-row">
-            {/* 关闭按钮 - 弹窗右上角 */}
             <button
               type="button"
               onClick={() => setPreviewVisible(false)}
@@ -390,16 +389,13 @@ export default function AlertsView() {
               <X className="w-5 h-5 text-white" />
             </button>
 
-            {/* 左侧：图片区域 - 无背景，图片自适应占满 */}
             <div className="relative flex-1 flex items-center justify-center min-h-[400px] md:min-h-[600px] rounded-2xl overflow-hidden">
-              {/* 图片 - 无边距，自适应占满 */}
               <img
                 src={GetEventImageUrl(currentEvent.image_path)}
                 alt={currentEvent.label}
                 className="w-full h-full max-h-[75vh] object-contain"
               />
 
-              {/* 导航按钮 - 上一条（没有上一页时隐藏） */}
               {currentIndex > 0 && (
                 <button
                   type="button"
@@ -410,7 +406,6 @@ export default function AlertsView() {
                 </button>
               )}
 
-              {/* 导航按钮 - 下一条（没有下一页时隐藏） */}
               {(currentIndex < allEvents.length - 1 || hasNextPage) && (
                 <button
                   type="button"
@@ -421,13 +416,11 @@ export default function AlertsView() {
                 </button>
               )}
 
-              {/* 计数器 - 显示真实总数 */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-black/50 text-white text-sm font-medium">
                 {currentIndex + 1} / {totalEvents}
               </div>
             </div>
 
-            {/* 右侧：详情信息 */}
             <div className="w-full md:w-80 p-6 bg-white space-y-4">
               <h3 className="text-lg font-semibold border-b pb-2">
                 {t("alerts")}
@@ -470,7 +463,60 @@ export default function AlertsView() {
   );
 }
 
-// 信息行组件
+function AlertCard({
+  event,
+  imageUrl,
+  scrollRoot,
+  formatLabel,
+  formatTime,
+  onOpen,
+  t,
+}: {
+  event: Event;
+  imageUrl: string;
+  scrollRoot: HTMLElement | null;
+  formatLabel: (label: string) => string;
+  formatTime: (timestamp: number) => string;
+  onOpen: () => void;
+  t: (key: string) => string;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-gray-200 min-w-0"
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          onOpen();
+        }
+      }}
+    >
+      <div className="relative">
+        <AlertThumbnail
+          originalUrl={imageUrl}
+          scrollRoot={scrollRoot}
+          alt={event.label}
+        />
+        <div className="pointer-events-none absolute top-2 left-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+          {formatLabel(event.label)}
+        </div>
+        <div className="pointer-events-none absolute top-2 right-2 rounded bg-emerald-500/80 px-2 py-0.5 text-xs text-white">
+          {(event.score * 100).toFixed(0)}%
+        </div>
+      </div>
+      <div className="p-3 space-y-1">
+        <div className="text-sm text-gray-600 truncate">
+          {t("alert_channel")}: {event.cid}
+        </div>
+        <div className="text-xs text-gray-400">
+          {formatTime(event.started_at)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-start">
