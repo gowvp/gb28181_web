@@ -211,3 +211,32 @@ export function saveFloorPlanInteractionMode(mode: FloorPlanInteractionMode) {
     console.warn("[floor-plan] failed to save interaction mode", error);
   }
 }
+
+export const FLOOR_PLAN_GUIDE_DISMISSED_KEY = "desktop-floor-plan-guide-dismissed";
+
+/**
+ * 为什么首次引导单独持久化：
+ * 与平面图 JSON 无关，只表示用户已读过说明；放进 plan 会随撤销/清空布局误删提示状态，独立 key 更稳。
+ */
+export function loadFloorPlanGuideDismissed(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  try {
+    return window.localStorage.getItem(FLOOR_PLAN_GUIDE_DISMISSED_KEY) === "1";
+  } catch (error) {
+    console.warn("[floor-plan] failed to read guide dismissed flag", error);
+    return true;
+  }
+}
+
+export function saveFloorPlanGuideDismissed() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(FLOOR_PLAN_GUIDE_DISMISSED_KEY, "1");
+  } catch (error) {
+    console.warn("[floor-plan] failed to save guide dismissed flag", error);
+  }
+}

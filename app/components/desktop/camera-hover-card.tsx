@@ -67,6 +67,8 @@ export function CameraHoverCard({
   alertsTo = null,
   onCardPointerEnter,
   onCardPointerLeave,
+  eventOccurredAgo = "",
+  dataFetchedAgo = "",
 }: {
   camera: CameraMarker;
   latestEvent: LatestCameraEvent | null;
@@ -81,6 +83,10 @@ export function CameraHoverCard({
   /** 鼠标移入卡片时取消「离开摄像头」的延时清除，否则移向按钮途中卡片会消失 */
   onCardPointerEnter?: () => void;
   onCardPointerLeave?: () => void;
+  /** 由父组件用当前时间与事件 startedAt 算出，避免卡片内再挂定时器 */
+  eventOccurredAgo?: string;
+  /** 本次卡片数据完成请求的时间，用于提示「缓存可能滞后」 */
+  dataFetchedAgo?: string;
 }) {
   const { t } = useTranslation("desktop");
 
@@ -173,6 +179,9 @@ export function CameraHoverCard({
               <span className="font-medium text-gray-900">{t("event_time")}: </span>
               {formatEventTime(latestEvent.startedAt)}
             </div>
+            {eventOccurredAgo ? (
+              <div className="text-[11px] text-gray-500">{t("event_occurred_ago", { ago: eventOccurredAgo })}</div>
+            ) : null}
           </div>
         </>
       ) : (
@@ -180,6 +189,13 @@ export function CameraHoverCard({
           {t("no_ai_event")}
         </div>
       )}
+      {!loading && dataFetchedAgo ? (
+        <div
+          className={`text-[11px] text-gray-400 ${latestEvent || !camera.channelId ? "mt-2 border-t border-gray-100 pt-2" : "mt-2 text-center"}`}
+        >
+          {t("data_fetched_ago", { ago: dataFetchedAgo })}
+        </div>
+      ) : null}
     </div>
   );
 

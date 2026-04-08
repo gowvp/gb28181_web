@@ -50,6 +50,13 @@
 - [x] 跳转实现使用 **`<Link to={{ pathname, search }}>`**（与 `buildPlaybackDetailTo` / `buildAlertsTo`），避免在 `basename`（如 `/web`）下 `navigate` 字符串与 query 解析不一致导致「点了不跳」
 - [x] 悬停卡片 **Portal + `fixed` + z-index 高于 FAB**，离开摄像头 **短延时清除** + 移入卡片取消清除，避免被右下角菜单占位挡住或移向按钮时卡片消失
 
+### 阶段 E — 前端体验增强（不接后端存储）
+
+- [x] **首次引导**：`Modal` + `localStorage` 键 `desktop-floor-plan-guide-dismissed`；顶栏地图钉可再次打开
+- [x] **筛选导航**：匹配列表 **上一条 / 下一条**（自动选中并居中）、**框入全部匹配**（仅缩放至匹配摄像头包围盒）
+- [x] **事件可信度**：侧栏 **刷新**（`clearLatestCameraEventCache` + 重拉）；悬停卡片与侧栏展示 **事件发生相对时间** 与 **数据拉取相对时间**（30s tick）
+- [x] **鸟瞰小地图**：`FloorPlanMinimap` 点击平移视口；顶栏 **框选全部已绑定摄像头**（`zoomToFitCameras`）
+
 ## 5. 关键文件
 
 | 文件 | 职责 |
@@ -65,10 +72,27 @@
 | `app/service/api/event/event.ts` | `MapEventToLatestChannelEvent` 与单通道/批量字段一致 |
 | `app/components/desktop/camera-hover-card.tsx` | 悬停卡片 |
 | `app/components/desktop/camera-binding-panel.tsx` | 绑定与参数、侧栏最近事件展示 |
+| `app/components/desktop/floor-plan-minimap.tsx` | 左下角鸟瞰与视口框 |
+| `app/pages/desktop/floor_plan.relative-time.ts` | 事件/拉取时间的相对文案与绝对时间格式化 |
 
 ## 6. 后端参考
 
 事件、通道等与 [gowvp/owl](https://github.com/gowvp/owl) 对齐；前端通过现有 `FindEvents` / `FindPlannerChannelOptions` 等调用。
+
+## 6.1 若需后端配合（交接用，当前未实现）
+
+以下能力前端已用现有接口「尽力而为」；要进一步降延迟、减流量或做多端同步，建议 owl 侧迭代：
+
+1. **按通道批量查询最近事件**  
+   - **问题**：现用全局 `FindEvents` 分页在客户端按 `cid` 归并，通道多时页数多、延迟高。  
+   - **建议**：`POST /api/.../events/latest-by-cids`，body `{ cids: string[] }`，返回每通道一条最新记录（与现有单通道字段一致）。可选 `since` 支持增量。
+
+2. **平面图布局云端存储**  
+   - **问题**：`localStorage` 无法跨浏览器/团队共享，清缓存即丢。  
+   - **建议**：资源模型如 `floor_plan`：`tenant_id`、`name`、`state_json`（或版本化 blob）、`updated_at`；REST `GET/PUT` 或按用户默认布局单例。
+
+3. **导出 / 导入 JSON（纯前端也可做）**  
+   - 若需审计与备份，可增加后端「上传布局快照」存对象存储，与 2 类似。
 
 ## 7. 验收清单（2D）
 
@@ -78,6 +102,7 @@
 - [x] 已绑定通道的摄像头可从平面图进入录像详情（当日日期）
 - [x] 悬停卡片在边缘不被裁切；侧栏可看到与 hover 一致的最近事件信息（有通道时）
 - [x] 滚轮 / 双指缩放可用；已绑定通道显示在线状态（列表能解析时）
+- [x] 首次进入可看到引导（可关闭并记忆）；筛选支持匹配间跳转与框入全部匹配；侧栏可刷新事件并显示相对时间；小地图可点击导航
 
 ---
 

@@ -1,18 +1,23 @@
 import type { KonvaEventObject } from "konva/lib/Node";
-import { Empty } from "antd";
+import { Button, Empty, Modal } from "antd";
 import {
   Bell,
   Camera,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   ExternalLink,
+  Focus,
   Hand,
   Layers,
   LayoutTemplate,
   Map as MapIcon,
+  MapPinned,
   MousePointer2,
   Pencil,
   Redo2,
   RotateCcw,
+  ScanSearch,
   Square,
   Undo2,
   WandSparkles,
@@ -43,6 +48,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { CameraBindingPanel } from "~/components/desktop/camera-binding-panel";
 import { CameraHoverCard } from "~/components/desktop/camera-hover-card";
+import { FloorPlanMinimap } from "~/components/desktop/floor-plan-minimap";
 import {
   FindPlannerChannelOptions,
   findPlannerChannelOptionsKey,
@@ -55,14 +61,17 @@ import {
   cloneFloorPlanState,
   createCameraMarker,
   createDefaultFloorPlanState,
+  loadFloorPlanGuideDismissed,
   loadFloorPlanInteractionMode,
   loadFloorPlanState,
   normalizeFloorPlanState,
+  saveFloorPlanGuideDismissed,
   saveFloorPlanInteractionMode,
   saveFloorPlanState,
   type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
-import { getLatestCameraEvent, prefetchLatestEventsForChannelIds } from "./floor_plan.events";
+import { clearLatestCameraEventCache, getLatestCameraEvent, prefetchLatestEventsForChannelIds } from "./floor_plan.events";
+import { formatTimeAgoFromMs } from "./floor_plan.relative-time";
 import { buildAlertsTo } from "./floor_plan.alerts";
 import { buildPlaybackDetailTo } from "./floor_plan.playback";
 import type {
@@ -411,6 +420,24 @@ function getPlanBounds(plan: FloorPlanState) {
     minY: Math.min(...points.map((point) => point.y)),
     maxX: Math.max(...points.map((point) => point.x)),
     maxY: Math.max(...points.map((point) => point.y)),
+  };
+}
+
+/**
+ * 为什么摄像头单独算包围盒：
+ * 「只看机位」的适配不应被远处墙线拉大视野，否则用户放大找探头时一键适配又回到全图，违背「聚焦绑定通道」的运维路径。
+ */
+function getCamerasBounds(cameras: CameraMarker[]) {
+  if (cameras.length === 0) {
+    return null;
+  }
+  const xs = cameras.map((camera) => camera.x);
+  const ys = cameras.map((camera) => camera.y);
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
   };
 }
 
@@ -1081,8 +1108,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   );
   const interactionModeRef = useRef(interactionMode);
   const [channelNameFilter, setChannelNameFilter] = useState("");
+  const [filterMatchIndex, setFilterMatchIndex] = useState(0);
+  const [guideModalOpen, setGuideModalOpen] = useState(false);
   const [panelLatestEvent, setPanelLatestEvent] = useState<LatestCameraEvent | null>(null);
   const [panelEventLoading, setPanelEventLoading] = useState(false);
+  const [panelEventFetchedAt, setPanelEventFetchedAt] = useState<number | null>(null);
+  const [panelEventRefreshToken, setPanelEventRefreshToken] = useState(0);
+  const [hoverEventFetchedAt, setHoverEventFetchedAt] = useState<number | null>(null);
+  const [relativeTimeTick, setRelativeTimeTick] = useState(0);
   const [hasClipboard, setHasClipboard] = useState(false);
   const [alignmentGuides, setAlignmentGuides] = useState<PlannerGuides>({
     vertical: [],
@@ -1313,6 +1346,48 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     },
     [cameraFilterTrim],
   );
+
+  const filterMatches = useMemo(() => {
+    if (!cameraFilterTrim) {
+      return [];
+    }
+    return plan.cameras.filter((camera) => cameraMatchesFilter(camera));
+  }, [cameraFilterTrim, cameraMatchesFilter, plan.cameras]);
+
+  useEffect(() => {
+    setFilterMatchIndex(0);
+  }, [cameraFilterTrim]);
+
+  useEffect(() => {
+    if (filterMatches.length === 0) {
+      return;
+    }
+    setFilterMatchIndex((index) => Math.min(index, filterMatches.length - 1));
+  }, [filterMatches.length]);
+
+  const boundCamerasForOverview = useMemo(
+    () => plan.cameras.filter((camera) => Boolean(camera.channelId)),
+    [plan.cameras],
+  );
+
+  useEffect(() => {
+    if (loadFloorPlanGuideDismissed()) {
+      return;
+    }
+    setGuideModalOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setRelativeTimeTick((value) => value + 1);
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const relativeTimeNow = useMemo(() => Date.now(), [relativeTimeTick]);
 
   const canUndo = historyIndexRef.current > 0;
   const canRedo = historyIndexRef.current < historyRef.current.length - 1;
@@ -1581,6 +1656,105 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   }, [replacePlan, viewportSize.height, viewportSize.width]);
 
   /**
+   * 为什么「只看摄像头」单独一条缩放路径：
+   * 墙线往往铺满整张世界画布，与全图适配等价于 zoom out 到几乎看不清探头；运维查机位时更需要围绕绑定通道的点阵取景。
+   */
+  const zoomToFitCameras = useCallback(
+    (cameras: CameraMarker[]) => {
+      const bounds = getCamerasBounds(cameras);
+      if (!bounds) {
+        return;
+      }
+      const pad = FLOOR_PLAN_GRID_SIZE * 6;
+      const width = Math.max(240, bounds.maxX - bounds.minX + pad * 2);
+      const height = Math.max(240, bounds.maxY - bounds.minY + pad * 2);
+      const scale = clamp(
+        Math.min(viewportSize.width / width, viewportSize.height / height),
+        0.35,
+        2.4,
+      );
+      replacePlan(
+        {
+          ...planRef.current,
+          view: {
+            scale,
+            x: viewportSize.width / 2 - ((bounds.minX + bounds.maxX) / 2) * scale,
+            y: viewportSize.height / 2 - ((bounds.minY + bounds.maxY) / 2) * scale,
+          },
+        },
+        false,
+      );
+    },
+    [replacePlan, viewportSize.height, viewportSize.width],
+  );
+
+  const centerViewOnWorld = useCallback(
+    (worldX: number, worldY: number) => {
+      const view = planRef.current.view;
+      replacePlan(
+        {
+          ...planRef.current,
+          view: {
+            ...view,
+            x: viewportSize.width / 2 - worldX * view.scale,
+            y: viewportSize.height / 2 - worldY * view.scale,
+          },
+        },
+        false,
+      );
+    },
+    [replacePlan, viewportSize.height, viewportSize.width],
+  );
+
+  const navigateFilterMatch = useCallback(
+    (delta: number) => {
+      if (filterMatches.length === 0) {
+        return;
+      }
+      const next = (filterMatchIndex + delta + filterMatches.length) % filterMatches.length;
+      setFilterMatchIndex(next);
+      const target = filterMatches[next];
+      if (target) {
+        setSelection(createSelection([], [target.id]));
+        centerViewOnWorld(target.x, target.y);
+      }
+    },
+    [centerViewOnWorld, filterMatchIndex, filterMatches],
+  );
+
+  const frameFilterMatches = useCallback(() => {
+    if (filterMatches.length === 0) {
+      return;
+    }
+    zoomToFitCameras(filterMatches);
+  }, [filterMatches, zoomToFitCameras]);
+
+  const hoverCardEventAgo = useMemo(
+    () =>
+      hoverEvent?.startedAt
+        ? formatTimeAgoFromMs(hoverEvent.startedAt, relativeTimeNow, t)
+        : "",
+    [hoverEvent?.startedAt, relativeTimeNow, t],
+  );
+  const hoverCardDataAgo = useMemo(
+    () =>
+      hoverEventFetchedAt ? formatTimeAgoFromMs(hoverEventFetchedAt, relativeTimeNow, t) : "",
+    [hoverEventFetchedAt, relativeTimeNow, t],
+  );
+  const panelEventOccurredAgo = useMemo(
+    () =>
+      panelLatestEvent?.startedAt
+        ? formatTimeAgoFromMs(panelLatestEvent.startedAt, relativeTimeNow, t)
+        : "",
+    [panelLatestEvent?.startedAt, relativeTimeNow, t],
+  );
+  const panelDataFetchedAgo = useMemo(
+    () =>
+      panelEventFetchedAt ? formatTimeAgoFromMs(panelEventFetchedAt, relativeTimeNow, t) : "",
+    [panelEventFetchedAt, relativeTimeNow, t],
+  );
+
+  /**
    * 为什么属性面板只改「当前选中的单个摄像头」：
    * 批量选中时 FOV 等参数语义不明确（是否应用全部），限制为单选避免静默改多机位引发事故。
    */
@@ -1826,6 +2000,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     if (!selectedCamera?.channelId) {
       setPanelLatestEvent(null);
       setPanelEventLoading(false);
+      setPanelEventFetchedAt(null);
       return;
     }
 
@@ -1838,13 +2013,22 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (!cancelled) {
         setPanelLatestEvent(latest);
         setPanelEventLoading(false);
+        setPanelEventFetchedAt(Date.now());
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [selectedCamera?.channelId, selectedCamera?.id]);
+  }, [selectedCamera?.channelId, selectedCamera?.id, panelEventRefreshToken]);
+
+  const refreshPanelEvent = useCallback(() => {
+    if (!selectedCamera?.channelId) {
+      return;
+    }
+    clearLatestCameraEventCache(selectedCamera.channelId);
+    setPanelEventRefreshToken((value) => value + 1);
+  }, [selectedCamera?.channelId]);
 
   /**
    * 为什么 hover 拉事件后写回 camera 上的 latest* 字段：
@@ -1855,10 +2039,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (!camera?.channelId) {
         setHoverEvent(null);
         setHoverLoading(false);
+        setHoverEventFetchedAt(null);
         return;
       }
 
       setHoverEvent(null);
+      setHoverEventFetchedAt(null);
       setHoverLoading(true);
       try {
         const latest = await getLatestCameraEvent(camera.channelId);
@@ -1880,6 +2066,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         }, false);
       } finally {
         setHoverLoading(false);
+        setHoverEventFetchedAt(Date.now());
       }
     },
     [mutatePlan],
@@ -2855,6 +3042,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           >
             <Pencil className="h-4 w-4" />
           </ToolbarButton>
+          <ToolbarButton title={t("floor_plan_help_tooltip")} onClick={() => setGuideModalOpen(true)}>
+            <MapPinned className="h-4 w-4" />
+          </ToolbarButton>
           {showEditToolButtons ? (
             <>
               <div className="mx-1 h-6 w-px bg-gray-200" />
@@ -2952,6 +3142,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           <ToolbarButton title={t("zoom_to_fit")} onClick={zoomToFit}>
             <WandSparkles className="h-4 w-4" />
           </ToolbarButton>
+          {boundCamerasForOverview.length > 0 ? (
+            <ToolbarButton title={t("zoom_to_fit_cameras")} onClick={() => zoomToFitCameras(boundCamerasForOverview)}>
+              <Focus className="h-4 w-4" />
+            </ToolbarButton>
+          ) : null}
           {selectedPlaybackTo && selectedAlertsTo ? (
             <>
               <div className="mx-1 h-6 w-px bg-gray-200" />
@@ -2995,6 +3190,34 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             </ToolbarButton>
           ) : null}
         </div>
+
+        <Modal
+          open={guideModalOpen}
+          title={t("floor_plan_guide_title")}
+          onCancel={() => {
+            setGuideModalOpen(false);
+            saveFloorPlanGuideDismissed();
+          }}
+          footer={
+            <Button
+              type="primary"
+              onClick={() => {
+                setGuideModalOpen(false);
+                saveFloorPlanGuideDismissed();
+              }}
+            >
+              {t("floor_plan_guide_ok")}
+            </Button>
+          }
+        >
+          <div className="space-y-3 text-sm text-gray-600">
+            <p>{t("floor_plan_guide_browse_edit")}</p>
+            <p>{t("floor_plan_guide_filter_nav")}</p>
+            <p>{t("floor_plan_guide_event_refresh")}</p>
+            <p>{t("floor_plan_guide_minimap")}</p>
+            <p className="text-xs text-gray-400">{t("floor_plan_guide_storage_note")}</p>
+          </div>
+        </Modal>
 
         <div className="absolute bottom-4 left-4 z-20 max-w-4xl rounded-xl border border-gray-200 bg-white/95 px-4 py-2 text-xs text-gray-600 shadow-sm backdrop-blur">
           {interactionMode === "browse"
@@ -3252,8 +3475,19 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               alertsTo={
                 hoveredCamera.channelId ? buildAlertsTo(hoveredCamera.channelId) : null
               }
+              eventOccurredAgo={hoverCardEventAgo}
+              dataFetchedAgo={hoverLoading ? "" : hoverCardDataAgo}
             />
           ) : null}
+
+          <FloorPlanMinimap
+            walls={plan.walls}
+            cameras={plan.cameras}
+            view={plan.view}
+            viewportWidth={viewportSize.width}
+            viewportHeight={viewportSize.height}
+            onCenterWorld={centerViewOnWorld}
+          />
         </div>
       </div>
 
@@ -3309,6 +3543,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           alertsTo={
             selectedCamera?.channelId ? buildAlertsTo(selectedCamera.channelId) : null
           }
+          eventOccurredAgo={panelEventOccurredAgo}
+          dataFetchedAgo={panelDataFetchedAgo}
+          onRefreshEvent={selectedCamera?.channelId ? refreshPanelEvent : undefined}
+          filterMatchCount={filterMatches.length}
+          filterMatchActiveIndex={filterMatchIndex}
+          onFilterPrev={() => navigateFilterMatch(-1)}
+          onFilterNext={() => navigateFilterMatch(1)}
+          onFilterFrameAll={frameFilterMatches}
           onBindChannel={(channelId) => {
             updateSelectedCamera((camera) => {
               const option = channelOptions.find((item) => item.value === channelId);

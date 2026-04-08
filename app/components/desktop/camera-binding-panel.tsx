@@ -1,11 +1,12 @@
-import { Input, Select, Slider, Spin } from "antd";
-import { Bell, ExternalLink, Trash2 } from "lucide-react";
+import { Button, Input, Select, Slider, Spin } from "antd";
+import { Bell, ChevronLeft, ChevronRight, ExternalLink, RefreshCw, ScanSearch, Trash2 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import type { CameraMarker, LatestCameraEvent } from "~/pages/desktop/floor_plan.types";
 import type { FlatDeviceChannelOption } from "~/service/api/device/device";
 import type { FloorPlanInteractionMode } from "~/pages/desktop/floor_plan.storage";
+import { formatEventTimeAbsolute } from "~/pages/desktop/floor_plan.relative-time";
 
 /**
  * 为什么要用“设备名称”而不是 device_id 做分组主键：
@@ -61,6 +62,14 @@ export function CameraBindingPanel({
   channelOnline = null,
   playbackTo = null,
   alertsTo = null,
+  eventOccurredAgo = "",
+  dataFetchedAgo = "",
+  onRefreshEvent,
+  filterMatchCount = 0,
+  filterMatchActiveIndex = 0,
+  onFilterPrev,
+  onFilterNext,
+  onFilterFrameAll,
 }: {
   camera: CameraMarker | null;
   channelOptions: FlatDeviceChannelOption[];
@@ -79,6 +88,14 @@ export function CameraBindingPanel({
   channelOnline?: boolean | null;
   playbackTo?: { pathname: string; search: string } | null;
   alertsTo?: { pathname: string; search: string } | null;
+  eventOccurredAgo?: string;
+  dataFetchedAgo?: string;
+  onRefreshEvent?: () => void;
+  filterMatchCount?: number;
+  filterMatchActiveIndex?: number;
+  onFilterPrev?: () => void;
+  onFilterNext?: () => void;
+  onFilterFrameAll?: () => void;
 }) {
   const { t } = useTranslation("desktop");
 
@@ -88,6 +105,12 @@ export function CameraBindingPanel({
   );
 
   const editLocked = interactionMode === "browse";
+
+  const filterTrimmed = channelFilter.trim();
+  const showFilterNav =
+    Boolean(onChannelFilterChange) &&
+    Boolean(filterTrimmed) &&
+    Boolean(onFilterPrev && onFilterNext && onFilterFrameAll);
 
   return (
     <div className="space-y-4">
@@ -101,6 +124,27 @@ export function CameraBindingPanel({
             onChange={(e) => onChannelFilterChange(e.target.value)}
           />
           <div className="mt-2 text-xs text-gray-500">{t("filter_cameras_hint")}</div>
+          {showFilterNav ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+              {filterMatchCount > 0 ? (
+                <>
+                  <span className="text-xs text-gray-600">
+                    {t("filter_match_position", {
+                      current: filterMatchActiveIndex + 1,
+                      total: filterMatchCount,
+                    })}
+                  </span>
+                  <Button type="default" size="small" icon={<ChevronLeft className="h-3.5 w-3.5" />} onClick={onFilterPrev} title={t("filter_prev_match")} />
+                  <Button type="default" size="small" icon={<ChevronRight className="h-3.5 w-3.5" />} onClick={onFilterNext} title={t("filter_next_match")} />
+                  <Button type="default" size="small" icon={<ScanSearch className="h-3.5 w-3.5" />} onClick={onFilterFrameAll}>
+                    {t("filter_frame_all")}
+                  </Button>
+                </>
+              ) : (
+                <span className="text-xs text-amber-700">{t("filter_no_matches")}</span>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -108,7 +152,17 @@ export function CameraBindingPanel({
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm font-semibold text-gray-900">{t("panel_latest_ai_event")}</div>
-            <div className="flex flex-wrap justify-end gap-1">
+            <div className="flex flex-wrap items-center justify-end gap-1">
+              {camera.channelId && onRefreshEvent ? (
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<RefreshCw className="h-3.5 w-3.5" />}
+                  loading={selectedEventLoading}
+                  onClick={onRefreshEvent}
+                  title={t("refresh_event_tooltip")}
+                />
+              ) : null}
               {camera.channelId && alertsTo ? (
                 <Link
                   to={alertsTo}
@@ -151,10 +205,29 @@ export function CameraBindingPanel({
                 <span className="font-medium text-gray-900">{t("latest_ai_event")}: </span>
                 {selectedLatestEvent.label}
               </div>
+              <div>
+                <span className="font-medium text-gray-900">{t("event_time")}: </span>
+                {formatEventTimeAbsolute(selectedLatestEvent.startedAt)}
+              </div>
+              <div>
+                <span className="font-medium text-gray-900">{t("score")}: </span>
+                {(selectedLatestEvent.score * 100).toFixed(1)}%
+              </div>
+              {eventOccurredAgo ? (
+                <div className="text-[11px] text-gray-500">{t("event_occurred_ago", { ago: eventOccurredAgo })}</div>
+              ) : null}
+              {dataFetchedAgo ? (
+                <div className="text-[11px] text-gray-400">{t("data_fetched_ago", { ago: dataFetchedAgo })}</div>
+              ) : null}
             </div>
           ) : (
-            <div className="rounded-lg bg-gray-50 px-3 py-3 text-center text-sm text-gray-500">
-              {camera.channelId ? t("no_ai_event") : t("camera_unbound")}
+            <div className="space-y-2">
+              <div className="rounded-lg bg-gray-50 px-3 py-3 text-center text-sm text-gray-500">
+                {camera.channelId ? t("no_ai_event") : t("camera_unbound")}
+              </div>
+              {camera.channelId && dataFetchedAgo ? (
+                <div className="text-center text-[11px] text-gray-400">{t("data_fetched_ago", { ago: dataFetchedAgo })}</div>
+              ) : null}
             </div>
           )}
         </div>
