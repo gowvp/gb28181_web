@@ -1,5 +1,4 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { DatePicker, Modal, Select, Spin } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -20,6 +19,8 @@ const { RangePicker } = DatePicker;
 const PAGE_SIZE = 20;
 /** 虚拟行固定高度（卡片图区 aspect-video + 文案区近似高度） */
 const ROW_HEIGHT = 248;
+/** 视口外多渲染的行数，减少快速滚动白屏 */
+const VIRTUAL_OVERSCAN_ROWS = 3;
 
 export default function AlertsView() {
   const { t } = useTranslation("common");
@@ -142,22 +143,34 @@ export default function AlertsView() {
 
   const rowCount = Math.max(0, Math.ceil(allEvents.length / columnCount));
 
-  const virtualizer = useVirtualizer({
-    count: rowCount,
-    getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 3,
-  });
+  const [scrollTop, setScrollTop] = useState(0);
+  const [layoutTick, setLayoutTick] = useState(0);
+
+  const visibleRowRange = useMemo(() => {
+    const el = scrollContainerRef.current;
+    if (!el || rowCount === 0) {
+      return { startRow: 0, endRow: -1 };
+    }
+    const viewH = el.clientHeight;
+    const first = Math.floor(scrollTop / ROW_HEIGHT);
+    const last = Math.ceil((scrollTop + viewH) / ROW_HEIGHT) - 1;
+    const startRow = Math.max(0, first - VIRTUAL_OVERSCAN_ROWS);
+    const endRow = Math.min(rowCount - 1, last + VIRTUAL_OVERSCAN_ROWS);
+    return { startRow, endRow };
+  }, [scrollTop, rowCount, layoutTick]);
+
+  const totalListHeight = rowCount * ROW_HEIGHT;
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) {
       return;
     }
+    setScrollTop(container.scrollTop);
 
-    const { scrollTop, scrollHeight, clientHeight } = container;
+    const { scrollTop: st, scrollHeight, clientHeight } = container;
     if (
-      scrollHeight - scrollTop - clientHeight < 200 &&
+      scrollHeight - st - clientHeight < 200 &&
       hasNextPage &&
       !isFetchingNextPage
     ) {
@@ -168,10 +181,29 @@ export default function AlertsView() {
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (container) {
-      container.addEventListener("scroll", handleScroll);
+      container.addEventListener("scroll", handleScroll, { passive: true });
       return () => container.removeEventListener("scroll", handleScroll);
     }
   }, [handleScroll]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+    const ro = new ResizeObserver(() => {
+      setLayoutTick((value) => value + 1);
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      setScrollTop(container.scrollTop);
+    }
+  }, [allEvents.length, columnCount]);
 
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
@@ -228,7 +260,13 @@ export default function AlertsView() {
 
   const currentEvent = allEvents[currentIndex];
 
-  const virtualItems = virtualizer.getVirtualItems();
+  const visibleRows = useMemo(() => {
+    const { startRow, endRow } = visibleRowRange;
+    if (endRow < startRow) {
+      return [];
+    }
+    return Array.from({ length: endRow - startRow + 1 }, (_, index) => startRow + index);
+  }, [visibleRowRange]);
 
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col">
@@ -311,17 +349,14 @@ export default function AlertsView() {
           </div>
         ) : (
           <>
-            <div
-              className="relative w-full"
-              style={{ height: virtualizer.getTotalSize() }}
-            >
-              {virtualItems.map((virtualRow) => (
+            <div className="relative w-full" style={{ height: totalListHeight }}>
+              {visibleRows.map((rowIndex) => (
                 <div
-                  key={virtualRow.key}
-                  data-index={virtualRow.index}
+                  key={rowIndex}
+                  data-index={rowIndex}
                   className="absolute left-0 top-0 w-full px-0"
                   style={{
-                    transform: `translateY(${virtualRow.start}px)`,
+                    transform: `translateY(${rowIndex * ROW_HEIGHT}px)`,
                   }}
                 >
                   <div
@@ -331,11 +366,11 @@ export default function AlertsView() {
                     }}
                   >
                     {Array.from({ length: columnCount }).map((_, col) => {
-                      const eventIndex = virtualRow.index * columnCount + col;
+                      const eventIndex = rowIndex * columnCount + col;
                       if (eventIndex >= allEvents.length) {
                         return (
                           <div
-                            key={`pad-${virtualRow.index}-${col}`}
+                            key={`pad-${rowIndex}-${col}`}
                             className="min-h-0"
                           />
                         );
