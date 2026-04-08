@@ -76,23 +76,22 @@ function runCompressInWorker(url: string): Promise<{ buffer: ArrayBuffer; mimeTy
 
 type QueuedJob = {
   url: string;
-  priority: number;
   resolve: (v: { buffer: ArrayBuffer; mimeType: string }) => void;
   reject: (e: Error) => void;
 };
 
-const waitQueue: QueuedJob[] = [];
+/** 视口优先：先处理 priority 0，避免每帧对整队列 sort */
+const queueHigh: QueuedJob[] = [];
+const queueLow: QueuedJob[] = [];
 let inFlightFromQueue = 0;
 const MAX_CONCURRENT = 4;
 
-/**
- * 为什么再套一层「视口优先」队列：
- * p-limit 只保证并发数，不保证顺序；滚动时若先压入屏幕下方任务，会拖慢当前屏缩略图。数字越小越优先（0=视口内，1=预加载带）。
- */
 function pumpQueue() {
-  while (inFlightFromQueue < MAX_CONCURRENT && waitQueue.length > 0) {
-    waitQueue.sort((a, b) => a.priority - b.priority);
-    const job = waitQueue.shift()!;
+  while (inFlightFromQueue < MAX_CONCURRENT) {
+    const job = queueHigh.shift() ?? queueLow.shift();
+    if (!job) {
+      break;
+    }
     inFlightFromQueue += 1;
     runCompressInWorker(job.url)
       .then(job.resolve, job.reject)
@@ -104,14 +103,19 @@ function pumpQueue() {
 }
 
 /**
- * 对外统一入口：并发≤4，且视口任务优先于仅预加载任务。
+ * 对外入口：priority 0=当前屏优先，1=预加载；全局并发≤4。
  */
 export function requestCompressedThumb(
   url: string,
   priority: number = 1,
 ): Promise<{ buffer: ArrayBuffer; mimeType: string }> {
   return new Promise((resolve, reject) => {
-    waitQueue.push({ url, priority, resolve, reject });
+    const job = { url, resolve, reject };
+    if (priority <= 0) {
+      queueHigh.push(job);
+    } else {
+      queueLow.push(job);
+    }
     pumpQueue();
   });
 }

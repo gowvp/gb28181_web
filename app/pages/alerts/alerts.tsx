@@ -3,7 +3,7 @@ import { DatePicker, Modal, Select, Spin } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { ChevronLeft, ChevronRight, RefreshCw, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AlertThumbnail } from "~/components/alerts/alert-thumbnail";
@@ -19,8 +19,8 @@ const { RangePicker } = DatePicker;
 const PAGE_SIZE = 20;
 /** 虚拟行固定高度（卡片图区 aspect-video + 文案区近似高度） */
 const ROW_HEIGHT = 248;
-/** 视口外多渲染的行数，减少快速滚动白屏 */
-const VIRTUAL_OVERSCAN_ROWS = 3;
+/** 视口外多渲染的行数（略小可减少同时挂载的缩略图解码压力） */
+const VIRTUAL_OVERSCAN_ROWS = 2;
 
 export default function AlertsView() {
   const { t } = useTranslation("common");
@@ -45,11 +45,8 @@ export default function AlertsView() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
-  const scrollRefCallback = useCallback((node: HTMLDivElement | null) => {
-    scrollContainerRef.current = node;
-    setScrollRoot(node);
-  }, []);
+  const scrollTopRef = useRef(0);
+  const rafScrollRef = useRef<number | null>(null);
 
   const [columnCount, setColumnCount] = useState(4);
   useEffect(() => {
@@ -143,30 +140,50 @@ export default function AlertsView() {
 
   const rowCount = Math.max(0, Math.ceil(allEvents.length / columnCount));
 
-  const [scrollTop, setScrollTop] = useState(0);
-  const [layoutTick, setLayoutTick] = useState(0);
-
-  const visibleRowRange = useMemo(() => {
-    const el = scrollContainerRef.current;
-    if (!el || rowCount === 0) {
-      return { startRow: 0, endRow: -1 };
-    }
-    const viewH = el.clientHeight;
-    const first = Math.floor(scrollTop / ROW_HEIGHT);
-    const last = Math.ceil((scrollTop + viewH) / ROW_HEIGHT) - 1;
-    const startRow = Math.max(0, first - VIRTUAL_OVERSCAN_ROWS);
-    const endRow = Math.min(rowCount - 1, last + VIRTUAL_OVERSCAN_ROWS);
-    return { startRow, endRow };
-  }, [scrollTop, rowCount, layoutTick]);
+  const [visibleRange, setVisibleRange] = useState({ startRow: 0, endRow: 0 });
 
   const totalListHeight = rowCount * ROW_HEIGHT;
+
+  /**
+   * 为什么用 ref + rAF + 仅范围变化才 setState：
+   * 原先每次 scroll 都 setScrollTop 会整页 React 重渲染，滚动跟手性变差；合并到帧末且比较前后行区间可砍掉 90%+ 无效渲染。
+   */
+  const updateVisibleRange = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el || rowCount === 0) {
+      setVisibleRange((prev) =>
+        prev.startRow === 0 && prev.endRow === -1 ? prev : { startRow: 0, endRow: -1 },
+      );
+      return;
+    }
+    const st = scrollTopRef.current;
+    const viewH = el.clientHeight;
+    const first = Math.floor(st / ROW_HEIGHT);
+    const last = Math.ceil((st + viewH) / ROW_HEIGHT) - 1;
+    const startRow = Math.max(0, first - VIRTUAL_OVERSCAN_ROWS);
+    const endRow = Math.min(rowCount - 1, last + VIRTUAL_OVERSCAN_ROWS);
+    setVisibleRange((prev) => {
+      if (prev.startRow === startRow && prev.endRow === endRow) {
+        return prev;
+      }
+      return { startRow, endRow };
+    });
+  }, [rowCount]);
 
   const handleScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) {
       return;
     }
-    setScrollTop(container.scrollTop);
+    scrollTopRef.current = container.scrollTop;
+
+    if (rafScrollRef.current != null) {
+      cancelAnimationFrame(rafScrollRef.current);
+    }
+    rafScrollRef.current = requestAnimationFrame(() => {
+      rafScrollRef.current = null;
+      updateVisibleRange();
+    });
 
     const { scrollTop: st, scrollHeight, clientHeight } = container;
     if (
@@ -176,7 +193,7 @@ export default function AlertsView() {
     ) {
       fetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, updateVisibleRange]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -192,18 +209,19 @@ export default function AlertsView() {
       return;
     }
     const ro = new ResizeObserver(() => {
-      setLayoutTick((value) => value + 1);
+      updateVisibleRange();
     });
     ro.observe(container);
     return () => ro.disconnect();
-  }, []);
+  }, [updateVisibleRange]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (container) {
-      setScrollTop(container.scrollTop);
+      scrollTopRef.current = container.scrollTop;
     }
-  }, [allEvents.length, columnCount]);
+    updateVisibleRange();
+  }, [allEvents.length, columnCount, rowCount, updateVisibleRange]);
 
   const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
@@ -239,34 +257,37 @@ export default function AlertsView() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [previewVisible, handlePrev, handleNext]);
 
-  const handleCardClick = (index: number) => {
+  const openCard = useCallback((index: number) => {
     setCurrentIndex(index);
     setPreviewVisible(true);
-  };
+  }, []);
 
-  const formatTime = (timestamp: number) => {
+  const formatTime = useCallback((timestamp: number) => {
     return dayjs(timestamp).format("YYYY-MM-DD HH:mm:ss");
-  };
+  }, []);
 
-  const formatLabel = (label: string) => {
-    const labelMap: Record<string, string> = {
-      person: t("label_person"),
-      car: t("label_car"),
-      cat: t("label_cat"),
-      dog: t("label_dog"),
-    };
-    return labelMap[label] || label;
-  };
+  const formatLabel = useCallback(
+    (label: string) => {
+      const labelMap: Record<string, string> = {
+        person: t("label_person"),
+        car: t("label_car"),
+        cat: t("label_cat"),
+        dog: t("label_dog"),
+      };
+      return labelMap[label] || label;
+    },
+    [t],
+  );
 
   const currentEvent = allEvents[currentIndex];
 
   const visibleRows = useMemo(() => {
-    const { startRow, endRow } = visibleRowRange;
-    if (endRow < startRow) {
+    const { startRow, endRow } = visibleRange;
+    if (rowCount === 0 || endRow < startRow) {
       return [];
     }
     return Array.from({ length: endRow - startRow + 1 }, (_, index) => startRow + index);
-  }, [visibleRowRange]);
+  }, [visibleRange, rowCount]);
 
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col">
@@ -338,7 +359,7 @@ export default function AlertsView() {
         </button>
       </div>
 
-      <div ref={scrollRefCallback} className="flex-1 overflow-auto p-4 bg-gray-50/50">
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto p-4 bg-gray-50/50">
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Spin size="large" />
@@ -382,10 +403,10 @@ export default function AlertsView() {
                           key={event.id}
                           event={event}
                           imageUrl={imageUrl}
-                          scrollRoot={scrollRoot}
                           formatLabel={formatLabel}
                           formatTime={formatTime}
-                          onOpen={() => handleCardClick(eventIndex)}
+                          eventIndex={eventIndex}
+                          onOpen={openCard}
                           t={t}
                         />
                       );
@@ -498,41 +519,41 @@ export default function AlertsView() {
   );
 }
 
-function AlertCard({
+const AlertCard = memo(function AlertCard({
   event,
   imageUrl,
-  scrollRoot,
   formatLabel,
   formatTime,
+  eventIndex,
   onOpen,
   t,
 }: {
   event: Event;
   imageUrl: string;
-  scrollRoot: HTMLElement | null;
   formatLabel: (label: string) => string;
   formatTime: (timestamp: number) => string;
-  onOpen: () => void;
+  eventIndex: number;
+  onOpen: (index: number) => void;
   t: (key: string) => string;
 }) {
+  const handleActivate = useCallback(() => {
+    onOpen(eventIndex);
+  }, [onOpen, eventIndex]);
+
   return (
     <div
       role="button"
       tabIndex={0}
       className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-gray-200 min-w-0"
-      onClick={onOpen}
+      onClick={handleActivate}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          onOpen();
+          handleActivate();
         }
       }}
     >
       <div className="relative">
-        <AlertThumbnail
-          originalUrl={imageUrl}
-          scrollRoot={scrollRoot}
-          alt={event.label}
-        />
+        <AlertThumbnail originalUrl={imageUrl} eager alt={event.label} />
         <div className="pointer-events-none absolute top-2 left-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
           {formatLabel(event.label)}
         </div>
@@ -550,7 +571,7 @@ function AlertCard({
       </div>
     </div>
   );
-}
+});
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
