@@ -170,6 +170,7 @@ export function FloorPlanMinimap({
             strokeWidth={worldW / 400}
           />
         ))}
+        {/* 视口框：non-scaling + 约 1px，避免 world 坐标 strokeWidth 在缩放后变成十几像素粗边 */}
         <rect
           x={Math.max(0, vpLeft)}
           y={Math.max(0, vpTop)}
@@ -177,7 +178,7 @@ export function FloorPlanMinimap({
           height={Math.min(worldH, vpH)}
           fill="rgba(59,130,246,0.12)"
           stroke="#2563eb"
-          strokeWidth={worldW / 200}
+          strokeWidth={1.25}
           vectorEffect="non-scaling-stroke"
           pointerEvents="none"
         />
