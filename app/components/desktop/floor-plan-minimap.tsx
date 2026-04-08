@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import type { CameraMarker, FloorWall, PlannerView } from "~/pages/desktop/floor_plan.types";
 import { FLOOR_PLAN_WORLD_HEIGHT, FLOOR_PLAN_WORLD_WIDTH } from "~/pages/desktop/floor_plan.storage";
 
-const MAP_W = 168;
-const MAP_H = 105;
+const MAP_W_DEFAULT = 168;
+const MAP_H_DEFAULT = 105;
+const MAP_W_COMPACT = 128;
+const MAP_H_COMPACT = 80;
 const DRAG_THRESHOLD_PX = 5;
 
 type FloorPlanMinimapProps = {
@@ -15,6 +17,8 @@ type FloorPlanMinimapProps = {
   viewportHeight: number;
   onCenterWorld: (worldX: number, worldY: number) => void;
   onPanViewByScreenDelta: (dx: number, dy: number) => void;
+  /** 小屏缩小尺寸并上移，避免与底部提示条、安全区重叠 */
+  compact?: boolean;
 };
 
 /**
@@ -31,9 +35,13 @@ export function FloorPlanMinimap({
   viewportHeight,
   onCenterWorld,
   onPanViewByScreenDelta,
+  compact = false,
 }: FloorPlanMinimapProps) {
   const { t } = useTranslation("desktop");
   const [isDragging, setIsDragging] = useState(false);
+
+  const MAP_W = compact ? MAP_W_COMPACT : MAP_W_DEFAULT;
+  const MAP_H = compact ? MAP_H_COMPACT : MAP_H_DEFAULT;
 
   const worldW = FLOOR_PLAN_WORLD_WIDTH;
   const worldH = FLOOR_PLAN_WORLD_HEIGHT;
@@ -120,7 +128,9 @@ export function FloorPlanMinimap({
 
   return (
     <div
-      className="pointer-events-auto absolute bottom-24 left-4 z-30 flex flex-col gap-1 rounded-lg border border-gray-200 bg-white/95 p-1.5 shadow-md backdrop-blur"
+      className={`pointer-events-auto absolute left-4 z-30 flex flex-col gap-1 rounded-lg border border-gray-200 bg-white/95 p-1.5 shadow-md backdrop-blur ${
+        compact ? "bottom-[max(6.5rem,env(safe-area-inset-bottom))]" : "bottom-24"
+      }`}
       title={t("minimap_hint")}
     >
       <div className="text-[10px] font-medium text-gray-500">{t("minimap_title")}</div>

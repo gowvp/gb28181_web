@@ -491,7 +491,10 @@ export default function DesktopView() {
   }, [data]);
 
   return (
-    <div className="h-screen w-screen relative" style={{ background: "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)" }}>
+    <div
+      className="relative h-[100dvh] min-h-screen w-screen md:h-screen"
+      style={{ background: "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)" }}
+    >
       <style>
         {`.react-flow__attribution { display: none !important; }`}
       </style>
