@@ -73,6 +73,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      // 绑定 0.0.0.0，手机/同网段设备可通过本机局域网 IP 访问；仅 localhost 时 yarn dev 无法从其他机器打开
+      host: true,
       proxy: {
         // 所有 API 请求统一使用 /api 前缀
         // 前端调用 /api/xxx，代理到后端的 /xxx
