@@ -118,7 +118,7 @@
   "floor_plan_mobile_panel_title": "Floor plan panel",
   "floor_plan_guide_title": "2D floor plan quick guide",
   "floor_plan_guide_ok": "Got it",
-  "floor_plan_guide_browse_edit": "Browse is for viewing and opening playback/alerts; Edit changes walls, bindings, and orientation. Reopen this anytime from the map-pin button in the toolbar.",
+  "floor_plan_guide_browse_edit": "Browse is for viewing and opening playback/alerts; Edit changes walls, bindings, and orientation. On phones, Edit is the default and the side panel opens once on first visit to make channel binding obvious. Reopen this anytime from the map-pin button in the toolbar.",
   "floor_plan_guide_filter_nav": "After typing in the filter, use previous/next to jump between matches, or “Frame all matches” to zoom them into view.",
   "floor_plan_guide_event_refresh": "Panel and hover card show event time and how long ago data was fetched; use refresh in the panel to request again (still subject to API and cache).",
   "floor_plan_guide_minimap": "The minimap at the lower left moves the viewport when you click; the rectangle is the visible area.",

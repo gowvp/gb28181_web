@@ -58,6 +58,8 @@ import {
 } from "~/service/api/device/device";
 import {
   FLOOR_PLAN_GRID_SIZE,
+  FLOOR_PLAN_VIEW_SCALE_MAX,
+  FLOOR_PLAN_VIEW_SCALE_MIN,
   FLOOR_PLAN_WORLD_HEIGHT,
   FLOOR_PLAN_WORLD_WIDTH,
   clearFloorPlanState,
@@ -68,6 +70,7 @@ import {
   loadFloorPlanInteractionMode,
   loadFloorPlanState,
   normalizeFloorPlanState,
+  FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY,
   saveFloorPlanGuideDismissed,
   saveFloorPlanInteractionMode,
   saveFloorPlanState,
@@ -97,6 +100,21 @@ const ALIGNMENT_SNAP_THRESHOLD = FLOOR_PLAN_GRID_SIZE * 0.45;
  * react-konva 在虚线 Line 等场景会用内部 canvas 做纹理；Stage 为 0×0 时衍生 canvas 仍为 0，浏览器 drawImage 抛 InvalidStateError，整棵 FloorPlanEditor 被 ErrorBoundary 卸掉，hover 按钮随之失效。
  */
 const KONVA_MIN_STAGE_SIZE = 1;
+
+/**
+ * 为什么最小缩放随视口变：
+ * 固定 0.35 时世界宽 3200、手机屏宽约 400，整图所需比例约 0.12，用户捏合到 0.35 仍看不全图，误以为「缩不动了」。
+ */
+function minScaleToFitEntireWorld(viewportW: number, viewportH: number) {
+  const w = Math.max(KONVA_MIN_STAGE_SIZE, viewportW);
+  const h = Math.max(KONVA_MIN_STAGE_SIZE, viewportH);
+  return Math.min(w / FLOOR_PLAN_WORLD_WIDTH, h / FLOOR_PLAN_WORLD_HEIGHT);
+}
+
+function clampViewScale(scale: number, viewportW: number, viewportH: number) {
+  const floor = Math.min(FLOOR_PLAN_VIEW_SCALE_MIN, minScaleToFitEntireWorld(viewportW, viewportH));
+  return clamp(scale, floor, FLOOR_PLAN_VIEW_SCALE_MAX);
+}
 
 type SelectionDragSnapshot = {
   wallIds: string[];
@@ -350,11 +368,13 @@ function zoomViewAtScreenPoint(
   screenX: number,
   screenY: number,
   factor: number,
+  viewportW: number,
+  viewportH: number,
 ): FloorPlanState {
   const { view } = plan;
   const worldX = (screenX - view.x) / view.scale;
   const worldY = (screenY - view.y) / view.scale;
-  const newScale = clamp(view.scale * factor, 0.35, 3.2);
+  const newScale = clampViewScale(view.scale * factor, viewportW, viewportH);
   return {
     ...plan,
     view: {
@@ -1126,14 +1146,50 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     height: number;
   } | null>(null);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
+  const viewportSizeRef = useRef(viewportSize);
+  useEffect(() => {
+    viewportSizeRef.current = viewportSize;
+  }, [viewportSize]);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [hoveredCameraId, setHoveredCameraId] = useState<string | null>(null);
   const [hoverEvent, setHoverEvent] = useState<LatestCameraEvent | null>(null);
   const [hoverLoading, setHoverLoading] = useState(false);
-  const [interactionMode, setInteractionMode] = useState<FloorPlanInteractionMode>(() =>
-    loadFloorPlanInteractionMode(),
-  );
+  const [interactionMode, setInteractionMode] = useState<FloorPlanInteractionMode>(() => {
+    const saved = loadFloorPlanInteractionMode();
+    if (typeof window === "undefined") {
+      return saved;
+    }
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    if (
+      mobile &&
+      saved === "browse" &&
+      !window.localStorage.getItem(FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY)
+    ) {
+      try {
+        window.localStorage.setItem(FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY, "1");
+      } catch {
+        /* noop */
+      }
+      saveFloorPlanInteractionMode("edit");
+      return "edit";
+    }
+    return saved;
+  });
   const interactionModeRef = useRef(interactionMode);
+  const mobilePanelPrimedRef = useRef(false);
+
+  /**
+   * 为什么首次进入小屏时自动打开侧栏：
+   * 通道绑定与编辑控件全在侧栏 Drawer 内，用户若停留在浏览态或不知道右下角按钮，会误以为「手机不能绑通道」；首屏展开一次降低发现成本，之后仍可随时关闭。
+   */
+  useEffect(() => {
+    if (!isMobileLayout || mobilePanelPrimedRef.current || interactionMode !== "edit") {
+      return;
+    }
+    mobilePanelPrimedRef.current = true;
+    setMobilePanelOpen(true);
+  }, [interactionMode, isMobileLayout]);
+
   const [channelNameFilter, setChannelNameFilter] = useState("");
   const [filterMatchIndex, setFilterMatchIndex] = useState(0);
   const [guideModalOpen, setGuideModalOpen] = useState(false);
@@ -1471,7 +1527,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       const sy = event.clientY - rect.top;
       const delta = -event.deltaY;
       const factor = Math.exp(delta * 0.0012);
-      replacePlan(zoomViewAtScreenPoint(planRef.current, sx, sy, factor), false);
+      const { width: vw, height: vh } = viewportSizeRef.current;
+      replacePlan(zoomViewAtScreenPoint(planRef.current, sx, sy, factor, vw, vh), false);
     };
 
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -1519,7 +1576,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           return;
         }
         const { startDist, startScale } = pinchRef.current;
-        const newScale = clamp(startScale * (mid.dist / startDist), 0.35, 3.2);
+        const { width: vw, height: vh } = viewportSizeRef.current;
+        const newScale = clampViewScale(startScale * (mid.dist / startDist), vw, vh);
         const view = planRef.current.view;
         const worldX = (mid.mx - view.x) / view.scale;
         const worldY = (mid.my - view.y) / view.scale;
@@ -1663,10 +1721,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     const bounds = getPlanBounds(planRef.current);
     const width = Math.max(240, bounds.maxX - bounds.minX + 280);
     const height = Math.max(240, bounds.maxY - bounds.minY + 280);
-    const scale = clamp(
+    const scale = clampViewScale(
       Math.min(viewportSize.width / width, viewportSize.height / height),
-      0.35,
-      2.4,
+      viewportSize.width,
+      viewportSize.height,
     );
 
     replacePlan(
@@ -1695,10 +1753,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       const pad = FLOOR_PLAN_GRID_SIZE * 6;
       const width = Math.max(240, bounds.maxX - bounds.minX + pad * 2);
       const height = Math.max(240, bounds.maxY - bounds.minY + pad * 2);
-      const scale = clamp(
+      const scale = clampViewScale(
         Math.min(viewportSize.width / width, viewportSize.height / height),
-        0.35,
-        2.4,
+        viewportSize.width,
+        viewportSize.height,
       );
       replacePlan(
         {
@@ -3542,7 +3600,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   ...plan,
                   view: {
                     ...plan.view,
-                    scale: clamp(plan.view.scale - 0.15, 0.35, 3.2),
+                    scale: clampViewScale(
+                      plan.view.scale - 0.15,
+                      viewportSize.width,
+                      viewportSize.height,
+                    ),
                   },
                 },
                 false,
@@ -3559,7 +3621,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   ...plan,
                   view: {
                     ...plan.view,
-                    scale: clamp(plan.view.scale + 0.15, 0.35, 3.2),
+                    scale: clampViewScale(
+                      plan.view.scale + 0.15,
+                      viewportSize.width,
+                      viewportSize.height,
+                    ),
                   },
                 },
                 false,

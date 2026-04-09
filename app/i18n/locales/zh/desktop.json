@@ -118,7 +118,7 @@
   "floor_plan_mobile_panel_title": "平面图侧栏",
   "floor_plan_guide_title": "2D 平面图快速说明",
   "floor_plan_guide_ok": "知道了",
-  "floor_plan_guide_browse_edit": "「浏览」用于日常查看与跳转录像/告警；「编辑」用于改墙线、绑通道与调朝向。可随时用顶栏地图钉按钮再次打开本说明。",
+  "floor_plan_guide_browse_edit": "「浏览」用于日常查看与跳转录像/告警；「编辑」用于改墙线、绑通道与调朝向。手机端默认进入编辑，侧栏首次会自动展开便于绑定通道。可随时用顶栏地图钉按钮再次打开本说明。",
   "floor_plan_guide_filter_nav": "右侧筛选框输入名称后，可用上一条/下一条在匹配摄像头间跳转，「框入全部匹配」可一次缩放到所有匹配机位。",
   "floor_plan_guide_event_refresh": "侧栏与悬停卡片会显示事件时间与「数据多久前拉取」；侧栏可点刷新重新请求（仍受接口与缓存影响）。",
   "floor_plan_guide_minimap": "左下角小地图可点击快速平移视口；矩形框表示当前可见范围。",

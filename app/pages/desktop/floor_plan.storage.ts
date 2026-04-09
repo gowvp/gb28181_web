@@ -5,6 +5,10 @@ export const FLOOR_PLAN_GRID_SIZE = 40;
 export const FLOOR_PLAN_WORLD_WIDTH = 3200;
 export const FLOOR_PLAN_WORLD_HEIGHT = 2000;
 
+/** 与编辑器 clamp 一致；下限低于 0.35 以便窄屏整图缩放不被存储层截断 */
+export const FLOOR_PLAN_VIEW_SCALE_MIN = 0.08;
+export const FLOOR_PLAN_VIEW_SCALE_MAX = 3.2;
+
 /**
  * 为什么单独抽出数值归一化：
  * 本地存储里的旧布局可能来自不同版本，直接在读取点散落做判断既容易漏掉边界，
@@ -122,7 +126,11 @@ export function normalizeFloorPlanState(input: unknown): FloorPlanState {
     view: {
       x: normalizeFiniteNumber(rawView?.x, fallback.view.x),
       y: normalizeFiniteNumber(rawView?.y, fallback.view.y),
-      scale: clamp(normalizeFiniteNumber(rawView?.scale, fallback.view.scale), 0.35, 3.2),
+      scale: clamp(
+        normalizeFiniteNumber(rawView?.scale, fallback.view.scale),
+        FLOOR_PLAN_VIEW_SCALE_MIN,
+        FLOOR_PLAN_VIEW_SCALE_MAX,
+      ),
     },
     updatedAt: normalizeFiniteNumber(value.updatedAt, Date.now()),
   };
@@ -211,6 +219,9 @@ export function saveFloorPlanInteractionMode(mode: FloorPlanInteractionMode) {
     console.warn("[floor-plan] failed to save interaction mode", error);
   }
 }
+
+export const FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY =
+  "desktop-floor-plan-mobile-browse-to-edit-migrated-v1";
 
 export const FLOOR_PLAN_GUIDE_DISMISSED_KEY = "desktop-floor-plan-guide-dismissed";
 
