@@ -99,7 +99,7 @@
   "channel_load_warning": "The channel list may be incomplete. The current result already falls back to the safest available data.",
   "browse_mode": "Browse",
   "edit_mode": "Edit",
-  "browse_mode_hint": "Browse: on phones drag with one finger to pan, pinch to zoom; on desktop box-select. Open the side panel from the bottom-right button; Open playback for recordings. Switch to Edit to change the plan.",
+  "browse_mode_hint": "Browse: on phones drag with one finger on empty canvas or on markers to pan, pinch to zoom; on desktop box-select. Open the side panel from the bottom-right button; Open playback for recordings. Switch to Edit to change the plan.",
   "browse_side_actions_hidden_hint": "In browse mode, copy/delete and other edit actions are hidden. Switch to Edit to use them.",
   "browse_camera_panel_edit_hidden_hint": "Binding, orientation sliders, and delete are hidden in browse mode. Switch to Edit to change them.",
   "open_playback": "Open playback",

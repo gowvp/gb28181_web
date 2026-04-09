@@ -2846,7 +2846,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 为什么指针坐标统一走 clientToWorld + snap：
    * 所有工具共享同一套坐标变换，避免墙线端点与摄像头放置出现系统性半格偏差。
    */
-  const resolvePointerWorld = useCallback((event: MouseEvent) => {
+  const resolvePointerWorld = useCallback((event: Pick<MouseEvent, "clientX" | "clientY">) => {
     const container = containerRef.current;
     if (!container) {
       return null;
@@ -2857,32 +2857,31 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   }, []);
 
   /**
-   * 为什么 Stage 的 mousedown 要分流工具与中键：
-   * 画布空白处行为完全由当前工具决定，若放到子图形上处理会漏掉「点在空白」的路径；中键平移需优先于绘制避免浏览器默认滚动。
+   * 为什么抽出与 Konva 事件类型无关的按下逻辑：
+   * Stage 与子节点统一用 pointer 入口时，触摸与鼠标共用一套分支；坐标与 button 语义与 MouseEvent 对齐即可复用。
    */
-  const handleStageMouseDown = useCallback(
-    (event: KonvaEventObject<MouseEvent>) => {
-      if (event.evt.button === 1 || (tool === "pan" && event.evt.button === 0)) {
-        event.evt.preventDefault();
-        beginPan(event.evt.clientX, event.evt.clientY);
+  const applyStagePointerDown = useCallback(
+    (evt: Pick<MouseEvent, "clientX" | "clientY" | "button" | "ctrlKey" | "metaKey">) => {
+      if (evt.button === 1 || (tool === "pan" && evt.button === 0)) {
+        beginPan(evt.clientX, evt.clientY);
         return;
       }
 
-      if (event.evt.button !== 0) {
+      if (evt.button !== 0) {
         return;
       }
 
       if (interactionModeRef.current === "browse") {
         clearGuides();
-        const worldPoint = resolvePointerWorld(event.evt);
+        const worldPoint = resolvePointerWorld(evt);
         if (!worldPoint) {
           return;
         }
         pointerWorldRef.current = worldPoint;
-        const additive = event.evt.ctrlKey || event.evt.metaKey;
+        const additive = evt.ctrlKey || evt.metaKey;
         // 小屏无修饰键框选几乎不可用，空白处单指拖动改为平移视口，与地图类 App 手势一致；桌面仍保留框选。
         if (isMobileLayoutRef.current && !additive) {
-          beginPan(event.evt.clientX, event.evt.clientY);
+          beginPan(evt.clientX, evt.clientY);
           return;
         }
         marqueeRef.current = {
@@ -2898,7 +2897,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
 
       clearGuides();
-      const worldPoint = resolvePointerWorld(event.evt);
+      const worldPoint = resolvePointerWorld(evt);
       if (!worldPoint) {
         return;
       }
@@ -2926,7 +2925,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
 
       if (tool === "select") {
-        const additive = event.evt.ctrlKey || event.evt.metaKey;
+        const additive = evt.ctrlKey || evt.metaKey;
         marqueeRef.current = {
           start: worldPoint,
           current: worldPoint,
@@ -2939,7 +2938,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      if (!(event.evt.ctrlKey || event.evt.metaKey)) {
+      if (!(evt.ctrlKey || evt.metaKey)) {
         setSelection(null);
       }
     },
@@ -2947,11 +2946,29 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   );
 
   /**
+   * 为什么 Stage 用 Pointer 事件而不是只绑 mousedown：
+   * 移动端触摸优先走 pointerdown/touchstart，部分机型上 mousedown 滞后或缺失，panRef 从未建立；pointer 统一鼠标/触摸/笔，再对触摸 preventDefault 避免浏览器把单指拖走当成页面滚动。
+   */
+  const handleStagePointerDown = useCallback(
+    (event: KonvaEventObject<PointerEvent>) => {
+      const pe = event.evt;
+      if (pe.pointerType === "touch" || pe.pointerType === "pen") {
+        pe.preventDefault();
+      }
+      if (pe.button === 1 || (tool === "pan" && pe.button === 0)) {
+        pe.preventDefault();
+      }
+      applyStagePointerDown(pe);
+    },
+    [applyStagePointerDown, tool],
+  );
+
+  /**
    * 为什么摄像头点击要 cancelBubble：
    * 事件会冒泡到 Stage 触发框选清空，必须先截获再决定是选中/多选/Alt 复制，否则无法稳定选中单个摄像头。
    */
-  const handleCameraMouseDown = useCallback(
-    (cameraId: string, event: KonvaEventObject<MouseEvent>) => {
+  const handleCameraPointerDown = useCallback(
+    (cameraId: string, event: KonvaEventObject<PointerEvent>) => {
       event.cancelBubble = true;
       if (event.evt.button === 1) {
         event.evt.preventDefault();
@@ -2960,6 +2977,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
 
       if (event.evt.button !== 0) {
+        return;
+      }
+
+      if (isMobileLayoutRef.current && interactionModeRef.current === "browse") {
+        beginPan(event.evt.clientX, event.evt.clientY);
         return;
       }
 
@@ -3013,8 +3035,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 为什么墙线 mousedown 与摄像头逻辑平行：
    * 墙与摄像头共享多选、编组展开、Alt 复制语义，拆两个 handler 只为命中测试不同，行为一致才能降低学习成本。
    */
-  const handleWallMouseDown = useCallback(
-    (wall: FloorWall, event: KonvaEventObject<MouseEvent>) => {
+  const handleWallPointerDown = useCallback(
+    (wall: FloorWall, event: KonvaEventObject<PointerEvent>) => {
       event.cancelBubble = true;
       if (event.evt.button === 1) {
         event.evt.preventDefault();
@@ -3023,6 +3045,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
 
       if (event.evt.button !== 0) {
+        return;
+      }
+
+      if (isMobileLayoutRef.current && interactionModeRef.current === "browse") {
+        beginPan(event.evt.clientX, event.evt.clientY);
         return;
       }
 
@@ -3076,8 +3103,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 为什么端点 handle 要单独命中圆而不是 Line：
    * 线段的 hitStrokeWidth 已很宽，端点再共用同一区域会难以区分「拖线」还是「拖端点」，小圆把意图拆开。
    */
-  const handleWallHandleMouseDown = useCallback(
-    (wallId: string, endpoint: "start" | "end", event: KonvaEventObject<MouseEvent>) => {
+  const handleWallHandlePointerDown = useCallback(
+    (wallId: string, endpoint: "start" | "end", event: KonvaEventObject<PointerEvent>) => {
       event.cancelBubble = true;
       if (event.evt.button !== 0) {
         return;
@@ -3640,11 +3667,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             : `${toolHint(tool, t)} · ${t("middle_pan_hint")} · ${t("wheel_pinch_zoom_hint")} · ${t("multi_select_hint")} · ${t("box_select_hint")} · ${t("shift_drag_hint")} · ${t("alt_drag_hint")} · ${t("select_all_hint")} · ${t("copy_paste_hint")} · ${t("preset_hint")}`}
         </div>
 
-        <div ref={containerRef} className="relative min-h-0 flex-1 overflow-hidden select-none touch-pan-y touch-pinch-zoom">
+        <div
+          ref={containerRef}
+          className="relative min-h-0 flex-1 touch-none overflow-hidden select-none"
+        >
           <Stage
             width={viewportSize.width}
             height={viewportSize.height}
-            onMouseDown={handleStageMouseDown}
+            onPointerDown={handleStagePointerDown}
             onContextMenu={(event) => {
               event.evt.preventDefault();
             }}
@@ -3752,7 +3782,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                         strokeWidth={isSelected ? 12 : 10}
                         hitStrokeWidth={26}
                         lineCap="round"
-                        onMouseDown={(event) => handleWallMouseDown(wall, event)}
+                        onPointerDown={(event) => handleWallPointerDown(wall, event)}
                       />
 
                       {isSelected && selectedWallCount === 1 && selectedCameraCount === 0 ? (
@@ -3764,8 +3794,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                             fill="#ffffff"
                             stroke="#2563eb"
                             strokeWidth={3}
-                            onMouseDown={(event) =>
-                              handleWallHandleMouseDown(wall.id, "start", event)
+                            onPointerDown={(event) =>
+                              handleWallHandlePointerDown(wall.id, "start", event)
                             }
                           />
                           <Circle
@@ -3775,8 +3805,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                             fill="#ffffff"
                             stroke="#2563eb"
                             strokeWidth={3}
-                            onMouseDown={(event) =>
-                              handleWallHandleMouseDown(wall.id, "end", event)
+                            onPointerDown={(event) =>
+                              handleWallHandlePointerDown(wall.id, "end", event)
                             }
                           />
                         </>
@@ -3847,7 +3877,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                         fill={accent}
                         stroke={isSelected ? "#111827" : ringStroke}
                         strokeWidth={isSelected ? 3 : onlineKnown ? 4 : 3}
-                        onMouseDown={(event) => handleCameraMouseDown(camera.id, event)}
+                        onPointerDown={(event) => handleCameraPointerDown(camera.id, event)}
                       />
                       <Text
                         x={camera.x + 18}
