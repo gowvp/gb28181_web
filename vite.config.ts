@@ -79,14 +79,14 @@ export default defineConfig(({ mode }) => {
         // 所有 API 请求统一使用 /api 前缀
         // 前端调用 /api/xxx，代理到后端的 /xxx
         "/api": {
-          target: "http://gowvp.golang.space:15123",
+          target: "http://127.0.0.1:15123",
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
         "/local": {
           target: "http://127.0.0.1:15123",
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ""),
+          rewrite: (path) => path.replace(/^\/local/, ""),
         },
         // // 录像 m3u8 播放列表（不走 /api 前缀，直接代理）
         // "/recordings/channels": {

@@ -119,7 +119,7 @@
   "floor_plan_guide_ok": "知道了",
   "floor_plan_guide_filter_nav": "右侧筛选框输入名称后，可用上一条/下一条在匹配摄像头间跳转，「框入全部匹配」可一次缩放到所有匹配机位。",
   "floor_plan_guide_event_refresh": "侧栏与悬停卡片会显示事件时间与「数据多久前拉取」；侧栏可点刷新重新请求（仍受接口与缓存影响）。",
-  "floor_plan_guide_storage_note": "当前布局仍保存在本机浏览器（localStorage），换机或清缓存需自行备份；后续若需多终端同步需后端存储配合。",
+  "floor_plan_guide_storage_note": "布局会自动保存到本机浏览器缓存，点击顶栏保存按钮可同步到服务器；进入页面时会优先从服务器加载最新布局。",
   "filter_match_position": "第 {{current}} / {{total}} 个匹配",
   "filter_prev_match": "上一个匹配",
   "filter_next_match": "下一个匹配",
@@ -140,5 +140,9 @@
   "floor_plan_import_success": "已从文件恢复布局",
   "floor_plan_import_failed": "导入失败：文件格式不正确或已损坏",
   "floor_plan_guide_backup_shortcuts": "顶栏可导出/导入 JSON 布局备份（便于换机与版本对比）。\n\n浏览模式下可用 [ / ] 或 PgUp / PgDn 切换筛选匹配，F 键框入全部匹配；\n\nEsc 可清空筛选。",
-  "filter_keyboard_hint": "浏览模式快捷键：[ ] / PgUp PgDn 切换匹配，F 框入全部"
+  "filter_keyboard_hint": "浏览模式快捷键：[ ] / PgUp PgDn 切换匹配，F 框入全部",
+  "floor_plan_save_to_server": "保存",
+  "floor_plan_save_success": "布局已保存到服务器",
+  "floor_plan_save_failed": "保存布局失败，请重试",
+  "floor_plan_load_server_failed": "从服务器加载布局失败，已使用本地缓存"
 }

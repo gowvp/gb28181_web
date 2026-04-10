@@ -19,6 +19,7 @@ import {
   Pencil,
   Redo2,
   RotateCcw,
+  Save,
   ScanSearch,
   Square,
   Undo2,
@@ -70,12 +71,10 @@ import {
   createDefaultFloorPlanState,
   loadFloorPlanGuideDismissed,
   loadFloorPlanInteractionMode,
-  loadFloorPlanState,
   normalizeFloorPlanState,
   FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY,
   saveFloorPlanGuideDismissed,
   saveFloorPlanInteractionMode,
-  saveFloorPlanState,
   type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
 import {
@@ -90,6 +89,7 @@ import {
   parseFloorPlanImportJson,
 } from "./floor_plan.export";
 import { buildPlaybackDetailTo } from "./floor_plan.playback";
+import { GetMetadata, SaveMetadata } from "~/service/api/metadata/metadata";
 import type {
   CameraMarker,
   FloorPlanState,
@@ -104,6 +104,35 @@ import type {
 import { MiniMap } from "@xyflow/react";
 
 const ALIGNMENT_SNAP_THRESHOLD = FLOOR_PLAN_GRID_SIZE * 0.45;
+
+const FLOOR_PLAN_METADATA_ID = "floor-plan";
+
+/**
+ * 为什么保存到服务端时要剥离运行时字段：
+ * latestEvent* 等字段是页面加载后从事件接口动态拉取的临时状态，
+ * 持久化它们既浪费存储又会导致恢复后显示过期信息。
+ */
+function stripRuntimeFields(state: FloorPlanState): FloorPlanState {
+  return {
+    ...state,
+    cameras: state.cameras.map((cam) => ({
+      id: cam.id,
+      x: cam.x,
+      y: cam.y,
+      angle: cam.angle,
+      fov: cam.fov,
+      range: cam.range,
+      channelId: cam.channelId,
+      channelName: cam.channelName,
+      groupId: cam.groupId ?? null,
+      deviceName: cam.deviceName ?? null,
+      latestEventAt: null,
+      latestEventImage: null,
+      latestEventLabel: null,
+      latestEventScore: null,
+    })),
+  };
+}
 
 /**
  * 为什么合成单条 SVG path 而不是每段独立 Path 节点：
@@ -1227,13 +1256,124 @@ export default function FloorPlanEditor({
     isMobileLayoutRef.current = isMobileLayout;
   }, [isMobileLayout]);
 
-  const initialPlan = useMemo(
-    () => loadFloorPlanState() ?? createDefaultFloorPlanState(),
-    [],
-  );
+  const [plan, setPlan] = useState<FloorPlanState>(createDefaultFloorPlanState);
+  const planRef = useRef<FloorPlanState>(plan);
+  const [serverSaving, setServerSaving] = useState(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serverLoadedRef = useRef(false);
 
-  const [plan, setPlan] = useState<FloorPlanState>(initialPlan);
-  const planRef = useRef<FloorPlanState>(initialPlan);
+  /**
+   * 为什么不再依赖 localStorage 而改为服务端持久化：
+   * 平面图是团队共享资源，localStorage 仅限当前浏览器，换机或清缓存即丢失。
+   * 服务端持久化后任何终端打开都能看到最新布局。
+   */
+  useEffect(() => {
+    let cancelled = false;
+    GetMetadata(FLOOR_PLAN_METADATA_ID)
+      .then((resp) => {
+        if (cancelled) return;
+        const ext = resp.data?.ext;
+        if (!ext) return;
+        try {
+          const parsed = JSON.parse(ext);
+          const normalized = normalizeFloorPlanState(parsed);
+          setPlan(normalized);
+          historyRef.current = [cloneFloorPlanState(normalized)];
+          historyIndexRef.current = 0;
+        } catch (e) {
+          console.warn("[floor-plan] failed to parse server layout data", e);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.debug(
+          "[floor-plan] server layout not found, using default",
+          err,
+        );
+      })
+      .finally(() => {
+        if (cancelled) return;
+        requestAnimationFrame(() => {
+          serverLoadedRef.current = true;
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** 静默保存到服务端（自动保存使用，不弹通知） */
+  const silentSaveToServer = useCallback(async () => {
+    try {
+      const stateToPersist = stripRuntimeFields(planRef.current);
+      const ext = JSON.stringify(stateToPersist);
+      await SaveMetadata(FLOOR_PLAN_METADATA_ID, ext);
+      console.debug("[floor-plan] auto-saved to server");
+    } catch (err) {
+      console.warn("[floor-plan] auto-save failed", err);
+    }
+  }, []);
+
+  /** 重置 debounce 计时器，10 秒后执行自动保存 */
+  const scheduleAutoSave = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      silentSaveToServer();
+    }, 10_000);
+  }, [silentSaveToServer]);
+
+  /** 手动保存到服务端（弹通知，同时取消并重置自动保存计时器） */
+  const saveFloorPlanToServer = useCallback(async () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    setServerSaving(true);
+    try {
+      const stateToPersist = stripRuntimeFields(planRef.current);
+      const ext = JSON.stringify(stateToPersist);
+      await SaveMetadata(FLOOR_PLAN_METADATA_ID, ext);
+      message.success(t("floor_plan_save_success"));
+    } catch (err) {
+      console.error("[floor-plan] save to server failed", err);
+      message.error(t("floor_plan_save_failed"));
+    } finally {
+      setServerSaving(false);
+    }
+  }, [t]);
+
+  /**
+   * 为什么组件卸载时 flush 待保存修改：
+   * 用户离开页面时若有待保存的 debounce 修改，不 flush 就会丢数据。
+   * 使用 fetch keepalive 保证页面关闭期间请求也能送达，同时能携带认证 header。
+   */
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+        const stateToPersist = stripRuntimeFields(planRef.current);
+        const ext = JSON.stringify(stateToPersist);
+        const url =
+          (import.meta.env.VITE_API_BASE_URL || "/api") +
+          `/metadatas/${FLOOR_PLAN_METADATA_ID}`;
+        const token = localStorage.getItem("GOWVP_TOKEN");
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        fetch(url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ ext }),
+          keepalive: true,
+        }).catch(() => {});
+      }
+    };
+  }, []);
   const [tool, setTool] = useState<PlannerTool>(() =>
     loadFloorPlanInteractionMode() === "browse" ? "pan" : "select",
   );
@@ -1338,9 +1478,7 @@ export default function FloorPlanEditor({
   }, [tool]);
   const spaceToolRef = useRef<PlannerTool | null>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const historyRef = useRef<FloorPlanState[]>([
-    cloneFloorPlanState(initialPlan),
-  ]);
+  const historyRef = useRef<FloorPlanState[]>([cloneFloorPlanState(plan)]);
   const historyIndexRef = useRef(0);
   const clipboardRef = useRef<PlannerClipboardState | null>(null);
   const pasteCascadeRef = useRef(0);
@@ -1371,8 +1509,10 @@ export default function FloorPlanEditor({
 
   useEffect(() => {
     planRef.current = plan;
-    saveFloorPlanState(plan);
-  }, [plan]);
+    if (serverLoadedRef.current) {
+      scheduleAutoSave();
+    }
+  }, [plan, scheduleAutoSave]);
 
   useEffect(() => {
     return () => {
@@ -4051,6 +4191,22 @@ export default function FloorPlanEditor({
               <Focus className="h-4 w-4" />
             </ToolbarButton>
           ) : null}
+          <button
+            type="button"
+            title={t("floor_plan_save_to_server")}
+            onClick={saveFloorPlanToServer}
+            disabled={serverSaving}
+            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors ${
+              serverSaving
+                ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-300"
+                : "border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100"
+            }`}
+          >
+            <Save
+              className={`h-3.5 w-3.5 ${serverSaving ? "animate-pulse" : ""}`}
+            />
+            {t("floor_plan_save_to_server")}
+          </button>
           {selectedPlaybackTo && selectedAlertsTo ? (
             <>
               <div className="mx-1 h-6 w-px bg-gray-200" />

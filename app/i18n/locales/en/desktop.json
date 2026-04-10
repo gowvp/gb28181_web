@@ -119,7 +119,7 @@
   "floor_plan_guide_ok": "Got it",
   "floor_plan_guide_filter_nav": "After typing in the filter, use previous/next to jump between matches, or “Frame all matches” to zoom them into view.",
   "floor_plan_guide_event_refresh": "Panel and hover card show event time and how long ago data was fetched; use refresh in the panel to request again (still subject to API and cache).",
-  "floor_plan_guide_storage_note": "The layout is still stored in this browser (localStorage); clearing data or switching machines needs a manual backup. Multi-device sync would need backend storage later.",
+  "floor_plan_guide_storage_note": "The layout is auto-saved to browser cache. Click the save button in the toolbar to sync to the server; the page will load the latest layout from the server on entry.",
   "filter_match_position": "{{current}} / {{total}} matches",
   "filter_prev_match": "Previous match",
   "filter_next_match": "Next match",
@@ -140,5 +140,9 @@
   "floor_plan_import_success": "Layout restored from file",
   "floor_plan_import_failed": "Import failed: invalid or corrupted file",
   "floor_plan_guide_backup_shortcuts": "Use the toolbar to export/import a JSON layout backup. In browse mode, [ / ] or PgUp / PgDn cycle filter matches; \n\nF frames all matches; Esc clears the filter.",
-  "filter_keyboard_hint": "Browse shortcuts: [ ] / PgUp PgDn for matches, F to frame all"
+  "filter_keyboard_hint": "Browse shortcuts: [ ] / PgUp PgDn for matches, F to frame all",
+  "floor_plan_save_to_server": "Save",
+  "floor_plan_save_success": "Layout saved to server",
+  "floor_plan_save_failed": "Failed to save layout, please retry",
+  "floor_plan_load_server_failed": "Failed to load layout from server, using local cache"
 }
