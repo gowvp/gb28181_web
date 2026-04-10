@@ -1,7 +1,14 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { CameraMarker, FloorWall, PlannerView } from "~/pages/desktop/floor_plan.types";
-import { FLOOR_PLAN_WORLD_HEIGHT, FLOOR_PLAN_WORLD_WIDTH } from "~/pages/desktop/floor_plan.storage";
+import type {
+  CameraMarker,
+  FloorWall,
+  PlannerView,
+} from "~/pages/desktop/floor_plan.types";
+import {
+  FLOOR_PLAN_WORLD_HEIGHT,
+  FLOOR_PLAN_WORLD_WIDTH,
+} from "~/pages/desktop/floor_plan.storage";
 
 const MAP_W_DEFAULT = 168;
 const MAP_H_DEFAULT = 105;
@@ -46,8 +53,8 @@ export function FloorPlanMinimap({
   const worldW = FLOOR_PLAN_WORLD_WIDTH;
   const worldH = FLOOR_PLAN_WORLD_HEIGHT;
 
-  const vpLeft = (-view.x) / view.scale;
-  const vpTop = (-view.y) / view.scale;
+  const vpLeft = -view.x / view.scale;
+  const vpTop = -view.y / view.scale;
   const vpW = viewportWidth / view.scale;
   const vpH = viewportHeight / view.scale;
 
@@ -60,12 +67,15 @@ export function FloorPlanMinimap({
     startedDrag: boolean;
   } | null>(null);
 
-  const clientToWorld = useCallback((clientX: number, clientY: number, svg: SVGSVGElement) => {
-    const rect = svg.getBoundingClientRect();
-    const nx = (clientX - rect.left) / rect.width;
-    const ny = (clientY - rect.top) / rect.height;
-    return { wx: nx * worldW, wy: ny * worldH };
-  }, [worldW, worldH]);
+  const clientToWorld = useCallback(
+    (clientX: number, clientY: number, svg: SVGSVGElement) => {
+      const rect = svg.getBoundingClientRect();
+      const nx = (clientX - rect.left) / rect.width;
+      const ny = (clientY - rect.top) / rect.height;
+      return { wx: nx * worldW, wy: ny * worldH };
+    },
+    [worldW, worldH],
+  );
 
   const endSession = useCallback((svg: SVGSVGElement, pointerId: number) => {
     try {
@@ -120,7 +130,11 @@ export function FloorPlanMinimap({
       return;
     }
     if (!session.startedDrag) {
-      const { wx, wy } = clientToWorld(session.startClientX, session.startClientY, svg);
+      const { wx, wy } = clientToWorld(
+        session.startClientX,
+        session.startClientY,
+        svg,
+      );
       onCenterWorld(wx, wy);
     }
     endSession(svg, event.pointerId);
@@ -129,14 +143,14 @@ export function FloorPlanMinimap({
   return (
     <div
       className={`pointer-events-auto absolute left-4 z-30 flex flex-col gap-1 rounded-lg border border-gray-200 bg-white/95 p-1.5 shadow-md backdrop-blur ${
-        compact ? "bottom-[max(6.5rem,env(safe-area-inset-bottom))]" : "bottom-24"
+        compact
+          ? "bottom-[max(6.5rem,env(safe-area-inset-bottom))]"
+          : "bottom-24"
       }`}
       title={t("minimap_hint")}
     >
-      <div className="text-[10px] font-medium text-gray-500">{t("minimap_title")}</div>
       <svg
         role="img"
-        aria-label={t("minimap_title")}
         width={MAP_W}
         height={MAP_H}
         viewBox={`0 0 ${worldW} ${worldH}`}

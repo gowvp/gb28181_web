@@ -1,9 +1,20 @@
 import { Button, Input, Select, Slider, Spin } from "antd";
-import { Bell, ChevronLeft, ChevronRight, ExternalLink, RefreshCw, ScanSearch, Trash2 } from "lucide-react";
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  RefreshCw,
+  ScanSearch,
+  Trash2,
+} from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import type { CameraMarker, LatestCameraEvent } from "~/pages/desktop/floor_plan.types";
+import type {
+  CameraMarker,
+  LatestCameraEvent,
+} from "~/pages/desktop/floor_plan.types";
 import type { FlatDeviceChannelOption } from "~/service/api/device/device";
 import type { FloorPlanInteractionMode } from "~/pages/desktop/floor_plan.storage";
 import { formatEventTimeAbsolute } from "~/pages/desktop/floor_plan.relative-time";
@@ -14,7 +25,10 @@ import { formatEventTimeAbsolute } from "~/pages/desktop/floor_plan.relative-tim
  * 把分组口径改成设备名称，能让多设备场景下的查找路径和用户心智一致，减少误绑和反复展开分组的成本。
  */
 function buildGroupedChannelOptions(channelOptions: FlatDeviceChannelOption[]) {
-  const grouped = new Map<string, { label: string; options: Array<{ value: string; label: string }> }>();
+  const grouped = new Map<
+    string,
+    { label: string; options: Array<{ value: string; label: string }> }
+  >();
 
   for (const item of channelOptions) {
     const groupKey = item.deviceName;
@@ -34,7 +48,9 @@ function buildGroupedChannelOptions(channelOptions: FlatDeviceChannelOption[]) {
   return Array.from(grouped.values())
     .map((group) => ({
       ...group,
-      options: group.options.sort((left, right) => left.label.localeCompare(right.label, "zh-CN")),
+      options: group.options.sort((left, right) =>
+        left.label.localeCompare(right.label, "zh-CN"),
+      ),
     }))
     .sort((left, right) => left.label.localeCompare(right.label, "zh-CN"));
 }
@@ -116,14 +132,18 @@ export function CameraBindingPanel({
     <div className="space-y-4">
       {onChannelFilterChange ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-2 text-sm font-medium text-gray-900">{t("filter_cameras")}</div>
+          <div className="mb-2 text-sm font-medium text-gray-900">
+            {t("filter_cameras")}
+          </div>
           <Input
             allowClear
             value={channelFilter}
             placeholder={t("filter_cameras_placeholder")}
             onChange={(e) => onChannelFilterChange(e.target.value)}
           />
-          <div className="mt-2 text-xs text-gray-500">{t("filter_cameras_hint")}</div>
+          <div className="mt-2 text-xs text-gray-500">
+            {t("filter_cameras_hint")}
+          </div>
           {showFilterNav ? (
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
               {filterMatchCount > 0 ? (
@@ -134,15 +154,36 @@ export function CameraBindingPanel({
                       total: filterMatchCount,
                     })}
                   </span>
-                  <Button type="default" size="small" icon={<ChevronLeft className="h-3.5 w-3.5" />} onClick={onFilterPrev} title={t("filter_prev_match")} />
-                  <Button type="default" size="small" icon={<ChevronRight className="h-3.5 w-3.5" />} onClick={onFilterNext} title={t("filter_next_match")} />
-                  <Button type="default" size="small" icon={<ScanSearch className="h-3.5 w-3.5" />} onClick={onFilterFrameAll}>
+                  <Button
+                    type="default"
+                    size="small"
+                    icon={<ChevronLeft className="h-3.5 w-3.5" />}
+                    onClick={onFilterPrev}
+                    title={t("filter_prev_match")}
+                  />
+                  <Button
+                    type="default"
+                    size="small"
+                    icon={<ChevronRight className="h-3.5 w-3.5" />}
+                    onClick={onFilterNext}
+                    title={t("filter_next_match")}
+                  />
+                  <Button
+                    type="default"
+                    size="small"
+                    icon={<ScanSearch className="h-3.5 w-3.5" />}
+                    onClick={onFilterFrameAll}
+                  >
                     {t("filter_frame_all")}
                   </Button>
-                  <span className="w-full text-[11px] text-gray-400">{t("filter_keyboard_hint")}</span>
+                  <span className="w-full text-[11px] text-gray-400">
+                    {t("filter_keyboard_hint")}
+                  </span>
                 </>
               ) : (
-                <span className="text-xs text-amber-700">{t("filter_no_matches")}</span>
+                <span className="text-xs text-amber-700">
+                  {t("filter_no_matches")}
+                </span>
               )}
             </div>
           ) : null}
@@ -152,7 +193,9 @@ export function CameraBindingPanel({
       {camera ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-gray-900">{t("panel_latest_ai_event")}</div>
+            <div className="text-sm font-semibold text-gray-900">
+              {t("panel_latest_ai_event")}
+            </div>
             <div className="flex flex-wrap items-center justify-end gap-1">
               {camera.channelId && onRefreshEvent ? (
                 <Button
@@ -203,22 +246,32 @@ export function CameraBindingPanel({
                 />
               ) : null}
               <div>
-                <span className="font-medium text-gray-900">{t("latest_ai_event")}: </span>
+                <span className="font-medium text-gray-900">
+                  {t("latest_ai_event")}:{" "}
+                </span>
                 {selectedLatestEvent.label}
               </div>
               <div>
-                <span className="font-medium text-gray-900">{t("event_time")}: </span>
+                <span className="font-medium text-gray-900">
+                  {t("event_time")}:{" "}
+                </span>
                 {formatEventTimeAbsolute(selectedLatestEvent.startedAt)}
               </div>
               <div>
-                <span className="font-medium text-gray-900">{t("score")}: </span>
+                <span className="font-medium text-gray-900">
+                  {t("score")}:{" "}
+                </span>
                 {(selectedLatestEvent.score * 100).toFixed(1)}%
               </div>
               {eventOccurredAgo ? (
-                <div className="text-[11px] text-gray-500">{t("event_occurred_ago", { ago: eventOccurredAgo })}</div>
+                <div className="text-[11px] text-gray-500">
+                  {t("event_occurred_ago", { ago: eventOccurredAgo })}
+                </div>
               ) : null}
               {dataFetchedAgo ? (
-                <div className="text-[11px] text-gray-400">{t("data_fetched_ago", { ago: dataFetchedAgo })}</div>
+                <div className="text-[11px] text-gray-400">
+                  {t("data_fetched_ago", { ago: dataFetchedAgo })}
+                </div>
               ) : null}
             </div>
           ) : (
@@ -227,7 +280,9 @@ export function CameraBindingPanel({
                 {camera.channelId ? t("no_ai_event") : t("camera_unbound")}
               </div>
               {camera.channelId && dataFetchedAgo ? (
-                <div className="text-center text-[11px] text-gray-400">{t("data_fetched_ago", { ago: dataFetchedAgo })}</div>
+                <div className="text-center text-[11px] text-gray-400">
+                  {t("data_fetched_ago", { ago: dataFetchedAgo })}
+                </div>
               ) : null}
             </div>
           )}
@@ -241,25 +296,37 @@ export function CameraBindingPanel({
       ) : (
         <>
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="mb-1 text-sm font-semibold text-gray-900">{t("camera_settings")}</div>
+            <div className="mb-1 text-sm font-semibold text-gray-900">
+              {t("camera_settings")}
+            </div>
             <div className="text-xs text-gray-500">
               {t("position")}: {Math.round(camera.x)}, {Math.round(camera.y)}
             </div>
             {camera.channelId != null ? (
               <div className="mt-1 text-xs text-gray-600">
-                <span className="font-medium text-gray-900">{t("channel_status")}: </span>
-                {channelOnline === null ? t("channel_online_unknown") : channelOnline ? t("channel_online") : t("channel_offline")}
+                <span className="font-medium text-gray-900">
+                  {t("channel_status")}:{" "}
+                </span>
+                {channelOnline === null
+                  ? t("channel_online_unknown")
+                  : channelOnline
+                    ? t("channel_online")
+                    : t("channel_offline")}
               </div>
             ) : null}
             {editLocked ? (
-              <div className="mt-2 text-xs leading-5 text-gray-500">{t("browse_camera_panel_edit_hidden_hint")}</div>
+              <div className="mt-2 text-xs leading-5 text-gray-500">
+                {t("browse_camera_panel_edit_hidden_hint")}
+              </div>
             ) : null}
           </div>
 
           {editLocked ? null : (
             <>
               <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="mb-2 text-sm font-medium text-gray-900">{t("bind_channel")}</div>
+                <div className="mb-2 text-sm font-medium text-gray-900">
+                  {t("bind_channel")}
+                </div>
                 {channelsLoading ? (
                   <div className="flex min-h-14 items-center justify-center">
                     <Spin size="small" />
@@ -277,10 +344,14 @@ export function CameraBindingPanel({
                       onChange={(value) => onBindChannel(value ?? null)}
                     />
                     <div className="mt-2 text-xs text-gray-500">
-                      {t("channel_count_loaded", { count: channelOptions.length })}
+                      {t("channel_count_loaded", {
+                        count: channelOptions.length,
+                      })}
                     </div>
                     {channelsError ? (
-                      <div className="mt-1 text-xs text-amber-600">{t("channel_load_warning")}</div>
+                      <div className="mt-1 text-xs text-amber-600">
+                        {t("channel_load_warning")}
+                      </div>
                     ) : null}
                   </>
                 )}
@@ -290,7 +361,9 @@ export function CameraBindingPanel({
               </div>
 
               <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 text-sm font-medium text-gray-900">{t("direction")}</div>
+                <div className="mb-3 text-sm font-medium text-gray-900">
+                  {t("direction")}
+                </div>
                 <Slider
                   min={0}
                   max={359}
@@ -298,7 +371,9 @@ export function CameraBindingPanel({
                   onChange={(value) => onAngleChange(Number(value))}
                 />
 
-                <div className="mb-3 mt-4 text-sm font-medium text-gray-900">{t("fov")}</div>
+                <div className="mb-3 mt-4 text-sm font-medium text-gray-900">
+                  {t("fov")}
+                </div>
                 <Slider
                   min={20}
                   max={160}
@@ -306,7 +381,9 @@ export function CameraBindingPanel({
                   onChange={(value) => onFovChange(Number(value))}
                 />
 
-                <div className="mb-3 mt-4 text-sm font-medium text-gray-900">{t("range")}</div>
+                <div className="mb-3 mt-4 text-sm font-medium text-gray-900">
+                  {t("range")}
+                </div>
                 <Slider
                   min={80}
                   max={800}

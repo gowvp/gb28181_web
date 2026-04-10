@@ -492,7 +492,7 @@ export default function DesktopView() {
 
   return (
     <div
-      className="relative h-[100dvh] min-h-screen w-screen md:h-screen"
+      className="relative h-dvh min-h-screen w-screen md:h-screen"
       style={{ background: "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)" }}
     >
       <style>
@@ -544,29 +544,23 @@ function ViewSwitchBar({
   t: any;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex gap-0.5 bg-white rounded-lg shadow border border-gray-200 p-0.5">
-        <ViewSwitchButton
-          icon={<Layers style={{ width: 16, height: 16 }} />}
-          active={viewMode === "dataflow"}
-          onClick={() => onViewModeChange("dataflow")}
-          tooltip={t("desktop:dataflow")}
-        />
-        <ViewSwitchButton
-          icon={<MapIcon style={{ width: 16, height: 16 }} />}
-          active={viewMode === "2d"}
-          onClick={() => onViewModeChange("2d")}
-          tooltip={t("desktop:floor_plan_mode")}
-        />
-      </div>
+    <div className="flex items-center gap-2 rounded-xl border border-gray-200/80 bg-white/95 p-2 shadow-sm backdrop-blur">
+      <ViewSwitchButton
+        icon={<Layers className="h-4 w-4" />}
+        active={viewMode === "dataflow"}
+        onClick={() => onViewModeChange("dataflow")}
+        tooltip={t("desktop:dataflow")}
+      />
+      <ViewSwitchButton
+        icon={<MapIcon className="h-4 w-4" />}
+        active={viewMode === "2d"}
+        onClick={() => onViewModeChange("2d")}
+        tooltip={t("desktop:floor_plan_mode")}
+      />
     </div>
   );
 }
 
-/**
- * 为什么用原生 title 做 tooltip：
- * 切换按钮极窄，Ant Tooltip 包裹会改变布局；title 零依赖且满足桌面端 hover 说明需求。
- */
 function ViewSwitchButton({
   icon,
   active,
@@ -583,13 +577,11 @@ function ViewSwitchButton({
       type="button"
       title={tooltip}
       onClick={onClick}
-      className={`
-        w-7 h-7 rounded flex items-center justify-center transition-colors
-        ${active
-          ? "bg-gray-900 text-white"
-          : "text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-        }
-      `}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg border transition-colors ${
+        active
+          ? "border-gray-900 bg-gray-900 text-white"
+          : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+      }`}
     >
       {icon}
     </button>

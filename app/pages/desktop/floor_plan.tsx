@@ -27,12 +27,14 @@ import {
   Waypoints,
   ZoomIn,
   ZoomOut,
+  HelpCircle,
 } from "lucide-react";
 import {
   Circle,
   Group,
   Layer,
   Line,
+  Path,
   Rect,
   Stage,
   Text,
@@ -76,10 +78,17 @@ import {
   saveFloorPlanState,
   type FloorPlanInteractionMode,
 } from "./floor_plan.storage";
-import { clearLatestCameraEventCache, getLatestCameraEvent, prefetchLatestEventsForChannelIds } from "./floor_plan.events";
+import {
+  clearLatestCameraEventCache,
+  getLatestCameraEvent,
+  prefetchLatestEventsForChannelIds,
+} from "./floor_plan.events";
 import { formatTimeAgoFromMs } from "./floor_plan.relative-time";
 import { buildAlertsTo } from "./floor_plan.alerts";
-import { buildFloorPlanExportPayload, parseFloorPlanImportJson } from "./floor_plan.export";
+import {
+  buildFloorPlanExportPayload,
+  parseFloorPlanImportJson,
+} from "./floor_plan.export";
 import { buildPlaybackDetailTo } from "./floor_plan.playback";
 import type {
   CameraMarker,
@@ -92,8 +101,20 @@ import type {
   PlannerTool,
   PlannerView,
 } from "./floor_plan.types";
+import { MiniMap } from "@xyflow/react";
 
 const ALIGNMENT_SNAP_THRESHOLD = FLOOR_PLAN_GRID_SIZE * 0.45;
+
+/**
+ * 为什么合成单条 SVG path 而不是每段独立 Path 节点：
+ * Konva 每个 Path 节点都会触发独立的路径解析与重绘命令，摄像头较多时 5 倍节点数会在缩放帧里产生可感知的延迟；合成后只做一次解析。
+ */
+const CCTV_ICON_PATH =
+  "M16.75 12h3.632a1 1 0 0 1 .894 1.447l-2.034 4.069a1 1 0 0 1-1.708.134l-2.124-2.97 " +
+  "M17.106 9.053a1 1 0 0 1 .447 1.341l-3.106 6.211a1 1 0 0 1-1.342.447L3.61 12.3a2.92 2.92 0 0 1-1.3-3.91L3.69 5.6a2.92 2.92 0 0 1 3.92-1.3z " +
+  "M2 19h3.76a2 2 0 0 0 1.8-1.1L9 15 " +
+  "M2 21v-4 " +
+  "M7 9h.01";
 
 /**
  * 为什么 Konva Stage 禁止 0 宽高：
@@ -112,7 +133,10 @@ function minScaleToFitEntireWorld(viewportW: number, viewportH: number) {
 }
 
 function clampViewScale(scale: number, viewportW: number, viewportH: number) {
-  const floor = Math.min(FLOOR_PLAN_VIEW_SCALE_MIN, minScaleToFitEntireWorld(viewportW, viewportH));
+  const floor = Math.min(
+    FLOOR_PLAN_VIEW_SCALE_MIN,
+    minScaleToFitEntireWorld(viewportW, viewportH),
+  );
   return clamp(scale, floor, FLOOR_PLAN_VIEW_SCALE_MAX);
 }
 
@@ -193,7 +217,10 @@ function uniqueIds(ids: string[]) {
  * 为什么空集合返回 null 而不是空对象：
  * 大量交互分支用「无选中」与「有选中」二分，null 能强制调用方显式处理，避免 wallIds/cameraIds 全空却当作有效选择集。
  */
-function createSelection(wallIds: string[] = [], cameraIds: string[] = []): PlannerSelection {
+function createSelection(
+  wallIds: string[] = [],
+  cameraIds: string[] = [],
+): PlannerSelection {
   const walls = uniqueIds(wallIds);
   const cameras = uniqueIds(cameraIds);
   if (walls.length === 0 && cameras.length === 0) {
@@ -274,7 +301,11 @@ function getEntityGroupId(
  * 为什么点击单个对象要展开整组：
  * 编组的意义是「一起动」，若只高亮其中一个，用户会误以为未编组成功，展开整组能减少反复确认的成本。
  */
-function selectEntity(plan: FloorPlanState, entityType: "wall" | "camera", entityId: string) {
+function selectEntity(
+  plan: FloorPlanState,
+  entityType: "wall" | "camera",
+  entityId: string,
+) {
   const groupId = getEntityGroupId(plan, entityType, entityId);
   if (!groupId) {
     return entityType === "wall"
@@ -283,8 +314,12 @@ function selectEntity(plan: FloorPlanState, entityType: "wall" | "camera", entit
   }
 
   return createSelection(
-    plan.walls.filter((wall) => wall.groupId === groupId).map((wall) => wall.id),
-    plan.cameras.filter((camera) => camera.groupId === groupId).map((camera) => camera.id),
+    plan.walls
+      .filter((wall) => wall.groupId === groupId)
+      .map((wall) => wall.id),
+    plan.cameras
+      .filter((camera) => camera.groupId === groupId)
+      .map((camera) => camera.id),
   );
 }
 
@@ -292,7 +327,10 @@ function selectEntity(plan: FloorPlanState, entityType: "wall" | "camera", entit
  * 为什么解组需要收集当前选区涉及的所有 groupId：
  * 一次多选可能跨多个编组，解组要对每个组分别清空 groupId，只处理第一个会留下「半解组」的隐蔽状态。
  */
-function getSelectionGroupIds(plan: FloorPlanState, selection: PlannerSelection) {
+function getSelectionGroupIds(
+  plan: FloorPlanState,
+  selection: PlannerSelection,
+) {
   if (!selection) {
     return [] as string[];
   }
@@ -302,7 +340,9 @@ function getSelectionGroupIds(plan: FloorPlanState, selection: PlannerSelection)
       .filter((wall) => selection.wallIds.includes(wall.id) && wall.groupId)
       .map((wall) => wall.groupId as string),
     ...plan.cameras
-      .filter((camera) => selection.cameraIds.includes(camera.id) && camera.groupId)
+      .filter(
+        (camera) => selection.cameraIds.includes(camera.id) && camera.groupId,
+      )
       .map((camera) => camera.groupId as string),
   ];
 
@@ -507,13 +547,20 @@ function getSelectionBounds(plan: FloorPlanState, selection: PlannerSelection) {
  * 为什么剪贴板要存边界与宽高：
  * 粘贴时需要把内容整体平移且不越界，边界与尺寸来自选中集本身，比每次从 plan 重算更稳定且与撤销栈快照一致。
  */
-function buildClipboard(plan: FloorPlanState, selection: PlannerSelection): PlannerClipboardState | null {
+function buildClipboard(
+  plan: FloorPlanState,
+  selection: PlannerSelection,
+): PlannerClipboardState | null {
   if (!selection) {
     return null;
   }
 
-  const walls = plan.walls.filter((wall) => selection.wallIds.includes(wall.id));
-  const cameras = plan.cameras.filter((camera) => selection.cameraIds.includes(camera.id));
+  const walls = plan.walls.filter((wall) =>
+    selection.wallIds.includes(wall.id),
+  );
+  const cameras = plan.cameras.filter((camera) =>
+    selection.cameraIds.includes(camera.id),
+  );
   if (walls.length === 0 && cameras.length === 0) {
     return null;
   }
@@ -536,7 +583,10 @@ function buildClipboard(plan: FloorPlanState, selection: PlannerSelection): Plan
  * 为什么粘贴时要 remap groupId：
  * 新墙线与摄像头是全新 id，若沿用旧 groupId 会与未粘贴对象意外同组；按旧组映射到新 id 才能保持「副本内部」仍为一组。
  */
-function createPastedEntities(clipboard: PlannerClipboardState, targetTopLeft: PlannerPoint) {
+function createPastedEntities(
+  clipboard: PlannerClipboardState,
+  targetTopLeft: PlannerPoint,
+) {
   const deltaX = targetTopLeft.x - clipboard.bounds.minX;
   const deltaY = targetTopLeft.y - clipboard.bounds.minY;
   const groupIdMap = new Map<string, string>();
@@ -575,10 +625,17 @@ function createPastedEntities(clipboard: PlannerClipboardState, targetTopLeft: P
  * 为什么粘贴锚点要先 clamp 再 snap：
  * 先限制在世界矩形内避免半截墙线出界，再吸附网格与手动放置摄像头规则一致，减少「贴进来却看不见」的困惑。
  */
-function clampPasteTopLeft(point: PlannerPoint, clipboard: PlannerClipboardState) {
+function clampPasteTopLeft(
+  point: PlannerPoint,
+  clipboard: PlannerClipboardState,
+) {
   return snapPoint({
     x: clamp(point.x, 0, Math.max(0, FLOOR_PLAN_WORLD_WIDTH - clipboard.width)),
-    y: clamp(point.y, 0, Math.max(0, FLOOR_PLAN_WORLD_HEIGHT - clipboard.height)),
+    y: clamp(
+      point.y,
+      0,
+      Math.max(0, FLOOR_PLAN_WORLD_HEIGHT - clipboard.height),
+    ),
   });
 }
 
@@ -586,7 +643,10 @@ function clampPasteTopLeft(point: PlannerPoint, clipboard: PlannerClipboardState
  * 为什么原地复制要生成新 id 却仍放在原 bounds：
  * Alt 拖动复制的交互是「先有一份重叠再拖开」，若直接偏移会改变用户鼠标下的命中点，与常见设计软件行为不一致。
  */
-function duplicateSelectionAtSource(plan: FloorPlanState, selection: PlannerSelection) {
+function duplicateSelectionAtSource(
+  plan: FloorPlanState,
+  selection: PlannerSelection,
+) {
   const clipboard = buildClipboard(plan, selection);
   if (!clipboard) {
     return null;
@@ -611,7 +671,10 @@ function duplicateSelectionAtSource(plan: FloorPlanState, selection: PlannerSele
  * 为什么对齐参考要排除当前拖动选区：
  * 若把正在移动的点当参考，辅助线会与自己吸附，失去「对齐到其它物体」的意义。
  */
-function getGuideReferenceValues(plan: FloorPlanState, excludedSelection?: PlannerSelection) {
+function getGuideReferenceValues(
+  plan: FloorPlanState,
+  excludedSelection?: PlannerSelection,
+) {
   const xValues = [0, FLOOR_PLAN_WORLD_WIDTH / 2, FLOOR_PLAN_WORLD_WIDTH];
   const yValues = [0, FLOOR_PLAN_WORLD_HEIGHT / 2, FLOOR_PLAN_WORLD_HEIGHT];
 
@@ -643,11 +706,17 @@ function getGuideReferenceValues(plan: FloorPlanState, excludedSelection?: Plann
  */
 function getSnapshotGuideValues(snapshot: SelectionDragSnapshot) {
   const xValues = [
-    ...Object.values(snapshot.wallOrigins).flatMap((wall) => [wall.x1, wall.x2]),
+    ...Object.values(snapshot.wallOrigins).flatMap((wall) => [
+      wall.x1,
+      wall.x2,
+    ]),
     ...Object.values(snapshot.cameraOrigins).map((camera) => camera.x),
   ];
   const yValues = [
-    ...Object.values(snapshot.wallOrigins).flatMap((wall) => [wall.y1, wall.y2]),
+    ...Object.values(snapshot.wallOrigins).flatMap((wall) => [
+      wall.y1,
+      wall.y2,
+    ]),
     ...Object.values(snapshot.cameraOrigins).map((camera) => camera.y),
   ];
 
@@ -661,7 +730,10 @@ function getSnapshotGuideValues(snapshot: SelectionDragSnapshot) {
  * 为什么在阈值内选最小 delta：
  * 多参考线可能同时满足吸附，取最近的一条避免在两个等距参考之间抖动。
  */
-function findGuideAdjustment(movingValues: number[], referenceValues: number[]) {
+function findGuideAdjustment(
+  movingValues: number[],
+  referenceValues: number[],
+) {
   let bestDelta: number | null = null;
   let guide: number | null = null;
 
@@ -729,15 +801,28 @@ function normalizeMarqueeRect(start: PlannerPoint, end: PlannerPoint) {
  * 为什么点入矩形用闭区间：
  * 与线段相交的边界情况一致，避免贴边点被排除导致「明明框住了却选不中」。
  */
-function pointInRect(point: PlannerPoint, rect: ReturnType<typeof normalizeMarqueeRect>) {
-  return point.x >= rect.x && point.x <= rect.x2 && point.y >= rect.y && point.y <= rect.y2;
+function pointInRect(
+  point: PlannerPoint,
+  rect: ReturnType<typeof normalizeMarqueeRect>,
+) {
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x2 &&
+    point.y >= rect.y &&
+    point.y <= rect.y2
+  );
 }
 
 /**
  * 为什么框选墙线用线段相交判断而不是只看端点：
  * 长线段可能完全穿过框选区但两端都在外，仅测端点会漏选，用户会认为框选不可靠。
  */
-function lineSegmentsIntersect(a: PlannerPoint, b: PlannerPoint, c: PlannerPoint, d: PlannerPoint) {
+function lineSegmentsIntersect(
+  a: PlannerPoint,
+  b: PlannerPoint,
+  c: PlannerPoint,
+  d: PlannerPoint,
+) {
   const direction = (p1: PlannerPoint, p2: PlannerPoint, p3: PlannerPoint) =>
     (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
   const onSegment = (p1: PlannerPoint, p2: PlannerPoint, p3: PlannerPoint) =>
@@ -751,7 +836,10 @@ function lineSegmentsIntersect(a: PlannerPoint, b: PlannerPoint, c: PlannerPoint
   const d3 = direction(a, b, c);
   const d4 = direction(a, b, d);
 
-  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+  if (
+    ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+    ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+  ) {
     return true;
   }
 
@@ -803,14 +891,20 @@ function lineIntersectsRect(
     [topRight, bottomRight],
     [bottomRight, bottomLeft],
     [bottomLeft, topLeft],
-  ].some(([edgeStart, edgeEnd]) => lineSegmentsIntersect(start, end, edgeStart, edgeEnd));
+  ].some(([edgeStart, edgeEnd]) =>
+    lineSegmentsIntersect(start, end, edgeStart, edgeEnd),
+  );
 }
 
 /**
  * 为什么过小的框选视为无效：
  * 误触点击会产生极小矩形，若仍触发选择会清空用户当前 carefully 选中的集合，最小尺寸阈值把点击与框选区分开。
  */
-function selectionFromRect(plan: FloorPlanState, start: PlannerPoint, end: PlannerPoint) {
+function selectionFromRect(
+  plan: FloorPlanState,
+  start: PlannerPoint,
+  end: PlannerPoint,
+) {
   const rect = normalizeMarqueeRect(start, end);
   if (rect.width < 6 && rect.height < 6) {
     return null;
@@ -847,7 +941,11 @@ function mergeSelections(base: PlannerSelection, addition: PlannerSelection) {
  * 为什么 Shift 拖动时只保留主轴位移：
  * 与墙线 Shift 锁轴向一致，批量移动多选对象时用户可沿走廊方向平移而不跑偏。
  */
-function constrainDragDelta(deltaX: number, deltaY: number, constrained: boolean) {
+function constrainDragDelta(
+  deltaX: number,
+  deltaY: number,
+  constrained: boolean,
+) {
   if (!constrained) {
     return { deltaX, deltaY };
   }
@@ -907,7 +1005,10 @@ function createPolygonWalls(points: PlannerPoint[]) {
  * 为什么预设轮廓要相对 center 平移再裁剪：
  * 模板定义在局部坐标系，插入到用户当前视口中心才能「一眼看到」；裁剪保证整段轮廓在可编辑世界内。
  */
-function createPresetWalls(templateId: FloorPlanTemplateId, center: PlannerPoint) {
+function createPresetWalls(
+  templateId: FloorPlanTemplateId,
+  center: PlannerPoint,
+) {
   const shape: PlannerPoint[] = (() => {
     switch (templateId) {
       case "small_room":
@@ -965,7 +1066,10 @@ function createPresetWalls(templateId: FloorPlanTemplateId, center: PlannerPoint
  * 为什么视口中心要逆变换到世界坐标：
  * 预设与「点击放置」共享同一世界系，只有把屏幕中心换算回去，插入位置才与缩放/平移状态无关。
  */
-function getViewportCenter(view: PlannerView, viewport: { width: number; height: number }) {
+function getViewportCenter(
+  view: PlannerView,
+  viewport: { width: number; height: number },
+) {
   return snapPoint({
     x: (viewport.width / 2 - view.x) / view.scale,
     y: (viewport.height / 2 - view.y) / view.scale,
@@ -1096,7 +1200,9 @@ interface FloorPlanEditorProps {
  * 为什么 2D 编辑器自包含顶栏切换而不复用 ReactFlow 的 Panel：
  * 2D 模式全屏占用时若仍依赖父级 Panel，切换入口会随数据流卸载而消失；自顶栏保证在纯画布状态下仍能回到拓扑视图。
  */
-export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorProps) {
+export default function FloorPlanEditor({
+  onViewModeChange,
+}: FloorPlanEditorProps) {
   const { t } = useTranslation("desktop");
 
   const [isMobileLayout, setIsMobileLayout] = useState(false);
@@ -1128,7 +1234,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
   const [plan, setPlan] = useState<FloorPlanState>(initialPlan);
   const planRef = useRef<FloorPlanState>(initialPlan);
-  const [tool, setTool] = useState<PlannerTool>("select");
+  const [tool, setTool] = useState<PlannerTool>(() =>
+    loadFloorPlanInteractionMode() === "browse" ? "pan" : "select",
+  );
   const [selection, setSelection] = useState<PlannerSelection>(null);
   const selectionRef = useRef<PlannerSelection>(null);
   const [wallPreview, setWallPreview] = useState<{
@@ -1145,7 +1253,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     width: number;
     height: number;
   } | null>(null);
-  const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
+  const [viewportSize, setViewportSize] = useState({
+    width: 1200,
+    height: 800,
+  });
   const viewportSizeRef = useRef(viewportSize);
   useEffect(() => {
     viewportSizeRef.current = viewportSize;
@@ -1154,27 +1265,33 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const [hoveredCameraId, setHoveredCameraId] = useState<string | null>(null);
   const [hoverEvent, setHoverEvent] = useState<LatestCameraEvent | null>(null);
   const [hoverLoading, setHoverLoading] = useState(false);
-  const [interactionMode, setInteractionMode] = useState<FloorPlanInteractionMode>(() => {
-    const saved = loadFloorPlanInteractionMode();
-    if (typeof window === "undefined") {
-      return saved;
-    }
-    const mobile = window.matchMedia("(max-width: 767px)").matches;
-    if (
-      mobile &&
-      saved === "browse" &&
-      !window.localStorage.getItem(FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY)
-    ) {
-      try {
-        window.localStorage.setItem(FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY, "1");
-      } catch {
-        /* noop */
+  const [interactionMode, setInteractionMode] =
+    useState<FloorPlanInteractionMode>(() => {
+      const saved = loadFloorPlanInteractionMode();
+      if (typeof window === "undefined") {
+        return saved;
       }
-      saveFloorPlanInteractionMode("edit");
-      return "edit";
-    }
-    return saved;
-  });
+      const mobile = window.matchMedia("(max-width: 767px)").matches;
+      if (
+        mobile &&
+        saved === "browse" &&
+        !window.localStorage.getItem(
+          FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY,
+        )
+      ) {
+        try {
+          window.localStorage.setItem(
+            FLOOR_PLAN_MOBILE_BROWSE_TO_EDIT_MIGRATED_KEY,
+            "1",
+          );
+        } catch {
+          /* noop */
+        }
+        saveFloorPlanInteractionMode("edit");
+        return "edit";
+      }
+      return saved;
+    });
   const interactionModeRef = useRef(interactionMode);
   const mobilePanelPrimedRef = useRef(false);
 
@@ -1183,7 +1300,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 通道绑定与编辑控件全在侧栏 Drawer 内，用户若停留在浏览态或不知道右下角按钮，会误以为「手机不能绑通道」；首屏展开一次降低发现成本，之后仍可随时关闭。
    */
   useEffect(() => {
-    if (!isMobileLayout || mobilePanelPrimedRef.current || interactionMode !== "edit") {
+    if (
+      !isMobileLayout ||
+      mobilePanelPrimedRef.current ||
+      interactionMode !== "edit"
+    ) {
       return;
     }
     mobilePanelPrimedRef.current = true;
@@ -1193,11 +1314,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const [channelNameFilter, setChannelNameFilter] = useState("");
   const [filterMatchIndex, setFilterMatchIndex] = useState(0);
   const [guideModalOpen, setGuideModalOpen] = useState(false);
-  const [panelLatestEvent, setPanelLatestEvent] = useState<LatestCameraEvent | null>(null);
+  const [panelLatestEvent, setPanelLatestEvent] =
+    useState<LatestCameraEvent | null>(null);
   const [panelEventLoading, setPanelEventLoading] = useState(false);
-  const [panelEventFetchedAt, setPanelEventFetchedAt] = useState<number | null>(null);
+  const [panelEventFetchedAt, setPanelEventFetchedAt] = useState<number | null>(
+    null,
+  );
   const [panelEventRefreshToken, setPanelEventRefreshToken] = useState(0);
-  const [hoverEventFetchedAt, setHoverEventFetchedAt] = useState<number | null>(null);
+  const [hoverEventFetchedAt, setHoverEventFetchedAt] = useState<number | null>(
+    null,
+  );
   const [relativeTimeTick, setRelativeTimeTick] = useState(0);
   const [hasClipboard, setHasClipboard] = useState(false);
   const [alignmentGuides, setAlignmentGuides] = useState<PlannerGuides>({
@@ -1206,42 +1332,42 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const toolRef = useRef(tool);
+  useEffect(() => {
+    toolRef.current = tool;
+  }, [tool]);
+  const spaceToolRef = useRef<PlannerTool | null>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const historyRef = useRef<FloorPlanState[]>([cloneFloorPlanState(initialPlan)]);
+  const historyRef = useRef<FloorPlanState[]>([
+    cloneFloorPlanState(initialPlan),
+  ]);
   const historyIndexRef = useRef(0);
   const clipboardRef = useRef<PlannerClipboardState | null>(null);
   const pasteCascadeRef = useRef(0);
   const pointerWorldRef = useRef<PlannerPoint | null>(null);
-  const panRef = useRef<
-    | {
-        startX: number;
-        startY: number;
-        originX: number;
-        originY: number;
-      }
-    | null
-  >(null);
+  const panRef = useRef<{
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
   const wallDrawRef = useRef<{ start: PlannerPoint } | null>(null);
   const roomDrawRef = useRef<{ start: PlannerPoint } | null>(null);
-  const marqueeRef = useRef<
-    | {
-        start: PlannerPoint;
-        current: PlannerPoint;
-        additive: boolean;
-      }
-    | null
-  >(null);
+  const marqueeRef = useRef<{
+    start: PlannerPoint;
+    current: PlannerPoint;
+    additive: boolean;
+  } | null>(null);
   const dragSelectionRef = useRef<SelectionDragSnapshot | null>(null);
-  const dragWallHandleRef = useRef<
-    | {
-        wallId: string;
-        endpoint: "start" | "end";
-        moved: boolean;
-        anchor: PlannerPoint;
-      }
-    | null
-  >(null);
-  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
+  const dragWallHandleRef = useRef<{
+    wallId: string;
+    endpoint: "start" | "end";
+    moved: boolean;
+    anchor: PlannerPoint;
+  } | null>(null);
+  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     planRef.current = plan;
@@ -1315,10 +1441,18 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     if (!element) {
       return;
     }
-    const width = Math.max(KONVA_MIN_STAGE_SIZE, Math.floor(element.clientWidth));
-    const height = Math.max(KONVA_MIN_STAGE_SIZE, Math.floor(element.clientHeight));
+    const width = Math.max(
+      KONVA_MIN_STAGE_SIZE,
+      Math.floor(element.clientWidth),
+    );
+    const height = Math.max(
+      KONVA_MIN_STAGE_SIZE,
+      Math.floor(element.clientHeight),
+    );
     setViewportSize((previous) =>
-      previous.width === width && previous.height === height ? previous : { width, height },
+      previous.width === width && previous.height === height
+        ? previous
+        : { width, height },
     );
   }, []);
 
@@ -1346,10 +1480,17 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   }, [channelOptions]);
 
   const selectedCamera = useMemo(() => {
-    if (!selection || selection.cameraIds.length !== 1 || selection.wallIds.length > 0) {
+    if (
+      !selection ||
+      selection.cameraIds.length !== 1 ||
+      selection.wallIds.length > 0
+    ) {
       return null;
     }
-    return plan.cameras.find((camera) => camera.id === selection.cameraIds[0]) ?? null;
+    return (
+      plan.cameras.find((camera) => camera.id === selection.cameraIds[0]) ??
+      null
+    );
   }, [plan.cameras, selection]);
 
   const selectedChannelOnline = useMemo(() => {
@@ -1357,7 +1498,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     if (!cid) {
       return null;
     }
-    return channelOnlineById.has(cid) ? channelOnlineById.get(cid) ?? null : null;
+    return channelOnlineById.has(cid)
+      ? (channelOnlineById.get(cid) ?? null)
+      : null;
   }, [channelOnlineById, selectedCamera?.channelId]);
 
   /**
@@ -1365,16 +1508,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 悬停卡片在 Portal 与 FAB 叠层场景下仍可能被现场浏览器差异影响命中；选中摄像头后顶部始终可点的图标链接与侧栏同源路由对象，给用户一条不依赖悬停的稳定跳转路径。
    */
   const selectedPlaybackTo = useMemo(
-    () => (selectedCamera?.channelId ? buildPlaybackDetailTo(selectedCamera.channelId) : null),
+    () =>
+      selectedCamera?.channelId
+        ? buildPlaybackDetailTo(selectedCamera.channelId)
+        : null,
     [selectedCamera?.channelId],
   );
   const selectedAlertsTo = useMemo(
-    () => (selectedCamera?.channelId ? buildAlertsTo(selectedCamera.channelId) : null),
+    () =>
+      selectedCamera?.channelId
+        ? buildAlertsTo(selectedCamera.channelId)
+        : null,
     [selectedCamera?.channelId],
   );
 
   const selectedWall = useMemo(() => {
-    if (!selection || selection.wallIds.length !== 1 || selection.cameraIds.length > 0) {
+    if (
+      !selection ||
+      selection.wallIds.length !== 1 ||
+      selection.cameraIds.length > 0
+    ) {
       return null;
     }
     return plan.walls.find((wall) => wall.id === selection.wallIds[0]) ?? null;
@@ -1383,7 +1536,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const selectedWallCount = selection?.wallIds.length ?? 0;
   const selectedCameraCount = selection?.cameraIds.length ?? 0;
   const selectedTotal = selectionCount(selection);
-  const isBatchSelection = selectedTotal > 1 || (selectedWallCount > 0 && selectedCameraCount > 0);
+  const isBatchSelection =
+    selectedTotal > 1 || (selectedWallCount > 0 && selectedCameraCount > 0);
 
   const selectedGroupIds = useMemo(
     () => getSelectionGroupIds(plan, selection),
@@ -1425,7 +1579,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
       const name = (camera.channelName || "").toLowerCase();
       const device = (camera.deviceName || "").toLowerCase();
-      return name.includes(cameraFilterTrim) || device.includes(cameraFilterTrim);
+      return (
+        name.includes(cameraFilterTrim) || device.includes(cameraFilterTrim)
+      );
     },
     [cameraFilterTrim],
   );
@@ -1528,7 +1684,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       const delta = -event.deltaY;
       const factor = Math.exp(delta * 0.0012);
       const { width: vw, height: vh } = viewportSizeRef.current;
-      replacePlan(zoomViewAtScreenPoint(planRef.current, sx, sy, factor, vw, vh), false);
+      replacePlan(
+        zoomViewAtScreenPoint(planRef.current, sx, sy, factor, vw, vh),
+        false,
+      );
     };
 
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -1562,7 +1721,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         const rect = el.getBoundingClientRect();
         const mid = touchMid(event.touches, rect);
         if (mid && mid.dist > 8) {
-          pinchRef.current = { startDist: mid.dist, startScale: planRef.current.view.scale };
+          pinchRef.current = {
+            startDist: mid.dist,
+            startScale: planRef.current.view.scale,
+          };
         }
       }
     };
@@ -1577,7 +1739,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         }
         const { startDist, startScale } = pinchRef.current;
         const { width: vw, height: vh } = viewportSizeRef.current;
-        const newScale = clampViewScale(startScale * (mid.dist / startDist), vw, vh);
+        const newScale = clampViewScale(
+          startScale * (mid.dist / startDist),
+          vw,
+          vh,
+        );
         const view = planRef.current.view;
         const worldX = (mid.mx - view.x) / view.scale;
         const worldY = (mid.my - view.y) / view.scale;
@@ -1698,8 +1864,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 浏览语义下不应停留在「画墙」等破坏性工具；若保留 wallDrawRef，全局 mousemove 仍会继续改预览，造成「已切浏览却仍在画」的错觉。
    */
   useEffect(() => {
+    spaceToolRef.current = null;
     if (interactionMode === "browse") {
-      setTool("select");
+      setTool("pan");
       wallDrawRef.current = null;
       roomDrawRef.current = null;
       marqueeRef.current = null;
@@ -1710,6 +1877,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       setRoomPreview(null);
       setMarqueeRect(null);
       clearGuides();
+    } else {
+      setTool("select");
     }
   }, [interactionMode, clearGuides]);
 
@@ -1733,7 +1902,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         view: {
           scale,
           x: viewportSize.width / 2 - ((bounds.minX + bounds.maxX) / 2) * scale,
-          y: viewportSize.height / 2 - ((bounds.minY + bounds.maxY) / 2) * scale,
+          y:
+            viewportSize.height / 2 - ((bounds.minY + bounds.maxY) / 2) * scale,
         },
       },
       false,
@@ -1763,8 +1933,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           ...planRef.current,
           view: {
             scale,
-            x: viewportSize.width / 2 - ((bounds.minX + bounds.maxX) / 2) * scale,
-            y: viewportSize.height / 2 - ((bounds.minY + bounds.maxY) / 2) * scale,
+            x:
+              viewportSize.width / 2 -
+              ((bounds.minX + bounds.maxX) / 2) * scale,
+            y:
+              viewportSize.height / 2 -
+              ((bounds.minY + bounds.maxY) / 2) * scale,
           },
         },
         false,
@@ -1796,7 +1970,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (filterMatches.length === 0) {
         return;
       }
-      const next = (filterMatchIndex + delta + filterMatches.length) % filterMatches.length;
+      const next =
+        (filterMatchIndex + delta + filterMatches.length) %
+        filterMatches.length;
       setFilterMatchIndex(next);
       const target = filterMatches[next];
       if (target) {
@@ -1930,7 +2106,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   );
   const hoverCardDataAgo = useMemo(
     () =>
-      hoverEventFetchedAt ? formatTimeAgoFromMs(hoverEventFetchedAt, relativeTimeNow, t) : "",
+      hoverEventFetchedAt
+        ? formatTimeAgoFromMs(hoverEventFetchedAt, relativeTimeNow, t)
+        : "",
     [hoverEventFetchedAt, relativeTimeNow, t],
   );
   const panelEventOccurredAgo = useMemo(
@@ -1942,7 +2120,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   );
   const panelDataFetchedAgo = useMemo(
     () =>
-      panelEventFetchedAt ? formatTimeAgoFromMs(panelEventFetchedAt, relativeTimeNow, t) : "",
+      panelEventFetchedAt
+        ? formatTimeAgoFromMs(panelEventFetchedAt, relativeTimeNow, t)
+        : "",
     [panelEventFetchedAt, relativeTimeNow, t],
   );
 
@@ -1956,7 +2136,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
       mutatePlan((draft) => {
-        const camera = draft.cameras.find((item) => item.id === selectedCamera.id);
+        const camera = draft.cameras.find(
+          (item) => item.id === selectedCamera.id,
+        );
         if (!camera) {
           return;
         }
@@ -1979,7 +2161,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       draft.cameras = draft.cameras.filter(
         (camera) => !currentSelection.cameraIds.includes(camera.id),
       );
-      draft.walls = draft.walls.filter((wall) => !currentSelection.wallIds.includes(wall.id));
+      draft.walls = draft.walls.filter(
+        (wall) => !currentSelection.wallIds.includes(wall.id),
+      );
     });
     setSelection(null);
   }, [mutatePlan]);
@@ -1999,31 +2183,37 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 为什么优先用鼠标世界坐标作为粘贴锚点：
    * 用户目光通常跟随光标，把结构落在指针附近比固定落在画布原点减少拖拽校正；拿不到指针时再回退视口中心避免粘贴到视野外。
    */
-  const resolvePasteTopLeft = useCallback((clipboard: PlannerClipboardState) => {
-    const pointerWorld = pointerWorldRef.current;
-    if (
-      pointerWorld &&
-      Number.isFinite(pointerWorld.x) &&
-      Number.isFinite(pointerWorld.y)
-    ) {
+  const resolvePasteTopLeft = useCallback(
+    (clipboard: PlannerClipboardState) => {
+      const pointerWorld = pointerWorldRef.current;
+      if (
+        pointerWorld &&
+        Number.isFinite(pointerWorld.x) &&
+        Number.isFinite(pointerWorld.y)
+      ) {
+        return clampPasteTopLeft(
+          {
+            x: pointerWorld.x - clipboard.width / 2,
+            y: pointerWorld.y - clipboard.height / 2,
+          },
+          clipboard,
+        );
+      }
+
+      const viewportCenter = getViewportCenter(
+        planRef.current.view,
+        viewportSize,
+      );
       return clampPasteTopLeft(
         {
-          x: pointerWorld.x - clipboard.width / 2,
-          y: pointerWorld.y - clipboard.height / 2,
+          x: viewportCenter.x - clipboard.width / 2,
+          y: viewportCenter.y - clipboard.height / 2,
         },
         clipboard,
       );
-    }
-
-    const viewportCenter = getViewportCenter(planRef.current.view, viewportSize);
-    return clampPasteTopLeft(
-      {
-        x: viewportCenter.x - clipboard.width / 2,
-        y: viewportCenter.y - clipboard.height / 2,
-      },
-      clipboard,
-    );
-  }, [viewportSize]);
+    },
+    [viewportSize],
+  );
 
   /**
    * 为什么连续粘贴要递增 cascadeOffset：
@@ -2037,7 +2227,8 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
 
       pasteCascadeRef.current += 1;
-      const cascadeOffset = FLOOR_PLAN_GRID_SIZE * Math.min(6, pasteCascadeRef.current);
+      const cascadeOffset =
+        FLOOR_PLAN_GRID_SIZE * Math.min(6, pasteCascadeRef.current);
       const pointerTopLeft = resolvePasteTopLeft(clipboard);
       const rawTargetTopLeft =
         mode === "duplicate"
@@ -2159,7 +2350,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       return;
     }
     historyIndexRef.current -= 1;
-    const snapshot = cloneFloorPlanState(historyRef.current[historyIndexRef.current]);
+    const snapshot = cloneFloorPlanState(
+      historyRef.current[historyIndexRef.current],
+    );
     planRef.current = snapshot;
     setPlan(snapshot);
     setSelection(null);
@@ -2176,7 +2369,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       return;
     }
     historyIndexRef.current += 1;
-    const snapshot = cloneFloorPlanState(historyRef.current[historyIndexRef.current]);
+    const snapshot = cloneFloorPlanState(
+      historyRef.current[historyIndexRef.current],
+    );
     planRef.current = snapshot;
     setPlan(snapshot);
     setSelection(null);
@@ -2278,7 +2473,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       mutatePlan((draft) => {
         draft.walls.push(...walls);
       });
-      setSelection(createSelection(walls.map((wall) => wall.id), []));
+      setSelection(
+        createSelection(
+          walls.map((wall) => wall.id),
+          [],
+        ),
+      );
       setTool("select");
     },
     [mutatePlan, viewportSize],
@@ -2321,9 +2521,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           minY: yValues.length > 0 ? Math.min(...yValues) : 0,
           maxY: yValues.length > 0 ? Math.max(...yValues) : 0,
         },
-        wallOrigins: Object.fromEntries(selectedWalls.map((wall) => [wall.id, { ...wall }])),
+        wallOrigins: Object.fromEntries(
+          selectedWalls.map((wall) => [wall.id, { ...wall }]),
+        ),
         cameraOrigins: Object.fromEntries(
-          selectedCameras.map((camera) => [camera.id, { x: camera.x, y: camera.y }]),
+          selectedCameras.map((camera) => [
+            camera.id,
+            { x: camera.x, y: camera.y },
+          ]),
         ),
       } satisfies SelectionDragSnapshot;
     },
@@ -2335,7 +2540,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 先吸附再裁剪可能导致穿出边界仍显示辅助线，用户会误以为已对齐到墙外；先 clamp 再对齐保证几何一致。
    */
   const resolveAlignedSelectionDelta = useCallback(
-    (snapshot: SelectionDragSnapshot, rawDeltaX: number, rawDeltaY: number, constrained: boolean) => {
+    (
+      snapshot: SelectionDragSnapshot,
+      rawDeltaX: number,
+      rawDeltaY: number,
+      constrained: boolean,
+    ) => {
       const dragDelta = constrainDragDelta(rawDeltaX, rawDeltaY, constrained);
       let deltaX = clamp(
         dragDelta.deltaX,
@@ -2389,9 +2599,18 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 若不排除，端点会与自己的另一端虚假对齐，辅助线常驻失去参考意义。
    */
   const resolveAlignedWallHandlePoint = useCallback(
-    (wallId: string, endpoint: "start" | "end", point: PlannerPoint, constrained: boolean, anchor: PlannerPoint) => {
+    (
+      wallId: string,
+      endpoint: "start" | "end",
+      point: PlannerPoint,
+      constrained: boolean,
+      anchor: PlannerPoint,
+    ) => {
       const nextPoint = constrained ? snapWallEnd(anchor, point) : point;
-      const references = getGuideReferenceValues(planRef.current, createSelection([wallId], []));
+      const references = getGuideReferenceValues(
+        planRef.current,
+        createSelection([wallId], []),
+      );
       const xGuide = findGuideAdjustment([nextPoint.x], references.xValues);
       const yGuide = findGuideAdjustment([nextPoint.y], references.yValues);
 
@@ -2407,9 +2626,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         horizontal: yGuide.guide === null ? [] : [yGuide.guide],
       });
 
-      return endpoint === "start"
-        ? alignedPoint
-        : alignedPoint;
+      return endpoint === "start" ? alignedPoint : alignedPoint;
     },
     [],
   );
@@ -2434,7 +2651,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         event.clientY <= containerRect.bottom
       ) {
         pointerWorldRef.current = clampPointToWorld(
-          snapPoint(clientToWorld(event.clientX, event.clientY, container, planRef.current.view)),
+          snapPoint(
+            clientToWorld(
+              event.clientX,
+              event.clientY,
+              container,
+              planRef.current.view,
+            ),
+          ),
         );
       }
 
@@ -2456,7 +2680,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         } else if (marqueeRef.current) {
           const current = clampPointToWorld(
             snapPoint(
-              clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+              clientToWorld(
+                event.clientX,
+                event.clientY,
+                container,
+                planRef.current.view,
+              ),
             ),
           );
           marqueeRef.current.current = current;
@@ -2486,13 +2715,20 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (wallDrawRef.current) {
         const current = clampPointToWorld(
           snapPoint(
-            clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+            clientToWorld(
+              event.clientX,
+              event.clientY,
+              container,
+              planRef.current.view,
+            ),
           ),
         );
         // 墙线默认支持任意角度绘制；按住 Shift 时再切换为正交约束。
         setWallPreview({
           start: wallDrawRef.current.start,
-          end: event.shiftKey ? snapWallEnd(wallDrawRef.current.start, current) : current,
+          end: event.shiftKey
+            ? snapWallEnd(wallDrawRef.current.start, current)
+            : current,
         });
         return;
       }
@@ -2500,7 +2736,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (roomDrawRef.current) {
         const current = clampPointToWorld(
           snapPoint(
-            clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+            clientToWorld(
+              event.clientX,
+              event.clientY,
+              container,
+              planRef.current.view,
+            ),
           ),
         );
         setRoomPreview({ start: roomDrawRef.current.start, end: current });
@@ -2510,7 +2751,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (marqueeRef.current) {
         const current = clampPointToWorld(
           snapPoint(
-            clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+            clientToWorld(
+              event.clientX,
+              event.clientY,
+              container,
+              planRef.current.view,
+            ),
           ),
         );
         marqueeRef.current.current = current;
@@ -2522,7 +2768,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (dragSelectionRef.current) {
         const world = clampPointToWorld(
           snapPoint(
-            clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+            clientToWorld(
+              event.clientX,
+              event.clientY,
+              container,
+              planRef.current.view,
+            ),
           ),
         );
         const rawDeltaX = world.x - dragSelectionRef.current.startWorld.x;
@@ -2561,7 +2812,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       if (dragWallHandleRef.current) {
         const world = clampPointToWorld(
           snapPoint(
-            clientToWorld(event.clientX, event.clientY, container, planRef.current.view),
+            clientToWorld(
+              event.clientX,
+              event.clientY,
+              container,
+              planRef.current.view,
+            ),
           ),
         );
         const alignedPoint = resolveAlignedWallHandlePoint(
@@ -2604,7 +2860,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         const preview = wallPreview;
         wallDrawRef.current = null;
         setWallPreview(null);
-        if (preview && (preview.start.x !== preview.end.x || preview.start.y !== preview.end.y)) {
+        if (
+          preview &&
+          (preview.start.x !== preview.end.x ||
+            preview.start.y !== preview.end.y)
+        ) {
           const wall: FloorWall = {
             id: createWallId(),
             x1: preview.start.x,
@@ -2630,7 +2890,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             mutatePlan((draft) => {
               draft.walls.push(...walls);
             });
-            setSelection(createSelection(walls.map((wall) => wall.id), []));
+            setSelection(
+              createSelection(
+                walls.map((wall) => wall.id),
+                [],
+              ),
+            );
           }
         }
       }
@@ -2639,8 +2904,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         const { start, current, additive } = marqueeRef.current;
         marqueeRef.current = null;
         setMarqueeRect(null);
-        const nextSelection = selectionFromRect(planRef.current, start, current);
-        setSelection((previous) => (additive ? mergeSelections(previous, nextSelection) : nextSelection));
+        const nextSelection = selectionFromRect(
+          planRef.current,
+          start,
+          current,
+        );
+        setSelection((previous) =>
+          additive ? mergeSelections(previous, nextSelection) : nextSelection,
+        );
       }
 
       if (dragSelectionRef.current) {
@@ -2705,7 +2976,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      const snapshot = buildDragSelectionSnapshot(currentSelection, { x: 0, y: 0 });
+      const snapshot = buildDragSelectionSnapshot(currentSelection, {
+        x: 0,
+        y: 0,
+      });
       if (!snapshot) {
         return;
       }
@@ -2762,6 +3036,15 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         target?.tagName === "SELECT" ||
         Boolean(target?.isContentEditable);
       if (isTypingTarget) {
+        return;
+      }
+
+      if (event.key === " " && !event.repeat) {
+        event.preventDefault();
+        if (spaceToolRef.current === null) {
+          spaceToolRef.current = toolRef.current;
+          setTool("pan");
+        }
         return;
       }
 
@@ -2851,8 +3134,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
-        const step = event.shiftKey ? FLOOR_PLAN_GRID_SIZE * 2 : FLOOR_PLAN_GRID_SIZE;
+      if (
+        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)
+      ) {
+        const step = event.shiftKey
+          ? FLOOR_PLAN_GRID_SIZE * 2
+          : FLOOR_PLAN_GRID_SIZE;
         const deltas = {
           ArrowUp: { x: 0, y: -step },
           ArrowDown: { x: 0, y: step },
@@ -2885,8 +3172,19 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       }
     };
 
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === " " && spaceToolRef.current !== null) {
+        setTool(spaceToolRef.current);
+        spaceToolRef.current = null;
+      }
+    };
+
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keyup", handleKeyUp);
+    };
   }, [
     clearGuides,
     copySelection,
@@ -2904,22 +3202,37 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 为什么指针坐标统一走 clientToWorld + snap：
    * 所有工具共享同一套坐标变换，避免墙线端点与摄像头放置出现系统性半格偏差。
    */
-  const resolvePointerWorld = useCallback((event: Pick<MouseEvent, "clientX" | "clientY">) => {
-    const container = containerRef.current;
-    if (!container) {
-      return null;
-    }
-    return clampPointToWorld(
-      snapPoint(clientToWorld(event.clientX, event.clientY, container, planRef.current.view)),
-    );
-  }, []);
+  const resolvePointerWorld = useCallback(
+    (event: Pick<MouseEvent, "clientX" | "clientY">) => {
+      const container = containerRef.current;
+      if (!container) {
+        return null;
+      }
+      return clampPointToWorld(
+        snapPoint(
+          clientToWorld(
+            event.clientX,
+            event.clientY,
+            container,
+            planRef.current.view,
+          ),
+        ),
+      );
+    },
+    [],
+  );
 
   /**
    * 为什么抽出与 Konva 事件类型无关的按下逻辑：
    * Stage 与子节点统一用 pointer 入口时，触摸与鼠标共用一套分支；坐标与 button 语义与 MouseEvent 对齐即可复用。
    */
   const applyStagePointerDown = useCallback(
-    (evt: Pick<MouseEvent, "clientX" | "clientY" | "button" | "ctrlKey" | "metaKey">) => {
+    (
+      evt: Pick<
+        MouseEvent,
+        "clientX" | "clientY" | "button" | "ctrlKey" | "metaKey"
+      >,
+    ) => {
       if (evt.button === 1 || (tool === "pan" && evt.button === 0)) {
         beginPan(evt.clientX, evt.clientY);
         return;
@@ -3038,18 +3351,27 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      if (isMobileLayoutRef.current && interactionModeRef.current === "browse") {
+      if (
+        isMobileLayoutRef.current &&
+        interactionModeRef.current === "browse"
+      ) {
         beginPan(event.evt.clientX, event.evt.clientY);
         return;
       }
 
       clearGuides();
       if (event.evt.ctrlKey || event.evt.metaKey) {
-        setSelection((current) => toggleEntitySelection(current, "camera", cameraId));
+        setSelection((current) =>
+          toggleEntitySelection(current, "camera", cameraId),
+        );
         return;
       }
 
-      const baseSelection = isEntitySelected(selectionRef.current, "camera", cameraId)
+      const baseSelection = isEntitySelected(
+        selectionRef.current,
+        "camera",
+        cameraId,
+      )
         ? selectionRef.current
         : selectEntity(planRef.current, "camera", cameraId);
       setSelection(baseSelection);
@@ -3069,7 +3391,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
       // 选择模式下按住 Alt 拖动，可先复制当前选择集，再直接拖走副本。
       if (event.evt.altKey) {
-        const duplicated = duplicateSelectionAtSource(planRef.current, baseSelection);
+        const duplicated = duplicateSelectionAtSource(
+          planRef.current,
+          baseSelection,
+        );
         if (duplicated) {
           clipboardRef.current = duplicated.clipboard;
           pasteCascadeRef.current = 0;
@@ -3079,14 +3404,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             draft.cameras.push(...duplicated.pasted.cameras);
           });
           setSelection(duplicated.selection);
-          dragSelectionRef.current = buildDragSelectionSnapshot(duplicated.selection, startWorld);
+          dragSelectionRef.current = buildDragSelectionSnapshot(
+            duplicated.selection,
+            startWorld,
+          );
           return;
         }
       }
 
-      dragSelectionRef.current = buildDragSelectionSnapshot(baseSelection, startWorld);
+      dragSelectionRef.current = buildDragSelectionSnapshot(
+        baseSelection,
+        startWorld,
+      );
     },
-    [beginPan, buildDragSelectionSnapshot, clearGuides, resolvePointerWorld, tool],
+    [
+      beginPan,
+      buildDragSelectionSnapshot,
+      clearGuides,
+      resolvePointerWorld,
+      tool,
+    ],
   );
 
   /**
@@ -3106,18 +3443,27 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
         return;
       }
 
-      if (isMobileLayoutRef.current && interactionModeRef.current === "browse") {
+      if (
+        isMobileLayoutRef.current &&
+        interactionModeRef.current === "browse"
+      ) {
         beginPan(event.evt.clientX, event.evt.clientY);
         return;
       }
 
       clearGuides();
       if (event.evt.ctrlKey || event.evt.metaKey) {
-        setSelection((current) => toggleEntitySelection(current, "wall", wall.id));
+        setSelection((current) =>
+          toggleEntitySelection(current, "wall", wall.id),
+        );
         return;
       }
 
-      const baseSelection = isEntitySelected(selectionRef.current, "wall", wall.id)
+      const baseSelection = isEntitySelected(
+        selectionRef.current,
+        "wall",
+        wall.id,
+      )
         ? selectionRef.current
         : selectEntity(planRef.current, "wall", wall.id);
       setSelection(baseSelection);
@@ -3137,7 +3483,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
       // 选择模式下按住 Alt 拖动墙体，可直接复制当前结构并拖动新副本。
       if (event.evt.altKey) {
-        const duplicated = duplicateSelectionAtSource(planRef.current, baseSelection);
+        const duplicated = duplicateSelectionAtSource(
+          planRef.current,
+          baseSelection,
+        );
         if (duplicated) {
           clipboardRef.current = duplicated.clipboard;
           pasteCascadeRef.current = 0;
@@ -3147,14 +3496,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             draft.cameras.push(...duplicated.pasted.cameras);
           });
           setSelection(duplicated.selection);
-          dragSelectionRef.current = buildDragSelectionSnapshot(duplicated.selection, startWorld);
+          dragSelectionRef.current = buildDragSelectionSnapshot(
+            duplicated.selection,
+            startWorld,
+          );
           return;
         }
       }
 
-      dragSelectionRef.current = buildDragSelectionSnapshot(baseSelection, startWorld);
+      dragSelectionRef.current = buildDragSelectionSnapshot(
+        baseSelection,
+        startWorld,
+      );
     },
-    [beginPan, buildDragSelectionSnapshot, clearGuides, resolvePointerWorld, tool],
+    [
+      beginPan,
+      buildDragSelectionSnapshot,
+      clearGuides,
+      resolvePointerWorld,
+      tool,
+    ],
   );
 
   /**
@@ -3162,7 +3523,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 线段的 hitStrokeWidth 已很宽，端点再共用同一区域会难以区分「拖线」还是「拖端点」，小圆把意图拆开。
    */
   const handleWallHandlePointerDown = useCallback(
-    (wallId: string, endpoint: "start" | "end", event: KonvaEventObject<PointerEvent>) => {
+    (
+      wallId: string,
+      endpoint: "start" | "end",
+      event: KonvaEventObject<PointerEvent>,
+    ) => {
       event.cancelBubble = true;
       if (event.evt.button !== 0) {
         return;
@@ -3194,8 +3559,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
    * 全图画满网格在万级线段时拖慢帧率；按视口裁剪后仍保持视觉无限网格，因为世界坐标系未变。
    */
   const gridLines = useMemo(() => {
-    const left = clamp((-plan.view.x) / plan.view.scale, 0, FLOOR_PLAN_WORLD_WIDTH);
-    const top = clamp((-plan.view.y) / plan.view.scale, 0, FLOOR_PLAN_WORLD_HEIGHT);
+    const left = clamp(
+      -plan.view.x / plan.view.scale,
+      0,
+      FLOOR_PLAN_WORLD_WIDTH,
+    );
+    const top = clamp(
+      -plan.view.y / plan.view.scale,
+      0,
+      FLOOR_PLAN_WORLD_HEIGHT,
+    );
     const right = clamp(
       (viewportSize.width - plan.view.x) / plan.view.scale,
       0,
@@ -3213,7 +3586,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       major: boolean;
     }> = [];
 
-    const startColumn = Math.max(0, Math.floor(left / FLOOR_PLAN_GRID_SIZE) - 2);
+    const startColumn = Math.max(
+      0,
+      Math.floor(left / FLOOR_PLAN_GRID_SIZE) - 2,
+    );
     const endColumn = Math.min(
       Math.ceil(FLOOR_PLAN_WORLD_WIDTH / FLOOR_PLAN_GRID_SIZE),
       Math.ceil(right / FLOOR_PLAN_GRID_SIZE) + 2,
@@ -3243,7 +3619,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
     }
 
     return lines;
-  }, [plan.view.scale, plan.view.x, plan.view.y, viewportSize.height, viewportSize.width]);
+  }, [
+    plan.view.scale,
+    plan.view.x,
+    plan.view.y,
+    viewportSize.height,
+    viewportSize.width,
+  ]);
 
   void historyVersion;
 
@@ -3254,50 +3636,69 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   const isBrowseMode = interactionMode === "browse";
   const isEditMode = interactionMode === "edit";
   const showEditToolButtons = isEditMode;
-  const showUndoRedo =
-    isEditMode && (canUndo || canRedo);
+  const showUndoRedo = isEditMode && (canUndo || canRedo);
   const showClipboardGroup =
-    isEditMode &&
-    (canCopySelection || hasClipboard || canGroup || canUngroup);
+    isEditMode && (canCopySelection || hasClipboard || canGroup || canUngroup);
 
   /**
    * 为什么把侧栏抽成内联子组件：
    * 小屏用底部 Drawer 复用同一段 JSX，避免复制粘贴导致后续改一侧漏改另一侧；大屏仍用固定侧栏，避免抽屉遮挡画布手势。
    */
   function SidePanel() {
+    const hideSummaryBlocks = !!selectedCamera;
+
     return (
       <>
-        <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-          <div className="mb-2 text-sm font-semibold text-gray-900">{t("planner_overview")}</div>
-          <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-            <div className="rounded-xl bg-white p-3 shadow-sm">
-              <div className="text-xs text-gray-500">{t("wall_count")}</div>
-              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.walls.length}</div>
+        {!hideSummaryBlocks && (
+          <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+            <div className="mb-2 text-sm font-semibold text-gray-900">
+              {t("planner_overview")}
             </div>
-            <div className="rounded-xl bg-white p-3 shadow-sm">
-              <div className="text-xs text-gray-500">{t("camera_count")}</div>
-              <div className="mt-1 text-xl font-semibold text-gray-900">{plan.cameras.length}</div>
-            </div>
-            <div className="col-span-2 rounded-xl bg-white p-3 shadow-sm text-xs text-gray-500">
-              {t("current_scale")}: {(plan.view.scale * 100).toFixed(0)}%
+            <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <div className="text-xs text-gray-500">{t("wall_count")}</div>
+                <div className="mt-1 text-xl font-semibold text-gray-900">
+                  {plan.walls.length}
+                </div>
+              </div>
+              <div className="rounded-xl bg-white p-3 shadow-sm">
+                <div className="text-xs text-gray-500">{t("camera_count")}</div>
+                <div className="mt-1 text-xl font-semibold text-gray-900">
+                  {plan.cameras.length}
+                </div>
+              </div>
+              <div className="col-span-2 rounded-xl bg-white p-3 shadow-sm text-xs text-gray-500">
+                {t("current_scale")}: {(plan.view.scale * 100).toFixed(0)}%
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {isEditMode ? (
+        {!hideSummaryBlocks && isEditMode ? (
           <div className="mb-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
               <LayoutTemplate className="h-4 w-4" />
               {t("preset_shapes")}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <PresetButton label={t("preset_small_room")} onClick={() => insertPreset("small_room")} />
-              <PresetButton label={t("preset_corridor")} onClick={() => insertPreset("corridor")} />
+              <PresetButton
+                label={t("preset_small_room")}
+                onClick={() => insertPreset("small_room")}
+              />
+              <PresetButton
+                label={t("preset_corridor")}
+                onClick={() => insertPreset("corridor")}
+              />
               <div className="col-span-2">
-                <PresetButton label={t("preset_l_room")} onClick={() => insertPreset("l_room")} />
+                <PresetButton
+                  label={t("preset_l_room")}
+                  onClick={() => insertPreset("l_room")}
+                />
               </div>
             </div>
-            <div className="mt-3 text-xs leading-5 text-gray-500">{t("preset_description")}</div>
+            <div className="mt-3 text-xs leading-5 text-gray-500">
+              {t("preset_description")}
+            </div>
           </div>
         ) : null}
 
@@ -3305,7 +3706,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           camera={selectedCamera}
           channelOptions={channelOptions}
           channelsLoading={channelQuery.isLoading}
-          channelsError={channelQuery.isError ? String(channelQuery.error) : null}
+          channelsError={
+            channelQuery.isError ? String(channelQuery.error) : null
+          }
           interactionMode={interactionMode}
           channelFilter={channelNameFilter}
           onChannelFilterChange={setChannelNameFilter}
@@ -3313,14 +3716,20 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           selectedEventLoading={panelEventLoading}
           channelOnline={selectedChannelOnline}
           playbackTo={
-            selectedCamera?.channelId ? buildPlaybackDetailTo(selectedCamera.channelId) : null
+            selectedCamera?.channelId
+              ? buildPlaybackDetailTo(selectedCamera.channelId)
+              : null
           }
           alertsTo={
-            selectedCamera?.channelId ? buildAlertsTo(selectedCamera.channelId) : null
+            selectedCamera?.channelId
+              ? buildAlertsTo(selectedCamera.channelId)
+              : null
           }
           eventOccurredAgo={panelEventOccurredAgo}
           dataFetchedAgo={panelDataFetchedAgo}
-          onRefreshEvent={selectedCamera?.channelId ? refreshPanelEvent : undefined}
+          onRefreshEvent={
+            selectedCamera?.channelId ? refreshPanelEvent : undefined
+          }
           filterMatchCount={filterMatches.length}
           filterMatchActiveIndex={filterMatchIndex}
           onFilterPrev={() => navigateFilterMatch(-1)}
@@ -3328,7 +3737,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           onFilterFrameAll={frameFilterMatches}
           onBindChannel={(channelId) => {
             updateSelectedCamera((camera) => {
-              const option = channelOptions.find((item) => item.value === channelId);
+              const option = channelOptions.find(
+                (item) => item.value === channelId,
+              );
               camera.channelId = channelId;
               camera.channelName = option?.channelName ?? null;
               camera.deviceName = option?.deviceName ?? null;
@@ -3354,7 +3765,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
 
         {isBatchSelection ? (
           <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            <div className="mb-1 font-medium text-gray-900">{t("batch_selected")}</div>
+            <div className="mb-1 font-medium text-gray-900">
+              {t("batch_selected")}
+            </div>
             <div className="mb-2 text-xs text-gray-500">
               {t("batch_selected_summary", {
                 walls: selectedWallCount,
@@ -3362,10 +3775,14 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               })}
             </div>
             <div className="mb-3 text-xs leading-5 text-gray-500">
-              {selectedGroupIds.length > 0 ? t("grouped_selection_hint") : t("multi_select_hint")}
+              {selectedGroupIds.length > 0
+                ? t("grouped_selection_hint")
+                : t("multi_select_hint")}
             </div>
             {isBrowseMode ? (
-              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
+              <div className="text-xs leading-5 text-gray-500">
+                {t("browse_side_actions_hidden_hint")}
+              </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {canGroup ? (
@@ -3423,34 +3840,26 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </div>
             )}
           </div>
-        ) : selectedCamera ? (
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
-            <div className="mb-1 font-medium text-gray-900">{t("camera_summary")}</div>
-            <div>
-              {t("direction")}: {formatAngle(selectedCamera.angle)}
-            </div>
-            <div>
-              {t("fov")}: {Math.round(selectedCamera.fov)}°
-            </div>
-            <div>
-              {t("range")}: {Math.round(selectedCamera.range)}
-            </div>
-            <div className="mt-2 text-[11px] text-gray-500">
-              {selectedCamera.groupId ? t("grouped_item_hint") : t("single_item_hint")}
-            </div>
-          </div>
         ) : selectedWall ? (
           <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-            <div className="mb-1 font-medium text-gray-900">{t("wall_selected")}</div>
+            <div className="mb-1 font-medium text-gray-900">
+              {t("wall_selected")}
+            </div>
             <div className="mb-2 text-xs text-gray-500">#{selectedWall.id}</div>
             {isEditMode ? (
-              <div className="mb-3 text-xs leading-5 text-gray-500">{t("wall_edit_tip")}</div>
+              <div className="mb-3 text-xs leading-5 text-gray-500">
+                {t("wall_edit_tip")}
+              </div>
             ) : null}
             <div className="mb-3 text-[11px] leading-5 text-gray-500">
-              {selectedWall.groupId ? t("grouped_item_hint") : t("single_item_hint")}
+              {selectedWall.groupId
+                ? t("grouped_item_hint")
+                : t("single_item_hint")}
             </div>
             {isBrowseMode ? (
-              <div className="text-xs leading-5 text-gray-500">{t("browse_side_actions_hidden_hint")}</div>
+              <div className="text-xs leading-5 text-gray-500">
+                {t("browse_side_actions_hidden_hint")}
+              </div>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-2">
@@ -3481,7 +3890,10 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           </div>
         ) : (
           <div className="mt-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-4">
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("selection_empty_description_v3")} />
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={t("selection_empty_description_v3")}
+            />
           </div>
         )}
       </>
@@ -3489,13 +3901,20 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
   }
 
   return (
-    <div className="flex min-h-[100dvh] min-h-screen flex-col bg-[#f5f7fb] text-gray-900 md:min-h-screen md:flex-row">
+    <div className="flex min-h-dvh flex-col bg-[#f5f7fb] text-gray-900 md:h-screen md:min-h-0 md:flex-row md:overflow-hidden">
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="sticky top-0 z-30 flex max-w-[100vw] gap-1.5 overflow-x-auto overflow-y-visible border-b border-gray-200/80 bg-white/95 px-2 py-2 shadow-sm backdrop-blur md:absolute md:left-4 md:right-auto md:top-4 md:max-w-none md:flex-wrap md:gap-2 md:rounded-xl md:border md:p-2 md:shadow-sm">
-          <ToolbarButton title={t("dataflow")} onClick={() => onViewModeChange("dataflow")}>
+          <ToolbarButton
+            title={t("dataflow")}
+            onClick={() => onViewModeChange("dataflow")}
+          >
             <Layers className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active title={t("floor_plan_mode")} onClick={() => onViewModeChange("2d")}>
+          <ToolbarButton
+            active
+            title={t("floor_plan_mode")}
+            onClick={() => onViewModeChange("2d")}
+          >
             <MapIcon className="h-4 w-4" />
           </ToolbarButton>
           <div className="mx-1 h-6 w-px bg-gray-200" />
@@ -3513,10 +3932,16 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           >
             <Pencil className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton title={t("floor_plan_help_tooltip")} onClick={() => setGuideModalOpen(true)}>
-            <MapPinned className="h-4 w-4" />
+          <ToolbarButton
+            title={t("floor_plan_help_tooltip")}
+            onClick={() => setGuideModalOpen(true)}
+          >
+            <HelpCircle className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton title={t("floor_plan_export_tooltip")} onClick={exportFloorPlanFile}>
+          <ToolbarButton
+            title={t("floor_plan_export_tooltip")}
+            onClick={exportFloorPlanFile}
+          >
             <Download className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
@@ -3532,7 +3957,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             className="hidden"
             onChange={onImportFloorPlanFileChange}
           />
-          {showEditToolButtons ? (
+          {isMobileLayout && showEditToolButtons ? (
             <>
               <div className="mx-1 h-6 w-px bg-gray-200" />
               <ToolbarButton
@@ -3542,53 +3967,34 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               >
                 <MousePointer2 className="h-4 w-4" />
               </ToolbarButton>
-              <ToolbarButton active={tool === "wall"} title={t("wall_tool")} onClick={() => setTool("wall")}>
+              <ToolbarButton
+                active={tool === "wall"}
+                title={t("wall_tool")}
+                onClick={() => setTool("wall")}
+              >
                 <Waypoints className="h-4 w-4" />
               </ToolbarButton>
-              <ToolbarButton active={tool === "room"} title={t("room_tool")} onClick={() => setTool("room")}>
+              <ToolbarButton
+                active={tool === "room"}
+                title={t("room_tool")}
+                onClick={() => setTool("room")}
+              >
                 <Square className="h-4 w-4" />
               </ToolbarButton>
-              <ToolbarButton active={tool === "camera"} title={t("camera_tool")} onClick={() => setTool("camera")}>
+              <ToolbarButton
+                active={tool === "camera"}
+                title={t("camera_tool")}
+                onClick={() => setTool("camera")}
+              >
                 <Camera className="h-4 w-4" />
               </ToolbarButton>
-              <ToolbarButton active={tool === "pan"} title={t("pan_tool")} onClick={() => setTool("pan")}>
+              <ToolbarButton
+                active={tool === "pan"}
+                title={t("pan_tool")}
+                onClick={() => setTool("pan")}
+              >
                 <Hand className="h-4 w-4" />
               </ToolbarButton>
-            </>
-          ) : null}
-          {showUndoRedo ? (
-            <>
-              <div className="mx-1 h-6 w-px bg-gray-200" />
-              {canUndo ? (
-                <ToolbarButton title={t("undo")} onClick={undo}>
-                  <Undo2 className="h-4 w-4" />
-                </ToolbarButton>
-              ) : null}
-              {canRedo ? (
-                <ToolbarButton title={t("redo")} onClick={redo}>
-                  <Redo2 className="h-4 w-4" />
-                </ToolbarButton>
-              ) : null}
-            </>
-          ) : null}
-          {showClipboardGroup ? (
-            <>
-              <div className="mx-1 h-6 w-px bg-gray-200" />
-              {canCopySelection ? (
-                <CompactActionButton onClick={copySelection}>{t("copy_selection")}</CompactActionButton>
-              ) : null}
-              {hasClipboard ? (
-                <CompactActionButton onClick={() => pasteClipboard()}>{t("paste_selection")}</CompactActionButton>
-              ) : null}
-              {canCopySelection ? (
-                <CompactActionButton onClick={duplicateSelection}>{t("duplicate_selection")}</CompactActionButton>
-              ) : null}
-              {canGroup ? (
-                <CompactActionButton onClick={groupSelection}>{t("group_selection")}</CompactActionButton>
-              ) : null}
-              {canUngroup ? (
-                <CompactActionButton onClick={ungroupSelection}>{t("ungroup_selection")}</CompactActionButton>
-              ) : null}
             </>
           ) : null}
           <div className="mx-1 h-6 w-px bg-gray-200" />
@@ -3635,10 +4041,13 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             <ZoomIn className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton title={t("zoom_to_fit")} onClick={zoomToFit}>
-            <WandSparkles className="h-4 w-4" />
+            <MapPinned className="h-4 w-4" />
           </ToolbarButton>
           {boundCamerasForOverview.length > 0 ? (
-            <ToolbarButton title={t("zoom_to_fit_cameras")} onClick={() => zoomToFitCameras(boundCamerasForOverview)}>
+            <ToolbarButton
+              title={t("zoom_to_fit_cameras")}
+              onClick={() => zoomToFitCameras(boundCamerasForOverview)}
+            >
               <Focus className="h-4 w-4" />
             </ToolbarButton>
           ) : null}
@@ -3661,7 +4070,90 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
               </Link>
             </>
           ) : null}
-          {isEditMode ? (
+        </div>
+
+        {isEditMode && !isMobileLayout ? (
+          <div className="absolute left-4 top-18 z-30 flex flex-col gap-1.5 rounded-xl border border-gray-200/80 bg-white/95 p-2 shadow-sm backdrop-blur">
+            {showEditToolButtons ? (
+              <>
+                <ToolbarButton
+                  active={tool === "select"}
+                  title={t("select_tool")}
+                  onClick={() => setTool("select")}
+                >
+                  <MousePointer2 className="h-4 w-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  active={tool === "wall"}
+                  title={t("wall_tool")}
+                  onClick={() => setTool("wall")}
+                >
+                  <Waypoints className="h-4 w-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  active={tool === "room"}
+                  title={t("room_tool")}
+                  onClick={() => setTool("room")}
+                >
+                  <Square className="h-4 w-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  active={tool === "camera"}
+                  title={t("camera_tool")}
+                  onClick={() => setTool("camera")}
+                >
+                  <Camera className="h-4 w-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                  active={tool === "pan"}
+                  title={t("pan_tool")}
+                  onClick={() => setTool("pan")}
+                >
+                  <Hand className="h-4 w-4" />
+                </ToolbarButton>
+              </>
+            ) : null}
+
+            {showClipboardGroup ? (
+              <>
+                <div className="mx-auto my-0.5 h-px w-6 bg-gray-200" />
+                {canCopySelection ? (
+                  <ToolbarButton
+                    title={t("copy_selection")}
+                    onClick={copySelection}
+                  >
+                    <Download className="h-4 w-4 rotate-180" />
+                  </ToolbarButton>
+                ) : null}
+                {hasClipboard ? (
+                  <ToolbarButton
+                    title={t("paste_selection")}
+                    onClick={() => pasteClipboard()}
+                  >
+                    <Upload className="h-4 w-4 rotate-180" />
+                  </ToolbarButton>
+                ) : null}
+                {canGroup ? (
+                  <ToolbarButton
+                    title={t("group_selection")}
+                    onClick={groupSelection}
+                  >
+                    <Layers className="h-4 w-4" />
+                  </ToolbarButton>
+                ) : null}
+                {canUngroup ? (
+                  <ToolbarButton
+                    title={t("ungroup_selection")}
+                    onClick={ungroupSelection}
+                  >
+                    <Layers className="h-4 w-4 opacity-50" />
+                  </ToolbarButton>
+                ) : null}
+              </>
+            ) : null}
+
+            <div className="mx-auto my-0.5 h-px w-6 bg-gray-200" />
+
             <ToolbarButton
               title={t("reset_layout")}
               onClick={() => {
@@ -3683,8 +4175,24 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             >
               <RotateCcw className="h-4 w-4" />
             </ToolbarButton>
-          ) : null}
-        </div>
+
+            {showUndoRedo ? (
+              <>
+                <div className="mx-auto my-0.5 h-px w-6 bg-gray-200" />
+                {canUndo ? (
+                  <ToolbarButton title={t("undo")} onClick={undo}>
+                    <Undo2 className="h-4 w-4" />
+                  </ToolbarButton>
+                ) : null}
+                {canRedo ? (
+                  <ToolbarButton title={t("redo")} onClick={redo}>
+                    <Redo2 className="h-4 w-4" />
+                  </ToolbarButton>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : null}
 
         {isMobileLayout ? (
           <button
@@ -3718,20 +4226,23 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           }
         >
           <div className="space-y-3 text-sm text-gray-600">
-            <p>{t("floor_plan_guide_browse_edit")}</p>
             <p>{t("floor_plan_guide_filter_nav")}</p>
             <p>{t("floor_plan_guide_event_refresh")}</p>
-            <p>{t("floor_plan_guide_minimap")}</p>
-            <p>{t("floor_plan_guide_backup_shortcuts")}</p>
-            <p className="text-xs text-gray-400">{t("floor_plan_guide_storage_note")}</p>
+            {/* 允许自动换行 */}
+            <pre className="whitespace-pre-wrap">
+              {t("floor_plan_guide_backup_shortcuts")}
+            </pre>
+            <p className="text-xs text-gray-400">
+              {t("floor_plan_guide_storage_note")}
+            </p>
           </div>
         </Modal>
 
-        <div className="absolute bottom-2 left-2 right-2 z-20 max-h-[4.5rem] overflow-y-auto rounded-lg border border-gray-200 bg-white/95 px-2 py-1.5 text-[10px] leading-snug text-gray-600 shadow-sm backdrop-blur sm:bottom-4 sm:left-4 sm:right-auto sm:max-h-none sm:max-w-4xl sm:rounded-xl sm:px-4 sm:py-2 sm:text-xs">
+        <pre className="absolute bottom-2 left-2 right-2 z-20 max-h-18 overflow-y-auto rounded-lg border border-gray-200 bg-white/95 px-2 py-1.5 text-[10px] leading-snug text-gray-600 shadow-sm backdrop-blur sm:bottom-4 sm:left-4 sm:right-auto sm:max-h-none sm:max-w-4xl sm:rounded-xl sm:px-4 sm:py-2 sm:text-xs">
           {interactionMode === "browse"
             ? t("browse_mode_hint")
             : `${toolHint(tool, t)} · ${t("middle_pan_hint")} · ${t("wheel_pinch_zoom_hint")} · ${t("multi_select_hint")} · ${t("box_select_hint")} · ${t("shift_drag_hint")} · ${t("alt_drag_hint")} · ${t("select_all_hint")} · ${t("copy_paste_hint")} · ${t("preset_hint")}`}
-        </div>
+        </pre>
 
         <div
           ref={containerRef}
@@ -3746,11 +4257,22 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             }}
           >
             <Layer listening={false}>
-              <Rect x={0} y={0} width={viewportSize.width} height={viewportSize.height} fill="#f8fafc" />
+              <Rect
+                x={0}
+                y={0}
+                width={viewportSize.width}
+                height={viewportSize.height}
+                fill="#f8fafc"
+              />
             </Layer>
 
             <Layer>
-              <Group x={plan.view.x} y={plan.view.y} scaleX={plan.view.scale} scaleY={plan.view.scale}>
+              <Group
+                x={plan.view.x}
+                y={plan.view.y}
+                scaleX={plan.view.scale}
+                scaleY={plan.view.scale}
+              >
                 <Rect
                   x={0}
                   y={0}
@@ -3798,8 +4320,12 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   <Rect
                     x={normalizeRect(roomPreview.start, roomPreview.end).x}
                     y={normalizeRect(roomPreview.start, roomPreview.end).y}
-                    width={normalizeRect(roomPreview.start, roomPreview.end).width}
-                    height={normalizeRect(roomPreview.start, roomPreview.end).height}
+                    width={
+                      normalizeRect(roomPreview.start, roomPreview.end).width
+                    }
+                    height={
+                      normalizeRect(roomPreview.start, roomPreview.end).height
+                    }
                     dash={[16, 10]}
                     fill="#60a5fa22"
                     stroke="#60a5fa"
@@ -3839,19 +4365,33 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                 ) : null}
 
                 {plan.walls.map((wall) => {
-                  const isSelected = isEntitySelected(selection, "wall", wall.id);
+                  const isSelected = isEntitySelected(
+                    selection,
+                    "wall",
+                    wall.id,
+                  );
                   return (
                     <Group key={wall.id}>
                       <Line
                         points={[wall.x1, wall.y1, wall.x2, wall.y2]}
-                        stroke={isSelected ? "#2563eb" : wall.groupId ? "#1f2937" : "#111827"}
+                        stroke={
+                          isSelected
+                            ? "#2563eb"
+                            : wall.groupId
+                              ? "#1f2937"
+                              : "#111827"
+                        }
                         strokeWidth={isSelected ? 12 : 10}
                         hitStrokeWidth={26}
                         lineCap="round"
-                        onPointerDown={(event) => handleWallPointerDown(wall, event)}
+                        onPointerDown={(event) =>
+                          handleWallPointerDown(wall, event)
+                        }
                       />
 
-                      {isSelected && selectedWallCount === 1 && selectedCameraCount === 0 ? (
+                      {isSelected &&
+                      selectedWallCount === 1 &&
+                      selectedCameraCount === 0 ? (
                         <>
                           <Circle
                             x={wall.x1}
@@ -3861,7 +4401,11 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                             stroke="#2563eb"
                             strokeWidth={3}
                             onPointerDown={(event) =>
-                              handleWallHandlePointerDown(wall.id, "start", event)
+                              handleWallHandlePointerDown(
+                                wall.id,
+                                "start",
+                                event,
+                              )
                             }
                           />
                           <Circle
@@ -3882,25 +4426,31 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                 })}
 
                 {plan.cameras.map((camera) => {
-                  const isSelected = isEntitySelected(selection, "camera", camera.id);
+                  const isSelected = isEntitySelected(
+                    selection,
+                    "camera",
+                    camera.id,
+                  );
                   const matchesFilter = cameraMatchesFilter(camera);
                   const hasRecentEvent = Boolean(camera.latestEventAt);
-                  const accent = camera.channelId ? (hasRecentEvent ? "#f97316" : "#2563eb") : "#9ca3af";
-                  const facingX = camera.x + Math.cos((camera.angle * Math.PI) / 180) * 34;
-                  const facingY = camera.y + Math.sin((camera.angle * Math.PI) / 180) * 34;
+                  const accent = camera.channelId
+                    ? hasRecentEvent
+                      ? "#f97316"
+                      : "#333"
+                    : "#9ca3af";
+                  const facingX =
+                    camera.x + Math.cos((camera.angle * Math.PI) / 180) * 34;
+                  const facingY =
+                    camera.y + Math.sin((camera.angle * Math.PI) / 180) * 34;
                   const onlineKnown =
-                    camera.channelId != null && channelOnlineById.has(camera.channelId);
+                    camera.channelId != null &&
+                    channelOnlineById.has(camera.channelId);
                   const isChannelOnline = camera.channelId
                     ? channelOnlineById.get(camera.channelId)
                     : undefined;
-                  const ringStroke =
-                    !camera.channelId
-                      ? "#ffffff"
-                      : !onlineKnown
-                        ? "#e2e8f0"
-                        : isChannelOnline
-                          ? "#22c55e"
-                          : "#ef4444";
+                  const isOffline = onlineKnown && isChannelOnline === false;
+                  const ringStroke = isSelected ? "#333" : "#ffffff";
+                  const cctvIconStroke = isOffline ? "#ef4444" : "#ffffff";
 
                   return (
                     <Group
@@ -3941,10 +4491,28 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                         y={camera.y}
                         radius={isSelected ? 15 : 12}
                         fill={accent}
-                        stroke={isSelected ? "#111827" : ringStroke}
-                        strokeWidth={isSelected ? 3 : onlineKnown ? 4 : 3}
-                        onPointerDown={(event) => handleCameraPointerDown(camera.id, event)}
+                        stroke={ringStroke}
+                        strokeWidth={isSelected ? 3 : 2}
+                        onPointerDown={(event) =>
+                          handleCameraPointerDown(camera.id, event)
+                        }
                       />
+                      <Path
+                        x={camera.x}
+                        y={camera.y}
+                        offsetX={12}
+                        offsetY={12}
+                        scaleX={isSelected ? 0.75 : 0.6}
+                        scaleY={isSelected ? 0.75 : 0.6}
+                        data={CCTV_ICON_PATH}
+                        stroke={cctvIconStroke}
+                        strokeWidth={2.5}
+                        lineCap="round"
+                        lineJoin="round"
+                        listening={false}
+                        perfectDrawEnabled={false}
+                      />
+
                       <Text
                         x={camera.x + 18}
                         y={camera.y - 16}
@@ -3961,7 +4529,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
             </Layer>
           </Stage>
 
-          {hoveredCamera && hoveredCameraScreenPosition && cameraMatchesFilter(hoveredCamera) ? (
+          {hoveredCamera &&
+          hoveredCameraScreenPosition &&
+          cameraMatchesFilter(hoveredCamera) ? (
             <CameraHoverCard
               camera={hoveredCamera}
               latestEvent={hoverEvent}
@@ -3984,7 +4554,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
                   : null
               }
               alertsTo={
-                hoveredCamera.channelId ? buildAlertsTo(hoveredCamera.channelId) : null
+                hoveredCamera.channelId
+                  ? buildAlertsTo(hoveredCamera.channelId)
+                  : null
               }
               eventOccurredAgo={hoverCardEventAgo}
               dataFetchedAgo={hoverLoading ? "" : hoverCardDataAgo}
@@ -4005,7 +4577,7 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
       </div>
 
       {!isMobileLayout ? (
-        <aside className="w-[340px] shrink-0 border-l border-gray-200 bg-white/90 p-4 backdrop-blur">
+        <aside className="w-[340px] shrink-0 overflow-y-auto border-l border-gray-200 bg-white/90 p-4 backdrop-blur">
           <SidePanel />
         </aside>
       ) : (
@@ -4015,7 +4587,9 @@ export default function FloorPlanEditor({ onViewModeChange }: FloorPlanEditorPro
           height="78%"
           open={mobilePanelOpen}
           onClose={() => setMobilePanelOpen(false)}
-          styles={{ body: { paddingBottom: "max(1rem, env(safe-area-inset-bottom))" } }}
+          styles={{
+            body: { paddingBottom: "max(1rem, env(safe-area-inset-bottom))" },
+          }}
         >
           <div className="pb-2">
             <SidePanel />
