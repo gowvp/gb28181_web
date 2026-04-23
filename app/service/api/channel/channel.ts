@@ -82,3 +82,30 @@ export type SetRecordModeResponse = {
 export async function SetRecordMode(channelId: string, mode: RecordMode) {
   return await POST<SetRecordModeResponse>(`/channels/${channelId}/record_mode`, { mode });
 }
+
+// PTZ 云台控制 API
+export type PTZAction = "continuous" | "stop" | "absolute" | "relative" | "preset";
+export type PTZDirection = 
+  | "up" | "down" | "left" | "right"
+  | "upleft" | "upright" | "downleft" | "downright"
+  | "zoomin" | "zoomout";
+export type PresetOp = "goto" | "set" | "remove";
+
+export interface PTZControlInput {
+  action: PTZAction;
+  direction?: PTZDirection;
+  speed?: number;        // 0-1, 默认 0.5
+  x?: number;            // -1 到 1 (绝对/相对移动)
+  y?: number;            // -1 到 1 (绝对/相对移动)
+  zoom?: number;         // 0 到 1 (绝对/相对移动)
+  preset_id?: string;    // 预置位 ID
+  preset_op?: PresetOp;  // 预置位操作
+}
+
+export type PTZControlResponse = {
+  msg: string;
+};
+
+export async function PTZControl(channelId: string, data: PTZControlInput) {
+  return await POST<PTZControlResponse>(`/channels/${channelId}/ptz/control`, data);
+}
