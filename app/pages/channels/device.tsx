@@ -18,6 +18,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import ToolTips from "~/components/xui/tips";
+import { PTZPanel } from "~/components/ptz-control/ptz-panel";
 import {
   DisableAI,
   EnableAI,
@@ -40,6 +41,10 @@ interface DeviceDetailViewProps {
   channelId?: string;
   /** 通道扩展信息，包含 enabled_ai 状态 */
   channelExt?: Ext;
+  /** 通道类型 (GB28181/ONVIF/RTMP/RTSP) */
+  channelType?: string;
+  /** 云台类型 (0=无云台, >0=有云台) */
+  channelPtztype?: number;
   onZoneSettings?: () => void;
 }
 
@@ -47,6 +52,8 @@ export default function DeviceDetailView({
   ref,
   channelId,
   channelExt,
+  channelType,
+  channelPtztype,
   onZoneSettings,
 }: DeviceDetailViewProps) {
   const { t } = useTranslation(["device", "common"]);
@@ -275,6 +282,18 @@ export default function DeviceDetailView({
               </Badge>
             </div>
           </DrawerHeader>
+
+          {/* PTZ 云台控制面板 */}
+          {channelId && (
+            <div className="px-4 pb-4">
+              {console.log("[DeviceDetailView] Rendering PTZPanel:", { channelId, channelType: channelType || device?.data.type, channelPtztype })}
+              <PTZPanel
+                channelId={channelId}
+                deviceType={channelType || device?.data.type}
+                ptztype={channelPtztype}
+              />
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="channels">
           <div className="px-4 space-y-2">
