@@ -10,6 +10,12 @@ import {
 } from "~/service/api/config/config";
 import { ErrorHandle } from "~/service/config/error";
 
+// 从国标 ID 派生域 (前 10 位), 与后端 SIP.GetDomain() 一致
+function deriveDomain(id?: string): string {
+  if (!id) return "";
+  return id.length >= 10 ? id.slice(0, 10) : id;
+}
+
 export default function config() {
   const { t } = useTranslation("common");
   const [form] = Form.useForm();
@@ -38,7 +44,11 @@ export default function config() {
 
   React.useEffect(() => {
     if (data?.data.sip) {
-      form.setFieldsValue(data.data.sip);
+      const sip = data.data.sip;
+      form.setFieldsValue({
+        ...sip,
+        domain: deriveDomain(sip.id),
+      });
     }
   }, [data, form]);
 
@@ -53,10 +63,16 @@ export default function config() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      await mutateAsync(values);
+      const { domain: _omitDomain, ...payload } = values;
+      await mutateAsync(payload);
     } catch (error) {
       console.log("表单验证失败:", error);
     }
+  };
+
+  // 为什么: 域由 ID 前 10 位派生, 输入 ID 时同步显示, 避免用户手工保持两者一致。
+  const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    form.setFieldValue("domain", deriveDomain(e.target.value));
   };
 
   return (
@@ -76,6 +92,7 @@ export default function config() {
         >
           <Input
             placeholder={t("input_gb_id")}
+            onChange={handleIdChange}
             suffix={
               <span className="text-xs text-gray-400">
                 {(form.getFieldValue("id") || "").length}
@@ -84,12 +101,8 @@ export default function config() {
           />
         </Form.Item>
 
-        <Form.Item
-          label={t("gb_domain")}
-          name="domain"
-          rules={[{ required: true, message: t("input_required") }]}
-        >
-          <Input placeholder={t("input_gb_domain")} />
+        <Form.Item label={t("gb_domain")} name="domain">
+          <Input disabled placeholder={t("input_gb_domain")} />
         </Form.Item>
 
         <Form.Item

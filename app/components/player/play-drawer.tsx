@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { Bug, ChevronDown, Copy } from "lucide-react";
+import { ChevronDown, Copy } from "lucide-react";
 import * as React from "react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -63,11 +63,15 @@ export default function PlayDrawer({
   });
 
   // 播放功能
+  // 为什么: WebRTC 端到端延迟最低(300~500ms), H.265 兼容浏览器优先走 WebRTC;
+  // 不兼容的浏览器 WebRTCPlayer 内部会弹窗提示, 用户可手动切 HTTP_FLV 兜底。
   const { mutate: playMutate, data: playData } = useMutation({
     mutationFn: Play,
     onSuccess(data) {
-      setLink(data.data.items[0].http_flv ?? "");
-      playRef.current?.play(data.data.items[0].http_flv ?? "");
+      const item = data.data.items[0];
+      const preferred = item?.webrtc || item?.http_flv || "";
+      setLink(preferred);
+      playRef.current?.play(preferred);
     },
     onError: (error) => {
       ErrorHandle(error);
@@ -181,24 +185,27 @@ export default function PlayDrawer({
                 />
                 <div className="flex flex-wrap gap-2 my-2">
                   {[
+                    // 为什么: 内嵌播放仅保留 WebRTC; 其他协议只提供地址复制, 交给外部播放器观看。
+                    {
+                      name: "WebRTC",
+                      addr: getStream()?.webrtc ?? "",
+                      icon: null,
+                    },
                     {
                       name: "HTTP_FLV",
                       addr: getStream()?.http_flv ?? "",
-                      icon: null,
+                      icon: <Copy className="w-4 h-4 mr-1" />,
+                      copy: true,
                     },
                     {
                       name: "WS_FLV",
                       addr: getStream()?.ws_flv ?? "",
-                      icon: null,
+                      icon: <Copy className="w-4 h-4 mr-1" />,
+                      copy: true,
                     },
                     {
                       name: "HLS",
                       addr: getStream()?.hls ?? "",
-                      icon: <Bug className="w-4 h-4 mr-1" />,
-                    },
-                    {
-                      name: "WebRTC",
-                      addr: getStream()?.webrtc ?? "",
                       icon: <Copy className="w-4 h-4 mr-1" />,
                       copy: true,
                     },

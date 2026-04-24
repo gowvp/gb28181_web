@@ -5,9 +5,9 @@ export type GetConfigInfoResponse = {
 
 export type Sip = {
   /**
-   * 国标域
+   * 国标域 (仅前端显示, 由 id 前 10 位派生)
    */
-  domain: string;
+  domain?: string;
   /**
    * 主机 ip
    */
