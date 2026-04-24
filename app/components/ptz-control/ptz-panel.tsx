@@ -32,14 +32,26 @@ interface PTZButtonProps {
   direction: PTZDirection;
   activeDirection: PTZDirection | null;
   isPending: boolean;
-  onStartMove: (direction: PTZDirection, e?: React.MouseEvent | React.TouchEvent) => void;
+  onStartMove: (
+    direction: PTZDirection,
+    e?: React.MouseEvent | React.TouchEvent,
+  ) => void;
   onStopMove: (e?: React.MouseEvent | React.TouchEvent) => void;
   icon: React.ReactNode;
   className?: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link";
 }
 
-const ptzButtonPropsAreEqual = (prevProps: PTZButtonProps, nextProps: PTZButtonProps) => {
+const ptzButtonPropsAreEqual = (
+  prevProps: PTZButtonProps,
+  nextProps: PTZButtonProps,
+) => {
   return (
     prevProps.direction === nextProps.direction &&
     prevProps.activeDirection === nextProps.activeDirection &&
@@ -52,48 +64,57 @@ const ptzButtonPropsAreEqual = (prevProps: PTZButtonProps, nextProps: PTZButtonP
   );
 };
 
-const PTZButton = memo(({ 
-  direction, 
-  activeDirection, 
-  isPending, 
-  onStartMove, 
-  onStopMove, 
-  icon,
-  className = "",
-  variant
-}: PTZButtonProps) => {
-  const isActive = activeDirection === direction;
-  const buttonVariant = variant || (isActive ? "default" : "outline");
-  
-  return (
-    <Button
-      size="icon"
-      variant={buttonVariant}
-      className={`h-12 w-12 ${className}`}
-      onMouseDown={(e) => onStartMove(direction, e)}
-      onMouseUp={(e) => onStopMove(e)}
-      onMouseLeave={(e) => onStopMove(e)}
-      disabled={isPending}
-    >
-      {icon}
-    </Button>
-  );
-}, ptzButtonPropsAreEqual);
+const PTZButton = memo(
+  ({
+    direction,
+    activeDirection,
+    isPending,
+    onStartMove,
+    onStopMove,
+    icon,
+    className = "",
+    variant,
+  }: PTZButtonProps) => {
+    const isActive = activeDirection === direction;
+    const buttonVariant = variant || (isActive ? "default" : "outline");
 
-PTZButton.displayName = 'PTZButton';
+    return (
+      <Button
+        size="icon"
+        variant={buttonVariant}
+        className={`h-12 w-12 ${className}`}
+        onMouseDown={(e) => onStartMove(direction, e)}
+        onMouseUp={(e) => onStopMove(e)}
+        onMouseLeave={(e) => onStopMove(e)}
+        disabled={isPending}
+      >
+        {icon}
+      </Button>
+    );
+  },
+  ptzButtonPropsAreEqual,
+);
+
+PTZButton.displayName = "PTZButton";
 
 // 对角线方向按钮组件
 interface DiagonalPTZButtonProps {
   direction: PTZDirection;
   activeDirection: PTZDirection | null;
   isPending: boolean;
-  onStartMove: (direction: PTZDirection, e?: React.MouseEvent | React.TouchEvent) => void;
+  onStartMove: (
+    direction: PTZDirection,
+    e?: React.MouseEvent | React.TouchEvent,
+  ) => void;
   onStopMove: (e?: React.MouseEvent | React.TouchEvent) => void;
   label: string;
 }
 
 // 自定义比较函数
-const diagonalPTZButtonPropsAreEqual = (prevProps: DiagonalPTZButtonProps, nextProps: DiagonalPTZButtonProps) => {
+const diagonalPTZButtonPropsAreEqual = (
+  prevProps: DiagonalPTZButtonProps,
+  nextProps: DiagonalPTZButtonProps,
+) => {
   return (
     prevProps.direction === nextProps.direction &&
     prevProps.activeDirection === nextProps.activeDirection &&
@@ -104,46 +125,55 @@ const diagonalPTZButtonPropsAreEqual = (prevProps: DiagonalPTZButtonProps, nextP
   );
 };
 
-const DiagonalPTZButton = memo(({ 
-  direction, 
-  activeDirection, 
-  isPending, 
-  onStartMove, 
-  onStopMove, 
-  label
-}: DiagonalPTZButtonProps) => {
-  const isActive = activeDirection === direction;
-  
-  return (
-    <Button
-      size="sm"
-      variant={isActive ? "default" : "outline"}
-      className="h-8 text-xs"
-      onMouseDown={(e) => onStartMove(direction, e)}
-      onMouseUp={(e) => onStopMove(e)}
-      onMouseLeave={(e) => onStopMove(e)}
-      disabled={isPending}
-    >
-      {label}
-    </Button>
-  );
-}, diagonalPTZButtonPropsAreEqual);
+const DiagonalPTZButton = memo(
+  ({
+    direction,
+    activeDirection,
+    isPending,
+    onStartMove,
+    onStopMove,
+    label,
+  }: DiagonalPTZButtonProps) => {
+    const isActive = activeDirection === direction;
 
-DiagonalPTZButton.displayName = 'DiagonalPTZButton';
+    return (
+      <Button
+        size="sm"
+        variant={isActive ? "default" : "outline"}
+        className="h-8 text-xs"
+        onMouseDown={(e) => onStartMove(direction, e)}
+        onMouseUp={(e) => onStopMove(e)}
+        onMouseLeave={(e) => onStopMove(e)}
+        disabled={isPending}
+      >
+        {label}
+      </Button>
+    );
+  },
+  diagonalPTZButtonPropsAreEqual,
+);
+
+DiagonalPTZButton.displayName = "DiagonalPTZButton";
 
 // 变焦按钮组件
 interface ZoomButtonProps {
   direction: "zoomin" | "zoomout";
   activeDirection: PTZDirection | null;
   isPending: boolean;
-  onZoom: (direction: "zoomin" | "zoomout", e?: React.MouseEvent | React.TouchEvent) => void;
+  onZoom: (
+    direction: "zoomin" | "zoomout",
+    e?: React.MouseEvent | React.TouchEvent,
+  ) => void;
   onStopMove: (e?: React.MouseEvent | React.TouchEvent) => void;
   icon: React.ReactNode;
   label: string;
 }
 
 // 自定义比较函数
-const zoomButtonPropsAreEqual = (prevProps: ZoomButtonProps, nextProps: ZoomButtonProps) => {
+const zoomButtonPropsAreEqual = (
+  prevProps: ZoomButtonProps,
+  nextProps: ZoomButtonProps,
+) => {
   return (
     prevProps.direction === nextProps.direction &&
     prevProps.activeDirection === nextProps.activeDirection &&
@@ -155,43 +185,55 @@ const zoomButtonPropsAreEqual = (prevProps: ZoomButtonProps, nextProps: ZoomButt
   );
 };
 
-const ZoomButton = memo(({ 
-  direction, 
-  activeDirection, 
-  isPending, 
-  onZoom, 
-  onStopMove, 
-  icon,
-  label
-}: ZoomButtonProps) => {
-  const isActive = activeDirection === direction;
-  
-  return (
-    <Button
-      variant={isActive ? "default" : "outline"}
-      size="sm"
-      className="gap-2"
-      onMouseDown={(e) => onZoom(direction, e)}
-      onMouseUp={(e) => onStopMove(e)}
-      onMouseLeave={(e) => onStopMove(e)}
-      disabled={isPending}
-    >
-      {icon}
-      <span className="text-xs">{label}</span>
-    </Button>
-  );
-}, zoomButtonPropsAreEqual);
+const ZoomButton = memo(
+  ({
+    direction,
+    activeDirection,
+    isPending,
+    onZoom,
+    onStopMove,
+    icon,
+    label,
+  }: ZoomButtonProps) => {
+    const isActive = activeDirection === direction;
 
-ZoomButton.displayName = 'ZoomButton';
+    return (
+      <Button
+        variant={isActive ? "default" : "outline"}
+        size="sm"
+        className="gap-2"
+        onMouseDown={(e) => onZoom(direction, e)}
+        onMouseUp={(e) => onStopMove(e)}
+        onMouseLeave={(e) => onStopMove(e)}
+        disabled={isPending}
+      >
+        {icon}
+        <span className="text-xs">{label}</span>
+      </Button>
+    );
+  },
+  zoomButtonPropsAreEqual,
+);
+
+ZoomButton.displayName = "ZoomButton";
 
 export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
   const [speed, setSpeed] = useState(0.5);
-  const [activeDirection, setActiveDirection] = useState<PTZDirection | null>(null);
+  const [activeDirection, setActiveDirection] = useState<PTZDirection | null>(
+    null,
+  );
   // 为每个方向维护独立的 pending 状态
-  const [pendingDirections, setPendingDirections] = useState<Set<PTZDirection>>(new Set());
+  const [pendingDirections, setPendingDirections] = useState<Set<PTZDirection>>(
+    new Set(),
+  );
 
   // 调试日志
-  console.log("[PTZPanel] Props:", { channelId, deviceType, ptztype, TEST_MODE });
+  console.log("[PTZPanel] Props:", {
+    channelId,
+    deviceType,
+    ptztype,
+    TEST_MODE,
+  });
 
   // PTZ 控制 mutation
   const ptzMutation = useMutation({
@@ -214,7 +256,7 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
         e.preventDefault();
         e.stopPropagation();
       }
-      
+
       // 检查该方向是否已经在 pending 状态
       setPendingDirections((prev) => {
         if (prev.has(direction)) return prev;
@@ -222,7 +264,7 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
         newSet.add(direction);
         return newSet;
       });
-      
+
       setActiveDirection(direction);
       ptzMutation.mutate({
         action: "continuous",
@@ -230,44 +272,52 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
         speed,
       });
     },
-    [speed]
+    [speed],
   );
 
   // 停止移动 - 使用稳定的函数引用
-  const handleStopMove = useCallback((e?: React.MouseEvent | React.TouchEvent) => {
-    // 阻止事件冒泡和默认行为
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    // 清除所有 pending 状态
-    setPendingDirections(new Set());
-    
-
-    // 检查是否有活动方向
-    setActiveDirection((prev) => {
-      if (prev) {
-        ptzMutation.mutate({
-          action: "stop",
-        });
+  const handleStopMove = useCallback(
+    (e?: React.MouseEvent | React.TouchEvent) => {
+      // 阻止事件冒泡和默认行为
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
       }
-      return null;
-    });
-  }, []);
+
+      // 清除所有 pending 状态
+      setPendingDirections(new Set());
+
+      // 检查是否有活动方向
+      setActiveDirection((prev) => {
+        if (prev) {
+          ptzMutation.mutate({
+            action: "stop",
+          });
+        }
+        return null;
+      });
+    },
+    [],
+  );
 
   // 变焦控制
   const handleZoom = useCallback(
-    (direction: "zoomin" | "zoomout", e?: React.MouseEvent | React.TouchEvent) => {
+    (
+      direction: "zoomin" | "zoomout",
+      e?: React.MouseEvent | React.TouchEvent,
+    ) => {
       handleStartMove(direction, e);
     },
-    [handleStartMove]
+    [handleStartMove],
   );
 
   // 检查是否支持 PTZ
   // 测试模式：只检查协议类型，不检查 ptztype
-  const isSupportedProtocol = deviceType === "GB28181" || deviceType === "ONVIF";
-  const supportsPTZ = TEST_MODE ? isSupportedProtocol : (isSupportedProtocol && (ptztype ?? 0) > 0);
+  const isSupportedProtocol =
+    deviceType === "GB28181" || deviceType === "ONVIF";
+  const supportsPTZ = TEST_MODE
+    ? isSupportedProtocol
+    : isSupportedProtocol && (ptztype ?? 0) > 0;
 
   // if (!supportsPTZ) {
   //   return (

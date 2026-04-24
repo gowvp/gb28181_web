@@ -1,5 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronDown, Loader2, ScanSearch, Settings2, Video } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  ScanSearch,
+  Settings2,
+  Video,
+} from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -87,12 +93,12 @@ export default function DeviceDetailView({
 
   // AI 检测开关状态，初始值从 channelExt 获取
   const [detectEnabled, setDetectEnabled] = useState(
-    channelExt?.enabled_ai ?? false
+    channelExt?.enabled_ai ?? false,
   );
 
   // 录像模式状态，初始值从 channelExt 获取，空值默认为 always
   const [recordMode, setRecordMode] = useState<RecordMode>(
-    channelExt?.record_mode || "always"
+    channelExt?.record_mode || "always",
   );
 
   // 当 channelExt 变化时同步状态，确保切换通道时状态正确
@@ -126,16 +132,17 @@ export default function DeviceDetailView({
   });
 
   // 设置录像模式
-  const { mutate: setRecordModeMutate, isPending: recordModePending } = useMutation({
-    mutationFn: (mode: RecordMode) => SetRecordMode(channelId!, mode),
-    onSuccess: (data) => {
-      setRecordMode(data.data.record_mode);
-      toast.success(t("common:record_mode_set_success"));
-    },
-    onError: (error) => {
-      ErrorHandle(error);
-    },
-  });
+  const { mutate: setRecordModeMutate, isPending: recordModePending } =
+    useMutation({
+      mutationFn: (mode: RecordMode) => SetRecordMode(channelId!, mode),
+      onSuccess: (data) => {
+        setRecordMode(data.data.record_mode);
+        toast.success(t("common:record_mode_set_success"));
+      },
+      onError: (error) => {
+        ErrorHandle(error);
+      },
+    });
 
   const isAIPending = enablePending || disablePending;
 
@@ -284,9 +291,9 @@ export default function DeviceDetailView({
           </DrawerHeader>
 
           {/* PTZ 云台控制面板 */}
+
           {channelId && (
             <div className="px-4 pb-4">
-              {console.log("[DeviceDetailView] Rendering PTZPanel:", { channelId, channelType: channelType || device?.data.type, channelPtztype })}
               <PTZPanel
                 channelId={channelId}
                 deviceType={channelType || device?.data.type}
