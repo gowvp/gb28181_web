@@ -18,6 +18,11 @@ export async function Play(id: string) {
   return await POST<PlayResponse>(`/channels/${id}/play`);
 }
 
+// StopPlay 停止播放（幂等，始终返回成功）
+export async function StopPlay(id: string) {
+  return await POST<{ msg: string }>(`/channels/${id}/stop`);
+}
+
 export async function RefreshSnapshot(
   id: string,
   url: string, // rtsp 播放地址

@@ -28,6 +28,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import SettingsModal from "~/components/settings/settings_modal";
+import AppTour from "~/components/tour/app-tour";
 import FloorPlanEditor from "./floor_plan";
 import {
   loadDesktopViewMode,
@@ -62,6 +64,7 @@ const SimpleNode = ({ data }: { data: any }) => {
   return (
     <div
       className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 min-w-[120px] cursor-pointer hover:shadow-md transition-shadow relative"
+      data-tour-id={data.tourId || undefined}
       onClick={handleClick}
     >
       <Handle
@@ -125,6 +128,7 @@ const ZLMNode = ({ data }: { data: any }) => {
           >
             <button
               type="button"
+              data-tour-id="zlm-settings"
               onClick={() => {
                 editRef.current?.edit(data.item);
               }}
@@ -226,9 +230,24 @@ const ZLMNode = ({ data }: { data: any }) => {
  */
 const GoWVPNode = ({ data }: { data: { version?: string } }) => {
   const { t } = useTranslation("desktop");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
+    <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4 w-52 relative">
+      <div className="relative">
+        {/* 右上角设置按钮，与 ZLM 节点位置一致 */}
+        <div className="absolute top-1 right-1">
+          <Tooltip title="设置">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </Tooltip>
+        </div>
+
       <div className="flex flex-col items-center">
         <div className="flex justify-center relative">
           <img
@@ -309,6 +328,9 @@ const GoWVPNode = ({ data }: { data: { version?: string } }) => {
           </div>
         </div>
       </div>
+      </div>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 };
@@ -382,7 +404,7 @@ const getInitialNodes = (t: any): Node[] => [
     id: "gb28181",
     type: "ipc",
     position: { x: 50, y: 250 },
-    data: { name: "GB/T28181", value: 0, path: "/nchannels" },
+    data: { name: "GB/T28181", value: 0, path: "/nchannels", tourId: "gb28181" },
   },
   {
     id: "onvif",
@@ -431,6 +453,8 @@ export default function DesktopView() {
   const [viewMode, setViewMode] = useState<DesktopViewMode>(() => loadDesktopViewMode() ?? "dataflow");
   const [nodes, setNodes] = useState<Node[]>(getInitialNodes(t));
   const [edges] = useState<Edge[]>(initialEdges);
+  // 引导模式下控制 FAB 菜单展开
+  const [fabForceOpen, setFabForceOpen] = useState<boolean | undefined>(undefined);
 
   const { data } = useQuery({
     queryKey: [findMediaServersKey],
@@ -523,7 +547,28 @@ export default function DesktopView() {
       )}
 
       {/* 右下角悬浮菜单 */}
-      <DesktopFab i18n={i18n} />
+      <DesktopFab
+        i18n={i18n}
+        forceOpen={fabForceOpen}
+        onOpenChange={(v) => {
+          if (fabForceOpen !== undefined) return;
+        }}
+      />
+
+      {/* 登录后引导 */}
+      {viewMode === "dataflow" && (
+        <AppTour
+          onBeforeStep={(step) => {
+            // 第5步（FAB菜单）和第6步（语言）需要展开 FAB
+            if (step >= 4) {
+              setFabForceOpen(true);
+            } else {
+              setFabForceOpen(undefined);
+            }
+          }}
+          onFinish={() => setFabForceOpen(undefined)}
+        />
+      )}
     </div>
   );
 }
@@ -550,12 +595,14 @@ function ViewSwitchBar({
         active={viewMode === "dataflow"}
         onClick={() => onViewModeChange("dataflow")}
         tooltip={t("desktop:dataflow")}
+        data-tour-id="dataflow"
       />
       <ViewSwitchButton
         icon={<MapIcon className="h-4 w-4" />}
         active={viewMode === "2d"}
         onClick={() => onViewModeChange("2d")}
         tooltip={t("desktop:floor_plan_mode")}
+        data-tour-id="floor-plan"
       />
     </div>
   );
@@ -566,11 +613,13 @@ function ViewSwitchButton({
   active,
   onClick,
   tooltip,
+  ...rest
 }: {
   icon: React.ReactNode;
   active: boolean;
   onClick: () => void;
   tooltip: string;
+  [key: string]: any;
 }) {
   return (
     <button
@@ -582,6 +631,7 @@ function ViewSwitchButton({
           ? "border-gray-900 bg-gray-900 text-white"
           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
       }`}
+      {...rest}
     >
       {icon}
     </button>
@@ -594,11 +644,28 @@ function ViewSwitchButton({
  * 为什么快捷入口用 FAB 而不是顶栏铺满：
  * 桌面页主体已被拓扑/2D 占满，顶栏再堆链接会抢视线；FAB 聚合低频跳转，避免打断主画布。
  */
-function DesktopFab({ i18n }: { i18n: any }) {
+function DesktopFab({ i18n, forceOpen, onOpenChange }: {
+  i18n: any;
+  /** 外部控制菜单展开（引导模式下使用） */
+  forceOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
-  const [open, setOpen] = useState(false);
+  const [open, setOpenInternal] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const setOpen = useCallback((v: boolean) => {
+    setOpenInternal(v);
+    onOpenChange?.(v);
+  }, [onOpenChange]);
+
+  useEffect(() => {
+    if (forceOpen !== undefined) {
+      setOpenInternal(forceOpen);
+    }
+  }, [forceOpen]);
 
   /**
    * 为什么用 mousedown 监听 document 关菜单：
@@ -607,26 +674,29 @@ function DesktopFab({ i18n }: { i18n: any }) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
+      // 引导模式下不允许外部点击关闭菜单
+      if (forceOpen) return;
       if (containerRef.current && !containerRef.current.contains(e.target as HTMLElement)) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [open, forceOpen]);
 
   const menuItems = [
-    { icon: Home, label: t("quick_desktop"), action: () => navigate("/desktop") },
-    { icon: Cctv, label: t("gb_channel"), action: () => navigate("/nchannels") },
-    { icon: Bell, label: t("alerts"), action: () => navigate("/alerts") },
-    { icon: MonitorUp, label: t("rtmp_stream"), action: () => navigate("/rtmps") },
-    { icon: Waypoints, label: t("rtsp_proxy"), action: () => navigate("/rtsps") },
-    { icon: Languages, label: t("language"), action: () => {
+    { icon: Home, label: t("quick_desktop"), action: () => navigate("/desktop"), tourId: "" },
+    { icon: Cctv, label: t("gb_channel"), action: () => navigate("/nchannels"), tourId: "" },
+    { icon: Bell, label: t("alerts"), action: () => navigate("/alerts"), tourId: "" },
+    { icon: MonitorUp, label: t("rtmp_stream"), action: () => navigate("/rtmps"), tourId: "" },
+    { icon: Waypoints, label: t("rtsp_proxy"), action: () => navigate("/rtsps"), tourId: "" },
+    { icon: Languages, label: t("language"), tourId: "fab-language", action: () => {
       const next = i18n.language === "zh" ? "en" : "zh";
       i18n.changeLanguage(next);
     }},
-    { icon: Github, label: "Github", action: () => window.open("https://github.com/gowvp/gb28181") },
-    { icon: Sparkles, label: "Gitee", action: () => window.open("https://gitee.com/gowvp/gb28181") },
+    { icon: Settings, label: "设置", action: () => { setSettingsOpen(true); }, tourId: "" },
+    { icon: Github, label: "Github", action: () => window.open("https://github.com/gowvp/gb28181"), tourId: "" },
+    { icon: Sparkles, label: "Gitee", action: () => window.open("https://gitee.com/gowvp/gb28181"), tourId: "" },
   ];
 
   /**
@@ -635,42 +705,50 @@ function DesktopFab({ i18n }: { i18n: any }) {
    */
   return (
     <div ref={containerRef} className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
-      {open ? (
-        <div className="pointer-events-auto flex flex-col gap-1 transition-all duration-200 origin-bottom opacity-100 scale-100">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[160px]">
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => {
-                  item.action();
-                  setOpen(false);
-                }}
-                className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <item.icon className="w-4 h-4 text-gray-500" />
-                {item.label}
-              </button>
-            ))}
-            <div className="border-t border-gray-200 my-1" />
+      <div
+        className={`pointer-events-auto flex flex-col gap-1 origin-bottom transition-all duration-200 ${
+          open
+            ? "opacity-100 scale-100 translate-y-0"
+            : "opacity-0 scale-95 translate-y-2 pointer-events-none"
+        }`}
+      >
+        <div className="bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 min-w-[160px]">
+          {menuItems.map((item) => (
             <button
+              key={item.label}
               type="button"
+              data-tour-id={item.tourId || undefined}
               onClick={() => {
-                localStorage.removeItem("token");
-                navigate("/");
+                item.action();
+                setOpen(false);
               }}
-              className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              className="flex items-center gap-2.5 w-full mx-1.5 px-2.5 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              style={{ width: "calc(100% - 12px)" }}
             >
-              <LogOut className="w-4 h-4" />
-              {t("logout")}
+              <item.icon className="w-4 h-4 text-gray-500" />
+              {item.label}
             </button>
-          </div>
+          ))}
+          <div className="border-t border-gray-200 my-1" />
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem("token");
+              navigate("/");
+            }}
+            className="flex items-center gap-2.5 w-full mx-1.5 px-2.5 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            style={{ width: "calc(100% - 12px)" }}
+          >
+            <LogOut className="w-4 h-4" />
+            {t("logout")}
+          </button>
         </div>
-      ) : null}
+      </div>
 
       {/* 头像按钮 */}
       <button
         type="button"
+        data-tour-id="fab-menu"
         onClick={() => setOpen(!open)}
         className={`
           pointer-events-auto w-12 h-12 rounded-full shadow-lg border-2 transition-all duration-200
@@ -685,6 +763,8 @@ function DesktopFab({ i18n }: { i18n: any }) {
           </AvatarFallback>
         </Avatar>
       </button>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

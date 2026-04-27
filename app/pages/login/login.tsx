@@ -8,10 +8,16 @@ import { useNavigate } from "react-router";
 import type { FormProps } from "antd";
 import { Form, Input, message } from "antd";
 import React, { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
+import {
+  COVER_BLUR_KEY,
+  COVER_BLUR_STORAGE_KEY,
+} from "~/components/settings/general_settings";
+import { GetMetadata } from "~/service/api/metadata/metadata";
 import { login } from "~/service/api/user/user";
-import { ErrorHandle } from "~/service/config/error";
+import logger from "~/lib/logger";
 
 type FieldType = {
   username?: string;
@@ -57,26 +63,47 @@ export default function LoginView() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const onFinish: FormProps<FieldType>["onFinish"] = async (values) => {
     if (!values.username || !values.password) {
-      message.error("请输入用户名和密码");
+      setLoginError("请输入用户名和密码");
       return;
     }
 
     setLoading(true);
+    setLoginError(null);
     try {
       await login({
         username: values.username,
         password: values.password,
       });
 
+      // 登录后同步服务端 metadata 到 localStorage
+      try {
+        const meta = await GetMetadata(COVER_BLUR_KEY);
+        localStorage.setItem(COVER_BLUR_STORAGE_KEY, meta.data?.ext ?? "false");
+      } catch {
+        // cover_blur metadata not found, skip sync
+      }
+
+      // 同步引导完成标记：服务端有记录则跳过引导，否则清除本地旧标记以重新触发
+      try {
+        const tourMeta = await GetMetadata("app_tour_completed");
+        if (tourMeta.data?.ext === "true") {
+          localStorage.setItem("app_tour_completed", "true");
+        } else {
+          localStorage.removeItem("app_tour_completed");
+        }
+      } catch {
+        localStorage.removeItem("app_tour_completed");
+      }
+
       message.success("登录成功！");
       navigate("/desktop");
     } catch (error) {
-      ErrorHandle(error);
-      console.log("🚀 ~ onFinish ~ error:", error);
-      message.error(
+      logger.error("login failed:", error);
+      setLoginError(
         error instanceof Error ? error.message : "登录失败，请重试",
       );
     } finally {
@@ -108,6 +135,12 @@ export default function LoginView() {
           </div>
 
           <CardContent className="px-8 pb-10 pt-0">
+            {loginError && (
+              <div className="flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
             <Form
               form={form}
               name="login"
@@ -150,7 +183,7 @@ export default function LoginView() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-72 min-h-11 via-zinc-800 to-zinc-900 hover:from-zinc-900 hover:to-black disabled:from-zinc-700 disabled:to-zinc-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl disabled:shadow-none transition-all duration-200 transform hover:scale-[1.02] disabled:scale-100 border-0"
+                  className="w-72 min-h-11 via-zinc-800 to-zinc-900 hover:from-zinc-900 hover:to-black disabled:from-zinc-700 disabled:to-zinc-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl disabled:shadow-none transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 border-0"
                 >
                   {loading ? "登录中..." : "登 录"}
                 </Button>

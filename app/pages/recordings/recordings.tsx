@@ -7,6 +7,7 @@ import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
+import { COVER_BLUR_STORAGE_KEY } from "~/components/settings/general_settings";
 import { RefreshSnapshot } from "~/service/api/channel/channel";
 import {
   FindDevicesChannels,
@@ -93,6 +94,7 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+  const coverBlur = localStorage.getItem(COVER_BLUR_STORAGE_KEY) === "true";
 
   const { data: url } = useQuery({
     queryKey: ["snapshot", channel.id],
@@ -132,6 +134,7 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
           src={snapshotUrl || "./assets/imgs/bg.avif"}
           alt="通道预览"
           className="aspect-4/3 object-cover"
+          style={coverBlur ? { filter: "blur(2px)" } : undefined}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = "./assets/imgs/bg.avif";

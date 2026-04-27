@@ -101,7 +101,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       <Form.Item
         label={t("stream_receive_mode")}
         name="stream_mode"
-        initialValue={0}
+        initialValue={1}
         hidden={isOnvif}
       >
         <Radio.Group size="middle">

@@ -27,7 +27,7 @@ import { ErrorHandle } from "~/service/config/error";
  */
 function RecordModeRadio({ record }: { record: ChannelItem }) {
   const { t } = useTranslation("common");
-  const currentMode = record.ext?.record_mode || "always";
+  const currentMode = record.ext?.record_mode || "none";
   const [mode, setMode] = useState<RecordMode>(currentMode);
 
   const { mutate, isPending } = useMutation({
@@ -172,6 +172,7 @@ export default function ChannelsView() {
                 ptztype: record.ptztype,
                 is_online: record.is_online,
                 is_playing: false,
+                type: record.type,
                 ext: record.ext,
                 created_at: "",
                 updated_at: "",

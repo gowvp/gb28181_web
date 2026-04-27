@@ -52,6 +52,8 @@ interface DeviceDetailViewProps {
   /** 云台类型 (0=无云台, >0=有云台) */
   channelPtztype?: number;
   onZoneSettings?: () => void;
+  /** 通道卡片点击时切换播放，不重新打开窗口 */
+  onChannelSwitch?: (channel: any) => void;
 }
 
 export default function DeviceDetailView({
@@ -61,6 +63,7 @@ export default function DeviceDetailView({
   channelType,
   channelPtztype,
   onZoneSettings,
+  onChannelSwitch,
 }: DeviceDetailViewProps) {
   const { t } = useTranslation(["device", "common"]);
   const [did, setDid] = useState("");
@@ -96,15 +99,15 @@ export default function DeviceDetailView({
     channelExt?.enabled_ai ?? false,
   );
 
-  // 录像模式状态，初始值从 channelExt 获取，空值默认为 always
+  // 录像模式状态，初始值从 channelExt 获取，空串表示不录像
   const [recordMode, setRecordMode] = useState<RecordMode>(
-    channelExt?.record_mode || "always",
+    channelExt?.record_mode || "none",
   );
 
   // 当 channelExt 变化时同步状态，确保切换通道时状态正确
   useEffect(() => {
     setDetectEnabled(channelExt?.enabled_ai ?? false);
-    setRecordMode(channelExt?.record_mode || "always");
+    setRecordMode(channelExt?.record_mode || "none");
   }, [channelExt?.enabled_ai, channelExt?.record_mode]);
 
   // 启用 AI 检测
@@ -258,7 +261,7 @@ export default function DeviceDetailView({
               <Badge
                 variant="secondary"
                 className={`ml-2 ${
-                  device?.data.is_online ? "bg-green-300" : "bg-orange-300"
+                  device?.data.is_online ? "bg-green-300" : "bg-red-400"
                 } text-white`}
               >
                 {device?.data.is_online
@@ -315,7 +318,7 @@ export default function DeviceDetailView({
                   name: item.name,
                   ptztype: item.ptztype,
                   is_online: item.is_online,
-                  is_playing: false,
+                  is_playing: item.id === channelId,
                   type: item.type || "",
                   app: item.app || "",
                   stream: item.stream || "",
@@ -325,9 +328,11 @@ export default function DeviceDetailView({
                   updated_at: "",
                 }}
                 onClick={() => {
-                  // 处理通道点击事件
-                  console.log(`${t("common:click_channel")}:`, item.name);
+                  if (onChannelSwitch) {
+                    onChannelSwitch(item);
+                  }
                 }}
+                isActive={item.id === channelId}
               />
             ))}
           </div>

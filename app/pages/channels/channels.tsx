@@ -1,13 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { Button, Radio } from "antd";
+import { Button, Popconfirm, Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
-import { Cctv, Monitor, Wifi } from "lucide-react";
+import { Cctv, Loader2, Monitor, Wifi } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
-import { RefreshSnapshot } from "~/service/api/channel/channel";
+import { COVER_BLUR_STORAGE_KEY } from "~/components/settings/general_settings";
+import { RefreshSnapshot, StopPlay } from "~/service/api/channel/channel";
 import {
   FindDevicesChannels,
   findDevicesChannelsKey,
@@ -42,7 +43,7 @@ export default function ChannelsView() {
   ];
 
   return (
-    <div className="min-h-screen bg-transparent p-6">
+    <div className="min-h-screen bg-transparent p-4 sm:p-6">
       <div className="mx-auto ">
         {/* 导航按钮 */}
         <div className="mb-6 flex flex-row gap-2">
@@ -72,7 +73,7 @@ export default function ChannelsView() {
 
         {/* Device Cards */}
         {isLoading ? (
-          <div className="space-y-1">
+          <div className="space-y-3">
             {Array(2)
               .fill(0)
               .map((_, index) => (
@@ -80,7 +81,7 @@ export default function ChannelsView() {
               ))}
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-3">
             {data?.data.items?.map((device) => (
               <DeviceCard
                 key={device.id}
@@ -104,12 +105,29 @@ export default function ChannelsView() {
 function ChannelCard({
   channel,
   onClick,
+  isActive,
 }: {
   channel: ChannelItem;
   onClick: () => void;
+  /** 当前正在播放的通道高亮标识 */
+  isActive?: boolean;
 }) {
   const { t } = useTranslation("common");
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
+  const queryClient = useQueryClient();
+  const coverBlur = localStorage.getItem(COVER_BLUR_STORAGE_KEY) === "true";
+
+  // 停止播放
+  const handleStopPlay = async () => {
+    setStopping(true);
+    try {
+      await StopPlay(channel.id);
+      queryClient.invalidateQueries({ queryKey: [findDevicesChannelsKey] });
+    } finally {
+      setStopping(false);
+    }
+  };
 
   const { data: url } = useQuery({
     queryKey: ["snapshot", channel.id],
@@ -127,7 +145,10 @@ function ChannelCard({
   }, [url]);
 
   return (
-    <div className=" max-w-[300px] max-h-[300px] border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white">
+    <div className={cn(
+      "max-w-[300px] max-h-[300px] border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white",
+      isActive && "ring-2 ring-blue-500 border-blue-500"
+    )}>
       <div
         className="bg-slate-100 flex items-center justify-center relative cursor-pointer"
         style={{ aspectRatio: "300/220" }}
@@ -137,6 +158,7 @@ function ChannelCard({
           src={snapshotUrl || "./assets/imgs/bg.avif"}
           alt="通道预览"
           className="aspect-[4/3] object-cover"
+          style={coverBlur ? { filter: "blur(6px)" } : undefined}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = "./assets/imgs/bg.avif";
@@ -145,19 +167,34 @@ function ChannelCard({
 
         {/* Live 标签和状态指示器 */}
         {/* RTSP/RTMP 类型显示 BUSY/IDLE，其他类型显示在线/离线 */}
-        <div className="absolute top-2 left-2 flex flex-row gap-2">
+        <div className="absolute top-2 left-2 flex flex-row gap-2 z-10">
           {channel.type === "RTSP" || channel.type === "RTMP" ? (
-            // RTSP/RTMP 类型：显示 BUSY/IDLE
-            <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center">
-              <span
-                className={`w-2 h-2 rounded-full mr-1 ${
-                  channel.is_online ? "bg-green-500" : "bg-slate-300"
-                }`}
-              ></span>
-              <span className="text-xs">
-                {channel.is_online ? "BUSY" : "IDLE"}
-              </span>
-            </div>
+            // RTSP/RTMP 类型：BUSY 时可停流
+            channel.is_online ? (
+              <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                <Popconfirm
+                  title={t("stop_play_confirm")}
+                  onConfirm={handleStopPlay}
+                  okText={t("confirm")}
+                  cancelText={t("cancel")}
+                  okButtonProps={{ danger: true }}
+                >
+                  <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center cursor-pointer hover:bg-black/70 transition-colors">
+                    {stopping ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <span className="w-2 h-2 rounded-full mr-1 bg-green-500" />
+                    )}
+                    <span className="text-xs">BUSY</span>
+                  </div>
+                </Popconfirm>
+              </div>
+            ) : (
+              <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center">
+                <span className="w-2 h-2 rounded-full mr-1 bg-slate-300" />
+                <span className="text-xs">IDLE</span>
+              </div>
+            )
           ) : (
             // 其他类型（GB28181/ONVIF）：显示在线/离线
             <>
@@ -173,23 +210,38 @@ function ChannelCard({
               </div>
 
               {channel.is_online && (
-                <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center">
-                  <span
-                    className={`w-2 h-2 rounded-full mr-1 ${
-                      channel.is_playing ? "bg-green-500" : "bg-slate-100"
-                    }`}
-                  ></span>
-                  <span className="text-xs">
-                    {channel.is_playing ? t("live") : t("idle")}
-                  </span>
-                </div>
+                channel.is_playing ? (
+                  <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                    <Popconfirm
+                      title={t("stop_play_confirm")}
+                      onConfirm={handleStopPlay}
+                      okText={t("confirm")}
+                      cancelText={t("cancel")}
+                      okButtonProps={{ danger: true }}
+                    >
+                      <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center cursor-pointer hover:bg-black/70 transition-colors">
+                        {stopping ? (
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                        ) : (
+                          <span className="w-2 h-2 rounded-full mr-1 bg-green-500" />
+                        )}
+                        <span className="text-xs">{t("live")}</span>
+                      </div>
+                    </Popconfirm>
+                  </div>
+                ) : (
+                  <div className="bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center">
+                    <span className="w-2 h-2 rounded-full mr-1 bg-slate-100" />
+                    <span className="text-xs">{t("idle")}</span>
+                  </div>
+                )
               )}
             </>
           )}
         </div>
 
         {/* 悬浮播放按钮 */}
-        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
+        <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
           <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 transform scale-75 hover:scale-100 transition-transform duration-200">
             <svg
               className="w-6 h-6 text-gray-800"

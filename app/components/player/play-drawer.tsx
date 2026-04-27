@@ -2,7 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { ChevronDown, Copy } from "lucide-react";
 import * as React from "react";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Player, { type PlayerRef } from "~/components/player/player";
 import { AspectRatio } from "~/components/ui/aspect-ratio";
@@ -11,6 +11,7 @@ import { Drawer, DrawerContent } from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
 import { copy2Clipboard } from "~/components/util/copy";
 import ToolTips from "~/components/xui/tips";
+import { PTZPanel } from "~/components/ptz-control/ptz-panel";
 import { usePlayerLayout } from "~/hooks/use-player-layout";
 import DeviceDetailView, {
   type DeviceDetailViewRef,
@@ -133,12 +134,24 @@ export default function PlayDrawer({
     return playData.data.items[selected];
   };
 
+  /** 通道列表卡片点击：就地切换播放，不重新打开窗口 */
+  const handleChannelSwitch = useCallback((channel: any) => {
+    setCurrentChannelId(channel.id);
+    setCurrentChannelExt(channel.ext);
+    setCurrentChannelType(channel.type || "");
+    setCurrentChannelPtztype(channel.ptztype ?? 0);
+
+    if (channel.type === "RTSP" || channel.is_online !== false) {
+      playMutate(channel.id);
+    }
+  }, [playMutate]);
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="h-[85vh] sm:h-[95vh]">
         <div className="flex flex-col sm:flex-row h-full overflow-hidden">
-          {/* 播放器内容区域 - 背景色改为白色 */}
-          <div className="flex-1 bg-white" style={layout.containerStyle}>
+          {/* 播放器内容区域 - 背景色改为白色，移动端允许滚动以容纳 PTZ */}
+          <div className="flex-1 bg-white overflow-y-auto sm:overflow-visible" style={layout.containerStyle}>
             {/* 播放器容器 */}
             <div style={layout.contentStyle}>
               <AspectRatio ratio={16 / 9}>
@@ -183,42 +196,36 @@ export default function PlayDrawer({
                   disabled
                   value={link}
                 />
-                <div className="flex flex-wrap gap-2 my-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2.5 my-2">
                   {[
-                    // 为什么: 内嵌播放仅保留 WebRTC; 其他协议只提供地址复制, 交给外部播放器观看。
                     {
                       name: "WebRTC",
                       addr: getStream()?.webrtc ?? "",
-                      icon: null,
+                      copy: false,
                     },
                     {
                       name: "HTTP_FLV",
                       addr: getStream()?.http_flv ?? "",
-                      icon: <Copy className="w-4 h-4 mr-1" />,
                       copy: true,
                     },
                     {
                       name: "WS_FLV",
                       addr: getStream()?.ws_flv ?? "",
-                      icon: <Copy className="w-4 h-4 mr-1" />,
                       copy: true,
                     },
                     {
                       name: "HLS",
                       addr: getStream()?.hls ?? "",
-                      icon: <Copy className="w-4 h-4 mr-1" />,
                       copy: true,
                     },
                     {
                       name: "RTMP",
                       addr: getStream()?.rtmp ?? "",
-                      icon: <Copy className="w-4 h-4 mr-1" />,
                       copy: true,
                     },
                     {
                       name: "RTSP",
                       addr: getStream()?.rtsp ?? "",
-                      icon: <Copy className="w-4 h-4 mr-1" />,
                       copy: true,
                     },
                   ].map((item, i) => (
@@ -226,7 +233,7 @@ export default function PlayDrawer({
                       <Button
                         size="sm"
                         variant="outline"
-                        className={`transition-all duration-200 ${
+                        className={`text-[10px] h-6 px-1.5 sm:text-sm sm:h-9 sm:px-3 transition-all duration-200 ${
                           item.addr === link ? "border-gray-800" : ""
                         }`}
                         disabled={!item.addr}
@@ -245,14 +252,26 @@ export default function PlayDrawer({
                           setLink(item.addr);
                         }}
                       >
-                        {item.icon}
+                        {item.copy && <Copy className="hidden sm:inline w-4 h-4 mr-1" />}
                         {item.name}
                       </Button>
                     </ToolTips>
                   ))}
                 </div>
               </div>
+
             </div>
+
+            {/* 移动端 PTZ 云台控制 - z-index 最高确保不被遮挡 */}
+            {currentChannelId && (
+              <div className="sm:hidden pb-4 mt-2 relative z-50">
+                <PTZPanel
+                  channelId={currentChannelId}
+                  deviceType={currentChannelType || undefined}
+                  ptztype={currentChannelPtztype}
+                />
+              </div>
+            )}
           </div>
 
           {/* 设备详情/介绍 - 小屏幕时隐藏 */}
@@ -269,6 +288,7 @@ export default function PlayDrawer({
                   onOpenChange(false);
                   navigate(`/zones?cid=${encodeURIComponent(currentChannelId)}`);
                 }}
+                onChannelSwitch={handleChannelSwitch}
               />
             </div>
           )}

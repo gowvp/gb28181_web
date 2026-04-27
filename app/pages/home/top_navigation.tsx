@@ -4,10 +4,12 @@ import {
   Github,
   LogOut,
   type LucideIcon,
+  Settings,
   Sparkles,
 } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
+import SettingsModal from "~/components/settings/settings_modal";
 import { LanguageSwitcher } from "~/components/language-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
@@ -56,8 +58,8 @@ export function TopNavigation({
 }) {
   return (
     <div className="w-full">
-      <div className="flex items-center justify-center px-4 sm:px-8 py-2 sm:py-3">
-        <div className="flex items-center gap-2 sm:gap-8 bg-white/80 backdrop-blur-sm rounded-full px-4 sm:px-8 py-2 shadow-lg border border-gray-200/50">
+      <div className="flex items-center justify-center px-4 sm:px-8 py-3">
+        <div className="flex items-center gap-2 sm:gap-8 bg-white/80 backdrop-blur-xl rounded-full px-4 sm:px-8 py-2 shadow-lg border border-gray-200/50">
           {/* 主导航菜单 */}
           <NavigationMenu>
             <NavigationMenuList className="flex-nowrap">
@@ -117,7 +119,7 @@ export function TopNavigation({
 
           {/* 分隔线 */}
           {user && (
-            <div className="h-4 sm:h-6 w-px bg-gray-300 flex-shrink-0" />
+            <div className="h-4 sm:h-6 w-px bg-gray-200/60 flex-shrink-0" />
           )}
 
           {/* 语言切换按钮 */}
@@ -144,84 +146,97 @@ function TopNavUser({
   const navigate = useNavigate();
   const { t } = useTranslation("common");
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="flex items-center gap-2 px-2 sm:px-3 py-2 h-auto data-[state=open]:bg-accent select-none"
-        >
-          <Avatar className="h-8 w-8 rounded-lg">
-            <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-          </Avatar>
-          {/* 用户信息 - 小屏幕隐藏 */}
-          <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
-            <span className="truncate font-semibold">{user.name}</span>
-            <span className="truncate text-xs text-muted-foreground">
-              {user.email}
-            </span>
-          </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 hidden sm:block" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-56 rounded-lg"
-        align="end"
-        sideOffset={4}
-      >
-        <DropdownMenuLabel className="p-0 font-normal">
-          <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 px-2 sm:px-3 py-2 h-auto data-[state=open]:bg-accent select-none"
+          >
             <Avatar className="h-8 w-8 rounded-lg">
               <AvatarImage src={user.avatar} alt={user.name} />
               <AvatarFallback className="rounded-lg">CN</AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
+            {/* 用户信息 - 小屏幕隐藏 */}
+            <div className="hidden sm:flex flex-col items-start text-sm leading-tight">
               <span className="truncate font-semibold">{user.name}</span>
-              <span className="truncate text-xs">{user.email}</span>
+              <span className="truncate text-xs text-muted-foreground">
+                {user.email}
+              </span>
             </div>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            onClick={() => window.open("https://github.com/gowvp/gb28181")}
-          >
-            <Github className="mr-2 h-4 w-4" />
-            Github
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-
-        <DropdownMenuGroup>
-          <DropdownMenuItem
-            onClick={() => window.open("https://gitee.com/gowvp/gb28181")}
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Gitee
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={async () => {
-            setIsLoggingOut(true);
-            setTimeout(() => {
-              localStorage.removeItem("token");
-              navigate("/");
-              setIsLoggingOut(false);
-            }, 400);
-          }}
+            <ChevronsUpDown className="ml-2 h-4 w-4 hidden sm:block" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-56 rounded-lg"
+          align="end"
+          sideOffset={4}
         >
-          <LogOut
-            className={`mr-2 h-4 w-4 transition-transform duration-400 ${
-              isLoggingOut ? "animate-spin" : ""
-            }`}
-          />
-          {t("logout")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuLabel className="p-0 font-normal">
+            <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+              </Avatar>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate text-xs">{user.email}</span>
+              </div>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              设置
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              onClick={() => window.open("https://github.com/gowvp/gb28181")}
+            >
+              <Github className="mr-2 h-4 w-4" />
+              Github
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuGroup>
+            <DropdownMenuItem
+              onClick={() => window.open("https://gitee.com/gowvp/gb28181")}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Gitee
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={async () => {
+              setIsLoggingOut(true);
+              setTimeout(() => {
+                localStorage.removeItem("token");
+                navigate("/");
+                setIsLoggingOut(false);
+              }, 400);
+            }}
+          >
+            <LogOut
+              className={`mr-2 h-4 w-4 transition-transform duration-400 ${
+                isLoggingOut ? "animate-spin" : ""
+              }`}
+            />
+            {t("logout")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </>
   );
 }
 

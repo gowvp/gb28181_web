@@ -83,7 +83,6 @@ interface ZoomButtonProps {
   onStart: (d: PTZDirection, e?: PtrEvt) => void;
   onStop: (e?: PtrEvt) => void;
   icon: React.ReactNode;
-  label: string;
 }
 
 const ZoomButton = memo(function ZoomButton({
@@ -92,7 +91,6 @@ const ZoomButton = memo(function ZoomButton({
   onStart,
   onStop,
   icon,
-  label,
 }: ZoomButtonProps) {
   const isActive = activeDirection === direction;
   return (
@@ -104,7 +102,7 @@ const ZoomButton = memo(function ZoomButton({
       onTouchStart={(e) => onStart(direction, e)}
       onTouchEnd={onStop}
       className={`
-        flex items-center justify-center gap-1.5
+        flex items-center justify-center
         h-9 rounded-lg border text-xs font-medium
         transition-all duration-150 active:scale-95 select-none
         ${
@@ -115,7 +113,6 @@ const ZoomButton = memo(function ZoomButton({
       `}
     >
       {icon}
-      <span>{label}</span>
     </button>
   );
 });
@@ -180,14 +177,65 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
     return null;
   }
 
-  return (
-    <Card className="border-primary/15 bg-gradient-to-b from-background to-muted/30 shadow-sm">
-      <CardHeader className="pb-2 pt-3 px-3">
-        <CardTitle className="text-xs font-semibold flex items-center justify-between text-foreground/70">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            云台控制
+  const directionPad = (
+    <div className="grid grid-cols-3 gap-1.5 w-fit mx-auto">
+      <DirectionButton direction="upleft" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowUpLeft className="h-4 w-4" />} ariaLabel="左上" />
+      <DirectionButton direction="up" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowUp className="h-4 w-4" />} ariaLabel="上" />
+      <DirectionButton direction="upright" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowUpRight className="h-4 w-4" />} ariaLabel="右上" />
+      <DirectionButton direction="left" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowLeft className="h-4 w-4" />} ariaLabel="左" />
+      <button
+        type="button"
+        onClick={(e) => handleStop(e)}
+        aria-label="停止"
+        className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl select-none bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground transition-all duration-150 active:scale-95"
+      >
+        <Square className="h-3.5 w-3.5 fill-current" />
+      </button>
+      <DirectionButton direction="right" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowRight className="h-4 w-4" />} ariaLabel="右" />
+      <DirectionButton direction="downleft" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowDownLeft className="h-4 w-4" />} ariaLabel="左下" />
+      <DirectionButton direction="down" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowDown className="h-4 w-4" />} ariaLabel="下" />
+      <DirectionButton direction="downright" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<ArrowDownRight className="h-4 w-4" />} ariaLabel="右下" />
+    </div>
+  );
+
+  const controlPanel = (
+    <div className="space-y-3 flex-1 min-w-0">
+      {/* 速度控制 */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted-foreground">速度</span>
+          <span className="font-mono tabular-nums text-foreground/80">
+            {Math.round(speed * 100)}%
           </span>
+        </div>
+        <Slider
+          value={[speed]}
+          onValueChange={(v) => setSpeed(v[0])}
+          min={0.1}
+          max={1}
+          step={0.1}
+          disabled={activeDirection !== null}
+          className="cursor-pointer"
+        />
+      </div>
+
+      {/* 变焦控制 */}
+      <div className="grid grid-cols-2 gap-1.5">
+        <ZoomButton direction="zoomin" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<Plus className="h-4 w-4" />} />
+        <ZoomButton direction="zoomout" activeDirection={activeDirection} onStart={handleStart} onStop={handleStop} icon={<Minus className="h-4 w-4" />} />
+      </div>
+
+      <div className="text-[10px] text-muted-foreground/70 text-center leading-relaxed">
+        按住移动 · 松开停止
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className="border-primary/15 sm:border bg-gradient-to-b from-background to-muted/30 shadow-sm sm:shadow-sm border-0 sm:border-primary/15">
+      <CardHeader className="pb-2 pt-2 sm:pt-3 px-1 sm:px-3">
+        <CardTitle className="text-xs font-semibold flex items-center justify-between text-foreground/70">
+          <span>云台控制</span>
           <Badge
             variant="outline"
             className="text-[10px] px-1.5 py-0 h-5 font-normal"
@@ -196,130 +244,15 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-3 pb-3 space-y-3">
-        {/* 方向操纵盘: 3x3, 中心为停止键 */}
-        <div className="grid grid-cols-3 gap-1.5 w-fit mx-auto">
-          <DirectionButton
-            direction="upleft"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowUpLeft className="h-4 w-4" />}
-            ariaLabel="左上"
-          />
-          <DirectionButton
-            direction="up"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowUp className="h-4 w-4" />}
-            ariaLabel="上"
-          />
-          <DirectionButton
-            direction="upright"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowUpRight className="h-4 w-4" />}
-            ariaLabel="右上"
-          />
-          <DirectionButton
-            direction="left"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowLeft className="h-4 w-4" />}
-            ariaLabel="左"
-          />
-          <button
-            type="button"
-            onClick={(e) => handleStop(e)}
-            aria-label="停止"
-            className="
-              flex items-center justify-center
-              h-11 w-11 sm:h-12 sm:w-12 rounded-xl select-none
-              bg-destructive/10 text-destructive border border-destructive/30
-              hover:bg-destructive hover:text-destructive-foreground
-              transition-all duration-150 active:scale-95
-            "
-          >
-            <Square className="h-3.5 w-3.5 fill-current" />
-          </button>
-          <DirectionButton
-            direction="right"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowRight className="h-4 w-4" />}
-            ariaLabel="右"
-          />
-          <DirectionButton
-            direction="downleft"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowDownLeft className="h-4 w-4" />}
-            ariaLabel="左下"
-          />
-          <DirectionButton
-            direction="down"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowDown className="h-4 w-4" />}
-            ariaLabel="下"
-          />
-          <DirectionButton
-            direction="downright"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<ArrowDownRight className="h-4 w-4" />}
-            ariaLabel="右下"
-          />
+      <CardContent className="px-1 sm:px-3 pb-2 sm:pb-3">
+        {/* 移动端左右布局，PC端上下布局 */}
+        <div className="flex gap-3 sm:hidden mx-auto max-w-[350px]">
+          <div className="shrink-0">{directionPad}</div>
+          {controlPanel}
         </div>
-
-        {/* 速度控制 */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground">速度</span>
-            <span className="font-mono tabular-nums text-foreground/80">
-              {Math.round(speed * 100)}%
-            </span>
-          </div>
-          <Slider
-            value={[speed]}
-            onValueChange={(v) => setSpeed(v[0])}
-            min={0.1}
-            max={1}
-            step={0.1}
-            disabled={activeDirection !== null}
-            className="cursor-pointer"
-          />
-        </div>
-
-        {/* 变焦控制 */}
-        <div className="grid grid-cols-2 gap-1.5">
-          <ZoomButton
-            direction="zoomin"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<Plus className="h-3.5 w-3.5" />}
-            label="放大"
-          />
-          <ZoomButton
-            direction="zoomout"
-            activeDirection={activeDirection}
-            onStart={handleStart}
-            onStop={handleStop}
-            icon={<Minus className="h-3.5 w-3.5" />}
-            label="缩小"
-          />
-        </div>
-
-        <div className="text-[10px] text-muted-foreground/70 text-center leading-relaxed">
-          按住移动 · 松开停止
+        <div className="hidden sm:block space-y-3">
+          {directionPad}
+          {controlPanel}
         </div>
       </CardContent>
     </Card>

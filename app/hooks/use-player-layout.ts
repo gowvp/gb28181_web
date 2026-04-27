@@ -105,26 +105,27 @@ export function usePlayerLayout(options: LayoutOptions): LayoutResult {
 
       paddingX = Math.max(0, paddingX);
 
+      const isSmall = vw < 640;
+
       setLayout({
         containerStyle: {
-          paddingLeft: `${paddingX}px`,
-          paddingRight: `${paddingX}px`,
-          // 减小上下 padding
-          paddingTop: "0.25rem",
-          paddingBottom: "0.25rem",
+          paddingLeft: isSmall ? 0 : `${paddingX}px`,
+          paddingRight: isSmall ? 0 : `${paddingX}px`,
+          paddingTop: isSmall ? 0 : "0.25rem",
+          paddingBottom: isSmall ? 0 : "0.25rem",
           width: "100%",
           height: "100%",
-          overflowY: shouldScroll ? "auto" : "hidden",
+          overflowY: shouldScroll || isSmall ? "auto" : "hidden",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: shouldScroll ? "flex-start" : "center",
+          alignItems: isSmall ? "stretch" : "center",
+          justifyContent: shouldScroll || isSmall ? "flex-start" : "center",
         },
         contentStyle: {
           width: "100%",
           maxWidth: "100%",
         },
-        isSmallScreen: vw < minWidth,
+        isSmallScreen: isSmall || vw < minWidth,
       });
     };
 

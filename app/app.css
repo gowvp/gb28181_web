@@ -145,21 +145,26 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #ccc;
+  background-color: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #666;
+  background-color: rgba(0, 0, 0, 0.35);
 }
 
 ::-webkit-scrollbar-track {
-  background-color: #f0f0f0;
+  background: transparent;
 }
 
 * {
-  scrollbar-width: auto;
-  scrollbar-color: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+/* Antd Modal 圆角加大，贴近 Apple 弹窗风格 */
+.ant-modal-content {
+  border-radius: 16px !important;
 }
 
 @keyframes ripple {
