@@ -18,6 +18,7 @@ import DeviceDetailView, {
 } from "~/pages/channels/device";
 import { Play } from "~/service/api/channel/channel";
 import { ErrorHandle } from "~/service/config/error";
+import { rewriteStreamUrl } from "~/lib/utils";
 
 export interface PlayDrawerRef {
   open: (item: any, options?: { hideSidebar?: boolean }) => void;
@@ -64,13 +65,15 @@ export default function PlayDrawer({
   });
 
   // 播放功能
-  // 为什么: WebRTC 端到端延迟最低(300~500ms), H.265 兼容浏览器优先走 WebRTC;
-  // 不兼容的浏览器 WebRTCPlayer 内部会弹窗提示, 用户可手动切 HTTP_FLV 兜底。
+  // 为什么: 默认走 ws_flv → Jessibuca 播放, 支持 H.265/H.264 软解(WASM);
+  // WebRTC 延迟虽低但 H.265 兼容性差, 用户可通过顶部按钮手动切换。
   const { mutate: playMutate, data: playData } = useMutation({
     mutationFn: Play,
     onSuccess(data) {
       const item = data.data.items[0];
-      const preferred = item?.webrtc || item?.http_flv || "";
+      const preferred = rewriteStreamUrl(
+        item?.ws_flv || item?.http_flv || item?.webrtc || "",
+      );
       setLink(preferred);
       playRef.current?.play(preferred);
     },
@@ -200,41 +203,53 @@ export default function PlayDrawer({
                   {[
                     {
                       name: "WebRTC",
-                      addr: getStream()?.webrtc ?? "",
+                      addr: rewriteStreamUrl(getStream()?.webrtc ?? ""),
+                      copy: false,
+                    },
+                    {
+                      name: "Jessibuca",
+                      addr: rewriteStreamUrl(getStream()?.ws_flv ?? ""),
                       copy: false,
                     },
                     {
                       name: "HTTP_FLV",
-                      addr: getStream()?.http_flv ?? "",
+                      addr: rewriteStreamUrl(getStream()?.http_flv ?? ""),
                       copy: true,
                     },
                     {
                       name: "WS_FLV",
-                      addr: getStream()?.ws_flv ?? "",
+                      addr: rewriteStreamUrl(getStream()?.ws_flv ?? ""),
                       copy: true,
                     },
                     {
                       name: "HLS",
-                      addr: getStream()?.hls ?? "",
+                      addr: rewriteStreamUrl(getStream()?.hls ?? ""),
                       copy: true,
                     },
                     {
                       name: "RTMP",
-                      addr: getStream()?.rtmp ?? "",
+                      addr: rewriteStreamUrl(getStream()?.rtmp ?? ""),
                       copy: true,
                     },
                     {
                       name: "RTSP",
-                      addr: getStream()?.rtsp ?? "",
+                      addr: rewriteStreamUrl(getStream()?.rtsp ?? ""),
                       copy: true,
                     },
                   ].map((item, i) => (
-                    <ToolTips tips={item.addr || t("no_address")} key={i}>
+                    <ToolTips
+                      tips={
+                        item.name === "Jessibuca"
+                          ? (item.addr || t("no_address")) + " (H.265)"
+                          : item.addr || t("no_address")
+                      }
+                      key={i}
+                    >
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant={item.name === "Jessibuca" ? "default" : "outline"}
                         className={`text-[10px] h-6 px-1.5 sm:text-sm sm:h-9 sm:px-3 transition-all duration-200 ${
-                          item.addr === link ? "border-gray-800" : ""
+                          item.addr === link ? (item.name === "Jessibuca" ? "" : "border-gray-800") : ""
                         }`}
                         disabled={!item.addr}
                         onClick={() => {
@@ -253,7 +268,7 @@ export default function PlayDrawer({
                         }}
                       >
                         {item.copy && <Copy className="hidden sm:inline w-4 h-4 mr-1" />}
-                        {item.name}
+                        {item.name === "Jessibuca" ? "Jessibuca(H.265)" : item.name}
                       </Button>
                     </ToolTips>
                   ))}
