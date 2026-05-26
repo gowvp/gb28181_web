@@ -26,7 +26,7 @@ export default function ChannelsView() {
   // 查询通道树数据
   const { data, isLoading } = useQuery({
     queryKey: [findDevicesChannelsKey],
-    queryFn: () => FindDevicesChannels({ page: 1, size: 30 }),
+    queryFn: () => FindDevicesChannels({ page: 1, size: 100 }),
     refetchInterval: 10000,
   });
 
@@ -145,10 +145,12 @@ function ChannelCard({
   }, [url]);
 
   return (
-    <div className={cn(
-      "max-w-[300px] max-h-[300px] border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white",
-      isActive && "ring-2 ring-blue-500 border-blue-500"
-    )}>
+    <div
+      className={cn(
+        "max-w-[300px] max-h-[300px] border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white",
+        isActive && "ring-2 ring-blue-500 border-blue-500",
+      )}
+    >
       <div
         className="bg-slate-100 flex items-center justify-center relative cursor-pointer"
         style={{ aspectRatio: "300/220" }}
@@ -171,7 +173,10 @@ function ChannelCard({
           {channel.type === "RTSP" || channel.type === "RTMP" ? (
             // RTSP/RTMP 类型：BUSY 时可停流
             channel.is_online ? (
-              <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+              <div
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
                 <Popconfirm
                   title={t("stop_play_confirm")}
                   onConfirm={handleStopPlay}
@@ -209,9 +214,12 @@ function ChannelCard({
                 </span>
               </div>
 
-              {channel.is_online && (
-                channel.is_playing ? (
-                  <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+              {channel.is_online &&
+                (channel.is_playing ? (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
                     <Popconfirm
                       title={t("stop_play_confirm")}
                       onConfirm={handleStopPlay}
@@ -234,8 +242,7 @@ function ChannelCard({
                     <span className="w-2 h-2 rounded-full mr-1 bg-slate-100" />
                     <span className="text-xs">{t("idle")}</span>
                   </div>
-                )
-              )}
+                ))}
             </>
           )}
         </div>
@@ -307,7 +314,7 @@ function DeviceCard({
             <Cctv
               className={cn(
                 "h-6 w-6",
-                device.is_online ? "text-gray-600" : "text-red-500"
+                device.is_online ? "text-gray-600" : "text-red-500",
               )}
             />
             <div>
