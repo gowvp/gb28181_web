@@ -29,7 +29,7 @@ export default function RecordingsView() {
   // 查询通道树数据
   const { data, isLoading } = useQuery({
     queryKey: [findDevicesChannelsKey],
-    queryFn: () => FindDevicesChannels({ page: 1, size: 30 }),
+    queryFn: () => FindDevicesChannels({ page: 1, size: 100 }),
     refetchInterval: 10000,
   });
 
@@ -117,7 +117,9 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
     const dateStr = `${today.getFullYear()}-${(today.getMonth() + 1)
       .toString()
       .padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`;
-    navigate(`/playback/detail?cid=${encodeURIComponent(channel.id)}&date=${encodeURIComponent(dateStr)}`);
+    navigate(
+      `/playback/detail?cid=${encodeURIComponent(channel.id)}&date=${encodeURIComponent(dateStr)}`,
+    );
   };
 
   return (
@@ -125,7 +127,7 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
       <div
         className={cn(
           "bg-slate-100 flex items-center justify-center relative",
-          hasRecording ? "cursor-pointer" : "cursor-default"
+          hasRecording ? "cursor-pointer" : "cursor-default",
         )}
         style={{ aspectRatio: "300/220" }}
         onClick={handleClick}
@@ -146,7 +148,7 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
           <div
             className={cn(
               "backdrop-blur-sm text-white px-2 py-1 rounded-2xl flex items-center",
-              hasRecording ? "bg-blue-500" : "bg-black/50"
+              hasRecording ? "bg-blue-500" : "bg-black/50",
             )}
           >
             <Video className="w-3 h-3 mr-1" />
@@ -219,7 +221,7 @@ function RecordingDeviceCard({ device }: { device: DeviceWithChannelsItem }) {
             <Cctv
               className={cn(
                 "h-6 w-6",
-                device.is_online ? "text-gray-600" : "text-red-500"
+                device.is_online ? "text-gray-600" : "text-red-500",
               )}
             />
             <div>
