@@ -14,6 +14,7 @@ import PolygonZoneEditor, {
 } from "~/components/zone_editor/polygon_zone_editor";
 import {
   AddZone,
+  DeleteZone,
   GetZones,
   getZonesKey,
   Play,
@@ -174,9 +175,22 @@ export default function ZonesPage() {
     [activeZoneIndex],
   );
 
-  // 删除区域
+  // 删除区域（调用 API 持久化，同时更新本地 state）
+  const { mutate: deleteZoneMutate } = useMutation({
+    mutationFn: (zoneName: string) => DeleteZone(channelId, zoneName),
+    onSuccess: () => {
+      toast.success(t("delete_success"));
+      queryClient.invalidateQueries({ queryKey: [getZonesKey, channelId] });
+    },
+    onError: ErrorHandle,
+  });
+
   const handleDeleteZone = useCallback(
     (index: number) => {
+      const zone = zones[index];
+      if (zone?.name) {
+        deleteZoneMutate(zone.name);
+      }
       setZones((prev) => prev.filter((_, i) => i !== index));
       if (activeZoneIndex === index) {
         setActiveZoneIndex(undefined);
@@ -185,7 +199,7 @@ export default function ZonesPage() {
         setActiveZoneIndex(activeZoneIndex - 1);
       }
     },
-    [activeZoneIndex],
+    [activeZoneIndex, zones, deleteZoneMutate],
   );
 
   // 添加新区域 - 进入编辑模式
