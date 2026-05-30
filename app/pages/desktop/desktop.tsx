@@ -63,7 +63,7 @@ const SimpleNode = ({ data }: { data: any }) => {
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 min-w-[120px] cursor-pointer hover:shadow-md transition-shadow relative"
+      className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 min-w-[120px] cursor-pointer hover:shadow-md transition-shadow relative"
       data-tour-id={data.tourId || undefined}
       onClick={handleClick}
     >
@@ -99,7 +99,7 @@ const ZLMNode = ({ data }: { data: any }) => {
       : "./assets/imgs/lalmax.avif";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-52 relative">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 w-52 relative">
       <div className="relative">
         <div className="absolute top-1 left-1">
           <div className="relative">
@@ -233,7 +233,7 @@ const GoWVPNode = ({ data }: { data: { version?: string } }) => {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4 w-52 relative">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-md p-4 w-52 relative">
       <div className="relative">
         {/* 右上角设置按钮，与 ZLM 节点位置一致 */}
         <div className="absolute top-1 right-1">
@@ -343,7 +343,7 @@ const ClientNode = () => {
   const { t } = useTranslation("desktop");
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-32 relative">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 w-32 relative">
       <Handle
         type="source"
         position={Position.Left}

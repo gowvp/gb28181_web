@@ -223,7 +223,7 @@ export default function AlertsView() {
     const { event, index: eventIndex } = item.data;
     return (
       <div
-        className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-gray-200"
+        className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-gray-200"
         onClick={() => handleCardClick(eventIndex)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -264,12 +264,19 @@ export default function AlertsView() {
   return (
     <div className="h-[calc(100vh-80px)] flex flex-col">
       {/* 筛选栏 */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-white border-b border-gray-100">
+      <div className="flex flex-wrap items-center gap-3 p-4 bg-transparent">
         {/* 通道筛选 - 使用 id 作为 cid 进行筛选 */}
         <Select
           placeholder={t("alert_filter_channel")}
           allowClear
-          style={{ minWidth: 180 }}
+          style={{
+            minWidth: 180,
+            background: "rgba(255, 255, 255, 0.65)",
+            backdropFilter: "blur(40px)",
+            WebkitBackdropFilter: "blur(40px)",
+            borderRadius: 9999,
+          }}
+          variant="borderless"
           value={selectedChannel || undefined}
           onChange={(value) => setSelectedChannel(value || "")}
           options={[
@@ -285,7 +292,14 @@ export default function AlertsView() {
         <Select
           placeholder={t("alert_filter_label")}
           allowClear
-          style={{ minWidth: 120 }}
+          style={{
+            minWidth: 120,
+            background: "rgba(255, 255, 255, 0.65)",
+            backdropFilter: "blur(40px)",
+            WebkitBackdropFilter: "blur(40px)",
+            borderRadius: 9999,
+          }}
+          variant="borderless"
           value={selectedLabel || undefined}
           onChange={(value) => setSelectedLabel(value || "")}
           options={labelOptions}
@@ -298,6 +312,13 @@ export default function AlertsView() {
           onChange={(dates) =>
             setTimeRange(dates ? [dates[0], dates[1]] : [null, null])
           }
+          variant="borderless"
+          style={{
+            background: "rgba(255, 255, 255, 0.65)",
+            backdropFilter: "blur(40px)",
+            WebkitBackdropFilter: "blur(40px)",
+            borderRadius: 9999,
+          }}
           presets={[
             {
               label: t("today"),
@@ -325,13 +346,27 @@ export default function AlertsView() {
         <button
           type="button"
           onClick={() => refetch()}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
           title={t("refresh")}
+          style={{
+            height: 32,
+            width: 32,
+            borderRadius: 9999,
+            fontSize: 13,
+            color: "#6e6e73",
+            background: "transparent",
+            border: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 0.2s",
+            flexShrink: 0,
+          }}
         >
           <RefreshCw
-            className={`w-5 h-5 text-gray-600 ${
-              isLoading ? "animate-spin" : ""
-            }`}
+            style={{ width: 14, height: 14, color: "#6e6e73" }}
+            className={isLoading ? "animate-spin" : ""}
           />
         </button>
       </div>
@@ -339,7 +374,7 @@ export default function AlertsView() {
       {/* 瀑布流内容区 */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-auto p-4 bg-gray-50/50"
+        className="flex-1 overflow-auto p-4 bg-transparent"
       >
         {isLoading ? (
           <div className="flex items-center justify-center h-64">

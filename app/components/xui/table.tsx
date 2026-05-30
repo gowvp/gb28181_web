@@ -23,12 +23,14 @@ export function XTable<T extends object>({
         showQuickJumper: false,
         position: ["bottomRight"],
         showTotal: (total) => `共 ${total} 条`,
+        size: "small",
         ...props.pagination,
         pageSizeOptions: ["10", "20", "30", "50"],
       }}
       style={{
         width: "100%",
         overflowX: "auto",
+        paddingBottom: 8,
         ...props.style,
       }}
     />

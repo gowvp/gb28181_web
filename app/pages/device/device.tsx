@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router";
-import { Button as AntButton, Radio } from "antd";
-import type { CheckboxGroupProps } from "antd/es/checkbox";
+import { Button as AntButton } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { Edit, Folder, Wifi } from "lucide-react";
 import { useRef } from "react";
@@ -202,7 +201,7 @@ export default function DeviceView() {
 
   // const [isShowFilter, setIsShowFilter] = useState(true);
 
-  const options: CheckboxGroupProps<string>["options"] = [
+  const options: { label: string; value: string }[] = [
     { label: t("common:preview"), value: "/nchannels" },
     { label: t("common:recordings"), value: "/playback" },
     { label: t("common:management"), value: "/devices" },
@@ -212,39 +211,106 @@ export default function DeviceView() {
 
   return (
     <div className="min-h-screen bg-transparent p-6">
-      <div className="mx-auto flex flex-row  items-center mb-6 ">
-        <div className="flex gap-2 justify-between w-full">
-          <div className="flex flex-row gap-2">
-            <Radio.Group
-              value="/devices"
-              options={options}
-              onChange={(e) => {
-                navigate(e.target.value);
+      <div className="mb-6 flex flex-row gap-2 items-center justify-between w-full">
+          <div className="flex flex-row gap-2 items-center">
+            {/* Apple Segment Control */}
+            <div
+              style={{
+                display: "inline-flex",
+                background: "rgba(0,0,0,0.06)",
+                borderRadius: 9,
+                padding: 2,
+                gap: 0,
               }}
-              block
-              optionType="button"
-              buttonStyle="solid"
-            />
+            >
+              {options.map((opt) => {
+                const active = opt.value === "/devices";
+                return (
+                  <button
+                    key={opt.value as string}
+                    type="button"
+                    onClick={() => navigate(opt.value as string)}
+                    style={{
+                      height: 28,
+                      padding: "0 14px",
+                      borderRadius: 7,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: active ? "#1d1d1f" : "#6e6e73",
+                      background: active ? "#fff" : "transparent",
+                      boxShadow: active ? "0 1px 3px rgba(0,0,0,0.12), 0 0.5px 0 rgba(0,0,0,0.06)" : "none",
+                      border: "none",
+                      cursor: "pointer",
+                      transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+                      whiteSpace: "nowrap",
+                      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+                    }}
+                  >
+                    {opt.label as string}
+                  </button>
+                );
+              })}
+            </div>
 
             <Link to="/gb/sip">
-              <AntButton>{t("common:access_info")}</AntButton>
+              <AntButton
+                style={{
+                  padding: "0 16px",
+                  height: 32,
+                  borderRadius: 9999,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#6e6e73",
+                  background: "transparent",
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  boxShadow: "none",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {t("common:access_info")}
+              </AntButton>
             </Link>
 
             <AntButton
-              icon={<Wifi className="w-4 h-4" />}
+              icon={<Wifi style={{ width: 14, height: 14 }} />}
               onClick={() => discoverRef.current?.open()}
+              style={{
+                padding: "0 16px",
+                height: 32,
+                borderRadius: 9999,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "#6e6e73",
+                background: "transparent",
+                border: "1px solid rgba(0,0,0,0.08)",
+                boxShadow: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
             >
               {t("common:device_discover")}
             </AntButton>
           </div>
 
           {/* 搜索和添加区域 */}
-          <div className="flex items-center">
-            <span className="mr-3">{t("common:search")}</span>
+          <div className="flex items-center gap-2">
             <Input
               placeholder={t("common:search_device_placeholder")}
               onChange={(event) => debouncedFilters(event.target.value)}
-              className="w-60"
+              className="w-56"
+              style={{
+                height: 32,
+                borderRadius: 9999,
+                background: "rgba(255,255,255,0.65)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                border: "1px solid rgba(0,0,0,0.08)",
+                fontSize: 13,
+                color: "#1d1d1f",
+                boxShadow: "none",
+              }}
             />
 
             <EditForm
@@ -255,7 +321,6 @@ export default function DeviceView() {
               }
             />
           </div>
-        </div>
       </div>
 
       {/* <div
@@ -296,13 +361,25 @@ export default function DeviceView() {
           </ToggleGroup>
         </div> */}
 
-      <TableQuery
-        ref={tableRef}
-        queryKey={findDevicesKey}
-        fetchFn={FindDevices}
-        deleteFn={DelDevice}
-        columns={columns}
-      />
+      <div
+        className="rounded-[20px] overflow-hidden"
+        style={{
+          background: "rgba(255, 255, 255, 0.70)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(255, 255, 255, 0.6)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)",
+          paddingRight: 12,
+        }}
+      >
+        <TableQuery
+          ref={tableRef}
+          queryKey={findDevicesKey}
+          fetchFn={FindDevices}
+          deleteFn={DelDevice}
+          columns={columns}
+        />
+      </div>
 
       <DeviceDiscover ref={discoverRef} />
     </div>

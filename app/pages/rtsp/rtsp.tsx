@@ -179,14 +179,21 @@ export default function RTSPView() {
 
   return (
     <>
-      <div className="w-full bg-white p-4 rounded-lg">
+      <div className="w-full rounded-[20px] overflow-hidden bg-white/70">
         {/* 搜索和添加区域 */}
-        <div className="flex justify-end items-center py-4">
-          <span className="mr-3">{t("search")}</span>
+        <div className="flex justify-end items-center gap-2 p-4">
           <Input
             placeholder={t("placeholder_search")}
             onChange={(event) => debouncedFilters(event.target.value)}
             className="w-56"
+            style={{
+              height: 32,
+              borderRadius: 9999,
+              background: "rgba(255,255,255,0.65)",
+              border: "1px solid rgba(0,0,0,0.08)",
+              fontSize: 13,
+              boxShadow: "none",
+            }}
           />
 
           <EditForm
