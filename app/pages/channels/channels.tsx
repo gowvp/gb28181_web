@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { Button, Popconfirm, Radio } from "antd";
 import type { CheckboxGroupProps } from "antd/es/checkbox";
-import { Cctv, Loader2, Monitor, Wifi } from "lucide-react";
+import { Cctv, Loader2, Monitor, Server, Wifi } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -328,6 +328,12 @@ function DeviceCard({
                 {device.ext.gb_version && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                     GB28181-{device.ext.gb_version}
+                  </span>
+                )}
+                {(device.ip || device.address) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-gray-100/80 border border-gray-200/60 text-gray-500 font-mono">
+                    <Server className="w-3 h-3 opacity-60" />
+                    {device.ip || device.address}
                   </span>
                 )}
               </div>
