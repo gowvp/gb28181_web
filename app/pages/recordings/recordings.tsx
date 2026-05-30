@@ -127,7 +127,7 @@ export default function RecordingsView() {
 
         {/* Device Cards */}
         {isLoading ? (
-          <div className="space-y-1">
+          <div className="space-y-3">
             {Array(2)
               .fill(0)
               .map((_, index) => (
@@ -135,7 +135,7 @@ export default function RecordingsView() {
               ))}
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-3">
             {data?.data.items?.map((device) => (
               <RecordingDeviceCard key={device.id} device={device} />
             ))}
@@ -371,7 +371,7 @@ function RecordingDeviceCard({ device }: { device: DeviceWithChannelsItem }) {
         {displayChannels.length > 0 ? (
           <div className="flex flex-wrap gap-4">
             {visibleChannels.map((channel) => (
-              <div key={channel.id} className="w-[300px] shrink-0">
+              <div key={channel.id} className="w-[280px] shrink-0">
                 <RecordingChannelCard channel={channel} />
               </div>
             ))}

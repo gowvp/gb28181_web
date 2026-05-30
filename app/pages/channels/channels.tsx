@@ -130,7 +130,7 @@ export default function ChannelsView() {
 
         {/* Device Cards */}
         {isLoading ? (
-          <div className="space-y-1">
+          <div className="space-y-3">
             {Array(2)
               .fill(0)
               .map((_, index) => (
@@ -138,7 +138,7 @@ export default function ChannelsView() {
               ))}
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-3">
             {data?.data.items?.map((device) => (
               <DeviceCard
                 key={device.id}
@@ -475,7 +475,7 @@ function DeviceCard({
         {displayChannels.length > 0 ? (
           <div className="flex flex-wrap gap-4">
             {visibleChannels.map((channel) => (
-              <div key={channel.id} className="w-[300px] flex-shrink-0">
+              <div key={channel.id} className="w-[280px] flex-shrink-0">
                 <ChannelCard
                   channel={channel}
                   onClick={() => onChannelClick(channel)}

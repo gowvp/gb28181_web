@@ -66,6 +66,10 @@ export async function AddZone(channelId: string, zone: AddZoneInput) {
   return await POST<AddZoneResponse>(`/channels/${channelId}/zones`, zone);
 }
 
+export async function DeleteZone(channelId: string, zoneName: string) {
+  return await DELETE<{ items: GetZonesResponse }>(`/channels/${channelId}/zones/${encodeURIComponent(zoneName)}`);
+}
+
 // AI 检测管理 API
 export async function EnableAI(channelId: string) {
   return await POST<EnableAIResponse>(`/channels/${channelId}/ai/enable`);
