@@ -11,7 +11,7 @@
   "port": "端口",
   "register_time": "注册时间",
   "last_keepalive": "最后心跳",
-  "add_device": "添加设备",
+  "add_device": "添加",
   "edit_device": "编辑设备",
   "delete_device": "删除设备",
   "device_config": "设备配置",

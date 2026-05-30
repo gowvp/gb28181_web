@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { Button, Radio } from "antd";
-import type { CheckboxGroupProps } from "antd/es/checkbox";
+import { Button } from "antd";
 import { Cctv, Monitor, Video, Wifi } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -34,7 +33,7 @@ export default function RecordingsView() {
   });
 
   // Tab 选项：预览、录像、管理
-  const options: CheckboxGroupProps<string>["options"] = [
+  const options: { label: string; value: string }[] = [
     { label: t("preview"), value: "/nchannels" },
     { label: t("recordings"), value: "/playback" },
     { label: t("management"), value: "/devices" },
@@ -44,23 +43,84 @@ export default function RecordingsView() {
     <div className="min-h-screen bg-transparent p-6">
       <div className="mx-auto">
         {/* 导航按钮 */}
-        <div className="mb-6 flex flex-row gap-2">
-          <Radio.Group
-            value="/playback"
-            options={options}
-            onChange={(e) => {
-              navigate(e.target.value);
+        <div className="mb-6 flex flex-row gap-2 items-center">
+          {/* Apple Segment Control */}
+          <div
+            style={{
+              display: "inline-flex",
+              background: "rgba(0,0,0,0.06)",
+              borderRadius: 9,
+              padding: 2,
+              gap: 0,
             }}
-            block
-            optionType="button"
-            buttonStyle="solid"
-          />
+          >
+            {options.map((opt) => {
+              const active = opt.value === "/playback";
+              return (
+                <button
+                  key={opt.value as string}
+                  type="button"
+                  onClick={() => navigate(opt.value as string)}
+                  style={{
+                    height: 28,
+                    padding: "0 14px",
+                    borderRadius: 7,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: active ? "#1d1d1f" : "#6e6e73",
+                    background: active ? "#fff" : "transparent",
+                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.12), 0 0.5px 0 rgba(0,0,0,0.06)" : "none",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+                    whiteSpace: "nowrap",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+                  }}
+                >
+                  {opt.label as string}
+                </button>
+              );
+            })}
+          </div>
 
           <Link to="/gb/sip">
-            <Button>{t("access_info")}</Button>
+            <Button
+              style={{
+                padding: "0 16px",
+                height: 32,
+                borderRadius: 9999,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "#6e6e73",
+                background: "transparent",
+                border: "1px solid rgba(0,0,0,0.08)",
+                boxShadow: "none",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              {t("access_info")}
+            </Button>
           </Link>
 
-          <Button icon={<Wifi className="w-4 h-4" />} disabled>
+          <Button
+            icon={<Wifi style={{ width: 14, height: 14 }} />}
+            disabled
+            style={{
+              padding: "0 16px",
+              height: 32,
+              borderRadius: 9999,
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#6e6e73",
+              background: "transparent",
+              border: "1px solid rgba(0,0,0,0.08)",
+              boxShadow: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
             {t("device_discover")}
           </Button>
         </div>
@@ -123,7 +183,16 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
   };
 
   return (
-    <div className="max-w-[300px] max-h-[300px] border rounded-2xl overflow-hidden hover:shadow-lg transition-shadow duration-300 bg-white">
+    <div
+      className="group w-[280px] rounded-[20px] overflow-hidden hover:-translate-y-[3px] hover:scale-[1.01] shadow-[0_4px_16px_rgba(0,0,0,0.05),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.9)]"
+      style={{
+        background: "rgba(255, 255, 255, 0.70)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255, 255, 255, 0.8)",
+        transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
+      }}
+    >
       <div
         className={cn(
           "bg-slate-100 flex items-center justify-center relative",
@@ -156,12 +225,15 @@ function RecordingChannelCard({ channel }: { channel: ChannelItem }) {
           </div>
         </div>
 
-        {/* 悬浮内容：有录像显示播放按钮，无录像显示提示 */}
-        <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 hover:opacity-100">
+        {/* 悬浮内容：响应外层 group hover */}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
           {hasRecording ? (
-            <div className="bg-white/90 backdrop-blur-sm rounded-full p-3 transform scale-75 hover:scale-100 transition-transform duration-200">
+            <div
+              className="bg-white/85 backdrop-blur-[10px] rounded-full flex items-center justify-center scale-75 group-hover:scale-100 transition-transform duration-[250ms]"
+              style={{ width: 48, height: 48, boxShadow: "0 4px 16px rgba(0,0,0,0.15)" }}
+            >
               <svg
-                className="w-6 h-6 text-gray-800"
+                className="w-5 h-5 text-gray-800"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -214,7 +286,16 @@ function RecordingDeviceCard({ device }: { device: DeviceWithChannelsItem }) {
   const visibleChannels = displayChannels.slice(0, maxChannels);
 
   return (
-    <Card className="w-full bg-gray-50 border-solid border border-gray-200 rounded-2xl">
+    <Card
+      className="w-full rounded-[24px]"
+      style={{
+        background: "rgba(255, 255, 255, 0.65)",
+        backdropFilter: "blur(40px)",
+        WebkitBackdropFilter: "blur(40px)",
+        border: "1px solid rgba(255, 255, 255, 0.6)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8)",
+      }}
+    >
       <CardHeader className="p-2 px-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -225,21 +306,33 @@ function RecordingDeviceCard({ device }: { device: DeviceWithChannelsItem }) {
               )}
             />
             <div>
-              <CardTitle className="text-lg font-semibold text-gray-900">
+              <CardTitle
+                style={{
+                  fontSize: 16,
+                  fontWeight: 650,
+                  lineHeight: "22px",
+                  color: "#1d1d1f",
+                  letterSpacing: "-0.01em",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
                 {device.ext.name || device.name || t("unnamed_device")}
               </CardTitle>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-gray-600">
+                <span style={{ fontSize: 12, color: "#8e8e93" }}>
                   {device.ext.manufacturer}
                 </span>
                 {device.ext.gb_version && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-800" style={{ fontSize: 11 }}>
                     GB28181-{device.ext.gb_version}
                   </span>
                 )}
               </div>
-              <p className="text-gray-500 text-xs">
-                {t("device_id")}: {device.device_id}
+              <p style={{ fontSize: 12, color: "#8e8e93", marginTop: 2 }}>
+                {device.device_id}
               </p>
             </div>
           </div>

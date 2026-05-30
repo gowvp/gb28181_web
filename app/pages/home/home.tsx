@@ -8,7 +8,7 @@ import VersionUpdateModal, {
 import logger from "~/lib/logger";
 import type { CheckVersionResponse } from "~/service/api/version/state";
 import { checkVersion } from "~/service/api/version/version";
-import { TopNavigation } from "./top_navigation";
+import { TopMenu } from "./top_menu";
 
 const VERSION_CHECKED_KEY = "GOWVP_VERSION_CHECKED_SESSION";
 
@@ -32,6 +32,8 @@ function useNavigationData() {
         name: t("gb_channel"),
         url: "/nchannels",
         icon: Cctv,
+        // /channels, /devices, /playback, /zones 都属于通道管理下的子路由，应激活此菜单项
+        activePaths: ["/nchannels", "/channels", "/devices", "/playback", "/zones", "/gb/sip"],
       },
       {
         name: t("alerts"),
@@ -103,9 +105,15 @@ export default function Page() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div
+      className="flex flex-col h-screen overflow-hidden"
+      style={{
+        background:
+          "linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 50%, #f0f0f2 100%)",
+      }}
+    >
       {/* 顶部导航菜单 */}
-      <TopNavigation
+      <TopMenu
         items={navigationData.projects}
         user={navigationData.user}
       />
@@ -114,10 +122,7 @@ export default function Page() {
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div
           className="min-w-0 flex-1 flex flex-col h-full overflow-hidden"
-          style={{
-            background:
-              "linear-gradient(to bottom right, white 30%, #FCFEFF 70%)",
-          }}
+          style={{ background: "transparent" }}
         >
           {/* 子页面容器 - 80%宽度居中，小屏幕全宽 */}
           {/* <div className="w-full max-w-none sm:w-4/5 sm:mx-auto px-4 sm:px-6 lg:px-4"> */}

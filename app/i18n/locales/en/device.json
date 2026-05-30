@@ -11,7 +11,7 @@
   "port": "Port",
   "register_time": "Register Time",
   "last_keepalive": "Last Keepalive",
-  "add_device": "Add Device",
+  "add_device": "Add",
   "edit_device": "Edit Device",
   "delete_device": "Delete Device",
   "device_config": "Device Config",

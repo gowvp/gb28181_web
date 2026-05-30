@@ -172,8 +172,24 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         edit: EditProxy,
       }}
       trigger={
-        <Button className="mx-3">
-          <SquarePlus />
+        <Button
+          variant="outline"
+          style={{
+            height: 32,
+            padding: "0 14px",
+            borderRadius: 9999,
+            fontSize: 13,
+            fontWeight: 500,
+            color: "#6e6e73",
+            background: "transparent",
+            border: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <SquarePlus style={{ width: 14, height: 14 }} />
           {t("add_channel")}
         </Button>
       }
