@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { Button, Popconfirm } from "antd";
+import { Button, Popconfirm, Tooltip } from "antd";
 import { Cctv, Loader2, Monitor, Server, Wifi } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -378,9 +378,9 @@ function DeviceCard({
   onChannelClick: (channel: ChannelItem) => void;
 }) {
   const { t } = useTranslation("common");
+  const navigate = useNavigate();
   const maxChannels = 4;
   const displayChannels = device.children || [];
-  const hasMoreChannels = displayChannels.length > maxChannels; // 显示最多6个通道
   const visibleChannels = displayChannels.slice(0, maxChannels);
 
   return (
@@ -441,34 +441,21 @@ function DeviceCard({
             </div>
           </div>
 
-          {hasMoreChannels && (
-            <div className=" mt-4 text-center">
-              <span style={{ marginRight: "1rem" }}>
-                {t("total_channels")}:
-                <span
-                  style={{
-                    fontWeight: "bold",
-                    fontSize: "1.1rem",
-                  }}
-                >
-                  {" "}
-                  {device.channels}
-                </span>
-              </span>
-
-              <Link to={`/channels?did=${encodeURIComponent(device.id)}`}>
-                <Button
-                  variant="outlined"
-                  size="middle"
-                  style={{
-                    boxShadow: "none",
-                  }}
-                >
-                  {t("view_more")}
-                </Button>
-              </Link>
+          {/* 右侧：通道数，点击跳转查看全部 */}
+          <Tooltip title="查看全部通道" placement="left">
+            <div
+              className="flex-shrink-0 text-right cursor-pointer select-none"
+              onClick={() => navigate(`/channels?did=${encodeURIComponent(device.id)}`)}
+              style={{ padding: "4px 8px", borderRadius: 12, transition: "background 0.15s" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(0,0,0,0.05)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            >
+              <div style={{ fontSize: 24, fontWeight: 700, color: "#1d1d1f", letterSpacing: "-0.02em", lineHeight: 1 }}>
+                {device.channels ?? displayChannels.length}
+              </div>
+              <div style={{ fontSize: 11, color: "#aeaeb2", marginTop: 2 }}>通道</div>
             </div>
-          )}
+          </Tooltip>
         </div>
       </CardHeader>
       <CardContent>

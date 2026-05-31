@@ -179,7 +179,7 @@ export default function RTSPView() {
 
   return (
     <>
-      <div className="w-full rounded-[20px] overflow-hidden bg-white/70">
+      <div className="w-full rounded-[20px] overflow-hidden" style={{ background: "rgba(255,255,255,0.70)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
         {/* 搜索和添加区域 */}
         <div className="flex justify-end items-center gap-2 p-4">
           <Input
