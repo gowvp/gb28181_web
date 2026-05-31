@@ -223,7 +223,8 @@ export default function AlertsView() {
     const { event, index: eventIndex } = item.data;
     return (
       <div
-        className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-gray-200"
+        className="rounded-[20px] border border-white/60 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.10)] hover:-translate-y-[3px] hover:scale-[1.01]"
+        style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}
         onClick={() => handleCardClick(eventIndex)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {

@@ -181,6 +181,11 @@ body {
   }
 }
 
+/* 表格分页组件右侧内边距，不影响表格本身 */
+.ant-table-pagination.ant-pagination {
+  margin-right: 12px !important;
+}
+
 @keyframes livePulse {
   0% { transform: scale(1); opacity: 0.6; }
   100% { transform: scale(2.5); opacity: 0; }
