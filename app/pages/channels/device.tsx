@@ -99,15 +99,15 @@ export default function DeviceDetailView({
     channelExt?.enabled_ai ?? false,
   );
 
-  // 录像模式状态，初始值从 channelExt 获取，空串表示不录像
+  // 录像模式状态，初始值从 channelExt 获取，空串默认为 always（全录制）
   const [recordMode, setRecordMode] = useState<RecordMode>(
-    channelExt?.record_mode || "none",
+    channelExt?.record_mode || "always",
   );
 
   // 当 channelExt 变化时同步状态，确保切换通道时状态正确
   useEffect(() => {
     setDetectEnabled(channelExt?.enabled_ai ?? false);
-    setRecordMode(channelExt?.record_mode || "none");
+    setRecordMode(channelExt?.record_mode || "always");
   }, [channelExt?.enabled_ai, channelExt?.record_mode]);
 
   // 启用 AI 检测
@@ -139,7 +139,7 @@ export default function DeviceDetailView({
     useMutation({
       mutationFn: (mode: RecordMode) => SetRecordMode(channelId!, mode),
       onSuccess: (data) => {
-        setRecordMode(data.data.record_mode);
+        setRecordMode(data.data?.record_mode || "always");
         toast.success(t("common:record_mode_set_success"));
       },
       onError: (error) => {

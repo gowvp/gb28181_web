@@ -27,13 +27,13 @@ import { ErrorHandle } from "~/service/config/error";
  */
 function RecordModeRadio({ record }: { record: ChannelItem }) {
   const { t } = useTranslation("common");
-  const currentMode = record.ext?.record_mode || "none";
+  const currentMode = record.ext?.record_mode || "always";
   const [mode, setMode] = useState<RecordMode>(currentMode);
 
   const { mutate, isPending } = useMutation({
     mutationFn: (newMode: RecordMode) => SetRecordMode(record.id, newMode),
     onSuccess: (data) => {
-      setMode(data.data.record_mode);
+      setMode(data.data?.record_mode || "always");
       toast.success(t("record_mode_set_success"));
     },
     onError: ErrorHandle,
