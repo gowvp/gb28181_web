@@ -7,6 +7,11 @@ import { defineConfig } from "vite";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   return {
+    experimental: {
+      // bundledDev 有 bug：JS 内部引用路径用的是 build 产物文件名，dev 模式下 404
+      // 等 https://github.com/vitejs/vite/issues/22749 修复后再启用
+      // bundledDev: true,
+    },
     plugins: [
       react(),
       tailwindcss(),
@@ -27,6 +32,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // chunk import map：防止哈希级联，改一个 chunk 不会导致引用它的 chunk 哈希全变
+      // 好处：浏览器缓存命中率大幅提升，用户更新后只需下载变更的 chunk
+      chunkImportMap: true,
       rolldownOptions: {
         output: {
           // Vite 8 使用 Rolldown 的 codeSplitting 替代 manualChunks
