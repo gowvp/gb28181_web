@@ -209,25 +209,26 @@ export default function RTMPView() {
   }, 500);
 
   return (
-    <>
+    <div className="space-y-4">
+      {/* 工具栏独立一行 */}
+      <div className="flex justify-end items-center gap-2">
+        <GlassSearch
+          value={searchKey}
+          onChange={(v) => { setSearchKey(v); debouncedFilters(v); }}
+          onClear={() => debouncedFilters("")}
+          placeholder={t("placeholder_search")}
+          width={220}
+        />
+
+        <EditForm
+          ref={editFromRef}
+          onAddSuccess={() => tableRef.current?.handleAddSuccess()}
+          onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
+        />
+      </div>
+
+      {/* 表格卡片 */}
       <div className="w-full rounded-[20px] overflow-hidden" style={{ background: "rgba(255,255,255,0.70)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
-        {/* 搜索和添加区域 */}
-        <div className="flex justify-end items-center gap-2 p-4">
-          <GlassSearch
-            value={searchKey}
-            onChange={(v) => { setSearchKey(v); debouncedFilters(v); }}
-            onClear={() => debouncedFilters("")}
-            placeholder={t("placeholder_search")}
-            width={220}
-          />
-
-          <EditForm
-            ref={editFromRef}
-            onAddSuccess={() => tableRef.current?.handleAddSuccess()}
-            onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
-          />
-        </div>
-
         <TableQuery
           ref={tableRef}
           queryKey={findChannelsKey}
@@ -235,10 +236,10 @@ export default function RTMPView() {
           deleteFn={DelChannel}
           columns={columns}
         />
-
-        {/* 播放器 */}
-        <PlayDrawer ref={playRef} />
       </div>
-    </>
+
+      {/* 播放器 */}
+      <PlayDrawer ref={playRef} />
+    </div>
   );
 }

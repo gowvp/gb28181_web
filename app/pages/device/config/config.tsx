@@ -1,10 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Form, Input, InputNumber } from "antd";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import React from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { GlassButton } from "~/components/ui/glass-button";
 import { toastSuccess } from "~/components/xui/toast";
 import {
   GetConfigInfo,
@@ -66,18 +65,21 @@ export default function config() {
     <div className="flex items-start justify-center min-h-[calc(100vh-80px)] pt-10">
       <div className="w-full max-w-sm rounded-2xl bg-white/55 backdrop-blur-[40px] backdrop-saturate-[180%] border border-white/50 shadow-[0_2px_20px_rgba(0,0,0,0.06),inset_0_0.5px_0_rgba(255,255,255,0.8)] p-6">
         {/* 标题行 + 返回 */}
-        <div className="flex items-center gap-3 mb-5">
-          <GlassButton
-            variant="ghost"
-            size="sm"
-            className="!px-2"
+        <div className="flex items-center gap-2 mb-5">
+          <button
+            type="button"
             onClick={() => navigate(-1)}
+            className="flex items-center gap-0.5 text-[#0071e3] text-[15px] font-medium cursor-pointer bg-transparent border-none p-0 hover:opacity-70 active:opacity-50 transition-opacity"
           >
-            <ArrowLeft className="w-4 h-4" />
-          </GlassButton>
+            <ChevronLeft className="w-5 h-5 -ml-1" strokeWidth={2.5} />
+            <span>{t("back")}</span>
+          </button>
+          <span className="mx-auto" />
           <h3 className="text-[15px] font-semibold text-[#1d1d1f]">
             {t("access_info")}
           </h3>
+          <span className="mx-auto" />
+          <span className="w-[60px]" />
         </div>
 
         <Form
