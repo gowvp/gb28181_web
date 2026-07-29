@@ -303,5 +303,17 @@
   "tour_language_desc": "点击可在中文和英文之间切换界面语言",
   "tour_skip": "跳过",
   "tour_next": "下一个",
-  "tour_start_exploring": "开始自行探索"
+  "tour_start_exploring": "开始自行探索",
+  "search_channel": "搜索通道",
+  "no_search_results": "未找到匹配结果",
+  "media_info_unavailable": "暂无流信息",
+  "alive": "运行",
+  "readers": "观看",
+  "loss": "丢包",
+  "video": "视频",
+  "audio": "音频",
+  "ptz": "云台",
+  "channel_name": "通道名称",
+  "device_attributes": "设备属性",
+  "stream_attributes": "流属性"
 }

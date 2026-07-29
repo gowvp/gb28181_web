@@ -35,6 +35,7 @@ export default function PlayDrawer({
   const deviceDetailRef = useRef<DeviceDetailViewRef>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentChannelId, setCurrentChannelId] = useState<string>("");
+  const [currentChannelName, setCurrentChannelName] = useState<string>("");
   const [currentChannelExt, setCurrentChannelExt] = useState<any>(undefined);
   const [currentChannelType, setCurrentChannelType] = useState<string>("");
   const [currentChannelPtztype, setCurrentChannelPtztype] = useState<number>(0);
@@ -83,6 +84,7 @@ export default function PlayDrawer({
     open(item: any, options?: { hideSidebar?: boolean }) {
       console.log("打开播放详情，ID:", item.id);
       setCurrentChannelId(item.id);
+      setCurrentChannelName(item.name || "");
       setCurrentChannelExt(item.ext);
       setCurrentChannelType(item.type || "");
       setCurrentChannelPtztype(item.ptztype ?? 0);
@@ -137,6 +139,7 @@ export default function PlayDrawer({
   /** 通道列表卡片点击：就地切换播放，不重新打开窗口 */
   const handleChannelSwitch = useCallback((channel: any) => {
     setCurrentChannelId(channel.id);
+    setCurrentChannelName(channel.name || "");
     setCurrentChannelExt(channel.ext);
     setCurrentChannelType(channel.type || "");
     setCurrentChannelPtztype(channel.ptztype ?? 0);
@@ -280,6 +283,7 @@ export default function PlayDrawer({
               <DeviceDetailView
                 ref={deviceDetailRef}
                 channelId={currentChannelId}
+                channelName={currentChannelName}
                 channelExt={currentChannelExt}
                 channelType={currentChannelType}
                 channelPtztype={currentChannelPtztype}

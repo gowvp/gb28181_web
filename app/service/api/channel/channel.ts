@@ -118,3 +118,34 @@ export type PTZControlResponse = {
 export async function PTZControl(channelId: string, data: PTZControlInput) {
   return await POST<PTZControlResponse>(`/channels/${channelId}/ptz/control`, data);
 }
+
+// 流媒体信息
+export interface MediaTrack {
+  codec_id: number;
+  codec_id_name: string;
+  codec_type: number;
+  ready: boolean;
+  fps: number;
+  width: number;
+  height: number;
+  channels: number;
+  sample_bit: number;
+  sample_rate: number;
+  loss: number;
+}
+
+export interface MediaInfoResponse {
+  app: string;
+  stream: string;
+  schema: string;
+  reader_count: number;
+  total_reader_count: number;
+  alive_second: number;
+  origin_type_str: string;
+  tracks: MediaTrack[];
+}
+
+export const getMediaInfoKey = "getMediaInfo";
+export async function GetMediaInfo(channelId: string) {
+  return await GET<MediaInfoResponse>(`/channels/${channelId}/media_info`);
+}

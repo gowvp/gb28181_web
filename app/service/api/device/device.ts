@@ -22,13 +22,16 @@ export const findDevicesChannelsKey = "findDevicesChannels";
 export async function FindDevicesChannels({
   page,
   size,
+  key,
 }: {
   page: number;
   size: number;
+  key?: string;
 }) {
   return await GET<FindDevicesChannelsResponse>(`/devices/channels`, {
     page,
     size,
+    ...(key ? { key } : {}),
   });
 }
 

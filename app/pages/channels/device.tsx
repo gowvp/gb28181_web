@@ -30,6 +30,8 @@ import {
   EnableAI,
   FindChannels,
   findChannelsKey,
+  GetMediaInfo,
+  getMediaInfoKey,
   type RecordMode,
   SetRecordMode,
 } from "~/service/api/channel/channel";
@@ -45,6 +47,8 @@ export interface DeviceDetailViewRef {
 interface DeviceDetailViewProps {
   ref: React.RefObject<DeviceDetailViewRef | null>;
   channelId?: string;
+  /** 当前通道名称 */
+  channelName?: string;
   /** 通道扩展信息，包含 enabled_ai 状态 */
   channelExt?: Ext;
   /** 通道类型 (GB28181/ONVIF/RTMP/RTSP) */
@@ -59,6 +63,7 @@ interface DeviceDetailViewProps {
 export default function DeviceDetailView({
   ref,
   channelId,
+  channelName,
   channelExt,
   channelType,
   channelPtztype,
@@ -247,14 +252,20 @@ export default function DeviceDetailView({
           </TabsTrigger>
           <TabsTrigger
             className="data-[state=active]:bg-black data-[state=active]:text-white"
+            value="ptz"
+          >
+            {t("common:ptz")}
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-[state=active]:bg-black data-[state=active]:text-white"
             value="channels"
             onClick={() => refetchChannels()}
           >
             {t("common:channel_list")}
           </TabsTrigger>
         </TabsList>
+
         <TabsContent value="device">
-          {/* <h3>国标设备</h3> */}
           <DrawerHeader className="pt-2">
             <DrawerTitle className="flex items-center">
               <span>{device?.data.ext.name}</span>
@@ -275,7 +286,7 @@ export default function DeviceDetailView({
               {`${device?.data.transport}://${device?.data.address}`}
             </DrawerDescription>
 
-            <h4 className="py-2">{t("common:attributes")}</h4>
+            <h4 className="pt-3 pb-1 text-sm font-medium">{t("common:device_attributes")}</h4>
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">
                 {t("common:vendor")}:{device?.data.ext.manufacturer}
@@ -286,17 +297,27 @@ export default function DeviceDetailView({
               <Badge variant="secondary">
                 {t("common:firmware")}:{device?.data.ext.firmware}
               </Badge>
-
               <Badge variant="secondary">
                 {t("common:created")}:{device?.data.created_at}
               </Badge>
             </div>
           </DrawerHeader>
 
-          {/* PTZ 云台控制面板 */}
-
           {channelId && (
-            <div className="px-4 pb-4">
+            <>
+              {channelName && (
+                <h4 className="px-4 pt-2 pb-1 text-sm font-medium">
+                  {t("common:channel_name")}: {channelName}
+                </h4>
+              )}
+              <MediaInfoPanel channelId={channelId} />
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="ptz">
+          {channelId && (
+            <div className="px-4 py-4">
               <PTZPanel
                 channelId={channelId}
                 deviceType={channelType || device?.data.type}
@@ -305,6 +326,7 @@ export default function DeviceDetailView({
             </div>
           )}
         </TabsContent>
+
         <TabsContent value="channels">
           <div className="px-4 space-y-2">
             {channels?.data.items?.map((item) => (
@@ -338,6 +360,96 @@ export default function DeviceDetailView({
           </div>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function MediaInfoPanel({ channelId }: { channelId: string }) {
+  const { t } = useTranslation("common");
+  const { data, isLoading, error } = useQuery({
+    queryKey: [getMediaInfoKey, channelId],
+    queryFn: () => GetMediaInfo(channelId),
+    enabled: !!channelId,
+    refetchOnWindowFocus: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  if (error || !data?.data) {
+    return (
+      <div className="px-4 py-4 text-sm text-gray-400">
+        {t("media_info_unavailable")}
+      </div>
+    );
+  }
+
+  const info = data.data;
+  const videoTracks = info.tracks?.filter((t) => t.codec_type === 0) ?? [];
+  const audioTracks = info.tracks?.filter((t) => t.codec_type === 1) ?? [];
+  const sortedTracks = [...videoTracks, ...audioTracks];
+
+  const formatLoss = (loss: number) => {
+    const pct = loss * 100;
+    return pct % 1 === 0 ? `${pct}%` : `${pct.toFixed(1)}%`;
+  };
+
+  return (
+    <div className="px-4 py-3 space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {info.alive_second > 0 && (
+          <Badge variant="secondary">
+            {t("alive")}: {info.alive_second}s
+          </Badge>
+        )}
+        {info.reader_count > 0 && (
+          <Badge variant="secondary">
+            {t("readers")}: {info.reader_count}
+          </Badge>
+        )}
+      </div>
+
+      {sortedTracks.map((track, i) => (
+        <div
+          key={i}
+          className="rounded-lg border border-gray-100 p-3 space-y-1.5"
+        >
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">
+              {track.codec_type === 0 ? t("video") : t("audio")}
+            </Badge>
+            <span className="text-sm font-medium">{track.codec_id_name}</span>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+            {track.codec_type === 0 && track.width > 0 && (
+              <span>
+                {track.width}×{track.height}
+              </span>
+            )}
+            {track.codec_type === 0 && track.fps > 0 && (
+              <span>{track.fps} fps</span>
+            )}
+            {track.codec_type === 0 && (
+              <span className={track.loss > 0 ? "text-amber-500" : ""}>
+                {t("loss")}: {formatLoss(track.loss)}
+              </span>
+            )}
+            {track.codec_type === 1 && track.sample_rate > 0 && (
+              <span>{track.sample_rate} Hz</span>
+            )}
+            {track.codec_type === 1 && track.channels > 0 && (
+              <span>
+                {track.channels}ch / {track.sample_bit}bit
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

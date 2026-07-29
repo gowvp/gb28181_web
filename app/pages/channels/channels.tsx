@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { Button, Popconfirm, Tooltip } from "antd";
-import { Cctv, Loader2, Monitor, Server, Wifi } from "lucide-react";
-import React, { useRef, useState } from "react";
+import { Cctv, Loader2, Monitor, Search, Server, Wifi, X } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
@@ -22,10 +22,18 @@ import DeviceDiscover from "./device_discover";
 export default function ChannelsView() {
   const { t } = useTranslation("common");
 
-  // 查询通道树数据
+  const [searchKey, setSearchKey] = useState("");
+  const [debouncedKey, setDebouncedKey] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedKey(searchKey), 500);
+    return () => clearTimeout(timer);
+  }, [searchKey]);
+
   const { data, isLoading } = useQuery({
-    queryKey: [findDevicesChannelsKey],
-    queryFn: () => FindDevicesChannels({ page: 1, size: 100 }),
+    queryKey: [findDevicesChannelsKey, debouncedKey],
+    queryFn: () =>
+      FindDevicesChannels({ page: 1, size: 100, key: debouncedKey || undefined }),
     refetchInterval: 10000,
   });
 
@@ -126,6 +134,74 @@ export default function ChannelsView() {
           >
             {t("device_discover")}
           </Button>
+
+          {/* 搜索框 - 右对齐 */}
+          <div
+            style={{
+              marginLeft: "auto",
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <Search
+              style={{
+                position: "absolute",
+                left: 10,
+                width: 14,
+                height: 14,
+                color: "#9ca3af",
+                pointerEvents: "none",
+              }}
+            />
+            <input
+              type="text"
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setDebouncedKey(searchKey);
+              }}
+              placeholder={t("search_channel")}
+              style={{
+                height: 32,
+                paddingLeft: 30,
+                paddingRight: searchKey ? 30 : 12,
+                width: 200,
+                borderRadius: 9999,
+                fontSize: 13,
+                color: "#1d1d1f",
+                background: "transparent",
+                border: "1px solid rgba(0,0,0,0.08)",
+                outline: "none",
+                transition: "border-color 0.2s",
+              }}
+            />
+            {searchKey && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchKey("");
+                  setDebouncedKey("");
+                }}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.06)",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                <X style={{ width: 12, height: 12, color: "#6e6e73" }} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Device Cards */}
@@ -137,9 +213,25 @@ export default function ChannelsView() {
                 <DeviceCardSkeleton key={index} />
               ))}
           </div>
+        ) : !data?.data.items?.length ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "60px 20px",
+              color: "#9ca3af",
+            }}
+          >
+            <Search style={{ width: 32, height: 32, marginBottom: 12, opacity: 0.4 }} />
+            <span style={{ fontSize: 14 }}>
+              {debouncedKey ? t("no_search_results") : t("no_devices_found")}
+            </span>
+          </div>
         ) : (
           <div className="space-y-3">
-            {data?.data.items?.map((device) => (
+            {data.data.items.map((device) => (
               <DeviceCard
                 key={device.id}
                 device={device}
