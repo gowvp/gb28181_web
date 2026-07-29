@@ -42,6 +42,8 @@ export interface DeviceDetailViewRef {
 interface DeviceDetailViewProps {
   ref: React.RefObject<DeviceDetailViewRef | null>;
   channelId?: string;
+  /** 设备侧通道编号 */
+  channelDeviceId?: string;
   /** 当前通道名称 */
   channelName?: string;
   /** 通道扩展信息，包含 enabled_ai 状态 */
@@ -58,6 +60,7 @@ interface DeviceDetailViewProps {
 export default function DeviceDetailView({
   ref,
   channelId,
+  channelDeviceId,
   channelName,
   channelExt,
   channelType,
@@ -262,31 +265,35 @@ export default function DeviceDetailView({
 
         <TabsContent value="device">
           <div className="px-4 pt-4 space-y-4">
+            {/* 设备名称 + 状态 */}
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-semibold text-[#1d1d1f]">
+                {device?.data.ext.name}
+              </span>
+              <Badge
+                variant="secondary"
+                className={`${
+                  device?.data.is_online ? "bg-green-300" : "bg-red-400"
+                } text-white pointer-events-none`}
+              >
+                {device?.data.is_online
+                  ? t("common:online")
+                  : t("common:offline")}
+              </Badge>
+            </div>
+
+            {/* 设备 ID + 连接信息 */}
+            <div className="space-y-1 text-[13px] text-[#6e6e73]">
+              <div>{device?.data.device_id}</div>
+              <div>{device?.data.transport}://{device?.data.address}</div>
+            </div>
+
             {/* 设备属性 */}
             <div className="space-y-2">
               <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                 {t("common:device_attributes")}
               </h4>
               <div className="flex flex-wrap gap-1.5">
-                <Badge
-                  variant="secondary"
-                  className={`text-[11px] ${
-                    device?.data.is_online ? "bg-green-300" : "bg-red-400"
-                  } text-white hover:bg-current pointer-events-none`}
-                >
-                  {device?.data.is_online
-                    ? t("common:online")
-                    : t("common:offline")}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {device?.data.ext.name}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  ID: {device?.data.device_id}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {device?.data.transport}://{device?.data.address}
-                </Badge>
                 <Badge variant="secondary" className="text-[11px]">
                   {t("common:vendor")}: {device?.data.ext.manufacturer}
                 </Badge>
@@ -314,9 +321,11 @@ export default function DeviceDetailView({
                       {channelName}
                     </Badge>
                   )}
-                  <Badge variant="secondary" className="text-[11px]">
-                    ID: {channelId}
-                  </Badge>
+                  {channelDeviceId && (
+                    <Badge variant="secondary" className="text-[11px]">
+                      ID: {channelDeviceId}
+                    </Badge>
+                  )}
                 </div>
                 <MediaInfoPanel channelId={channelId} />
               </div>
