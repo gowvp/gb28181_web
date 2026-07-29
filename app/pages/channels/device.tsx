@@ -282,10 +282,9 @@ export default function DeviceDetailView({
               </Badge>
             </div>
 
-            {/* 设备 ID + 连接信息 */}
-            <div className="space-y-1 text-[13px] text-[#6e6e73]">
-              <div>{device?.data.device_id}</div>
-              <div>{device?.data.transport}://{device?.data.address}</div>
+            {/* 连接信息 */}
+            <div className="text-[13px] text-[#6e6e73]">
+              {device?.data.transport}://{device?.data.address}
             </div>
 
             {/* 设备属性 */}
@@ -294,6 +293,9 @@ export default function DeviceDetailView({
                 {t("common:device_attributes")}
               </h4>
               <div className="flex flex-wrap gap-1.5">
+                <Badge variant="secondary" className="text-[11px]">
+                  ID: {device?.data.device_id}
+                </Badge>
                 <Badge variant="secondary" className="text-[11px]">
                   {t("common:vendor")}: {device?.data.ext.manufacturer}
                 </Badge>
@@ -315,17 +317,9 @@ export default function DeviceDetailView({
                 <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                   {t("common:channel_attributes")}
                 </h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {channelName && (
-                    <Badge variant="secondary" className="text-[11px]">
-                      {channelName}
-                    </Badge>
-                  )}
-                  {channelDeviceId && (
-                    <Badge variant="secondary" className="text-[11px]">
-                      ID: {channelDeviceId}
-                    </Badge>
-                  )}
+                <div className="space-y-1 text-[13px] text-[#6e6e73]">
+                  {channelName && <div>{channelName}</div>}
+                  {channelDeviceId && <div>{channelDeviceId}</div>}
                 </div>
                 <MediaInfoPanel channelId={channelId} />
               </div>

@@ -104,7 +104,7 @@
   "gb_id": "国标 ID",
   "gb_domain": "国标域",
   "port_udp_tcp": "端口号(UDP/TCP)",
-  "port_config_tip": "端口号需要在配置文件修改并重启程序",
+  "port_config_tip": "端口号需在配置文件修改并重启程序",
   "save_config": "保存",
   "save_success": "保存成功",
   "stream_url": "流地址",
