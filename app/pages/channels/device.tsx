@@ -273,14 +273,12 @@ export default function DeviceDetailView({
               <div className="space-y-1 text-[13px] text-[#6e6e73] break-all">
                 <p className="flex items-center gap-2">
                   <span className="font-medium text-[#1d1d1f]">{device?.data.ext.name}</span>
-                  <Badge
-                    variant="secondary"
-                    className={`${
-                      device?.data.is_online ? "bg-green-300" : "bg-red-400"
-                    } text-white pointer-events-none text-[10px]`}
-                  >
-                    {device?.data.is_online ? t("common:online") : t("common:offline")}
-                  </Badge>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 text-[11px]">
+                    <span className={`w-1.5 h-1.5 rounded-full ${device?.data.is_online ? "bg-green-500" : "bg-red-500"}`} />
+                    <span className={device?.data.is_online ? "text-green-600" : "text-red-500"}>
+                      {device?.data.is_online ? t("common:online") : t("common:offline")}
+                    </span>
+                  </span>
                 </p>
                 <p>{device?.data.device_id}</p>
                 <p>{device?.data.transport}://{device?.data.address}</p>
