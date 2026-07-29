@@ -160,7 +160,7 @@ export default function DeviceDetailView({
   };
 
   return (
-    <div className="w-[320px]">
+    <div className="w-[320px] overflow-hidden">
       {/* 操作按钮组 */}
       {channelId && (
         <div className="px-4 pt-4 pb-3">
@@ -262,37 +262,31 @@ export default function DeviceDetailView({
 
         <TabsContent value="device">
           <div className="px-4 pt-4 space-y-4">
-            {/* 设备名称 + 状态 */}
-            <div className="flex items-center gap-2">
-              <span className="text-[15px] font-semibold text-[#1d1d1f]">
-                {device?.data.ext.name}
-              </span>
-              <Badge
-                variant="secondary"
-                className={`${
-                  device?.data.is_online ? "bg-green-300" : "bg-red-400"
-                } text-white`}
-              >
-                {device?.data.is_online
-                  ? t("common:online")
-                  : t("common:offline")}
-              </Badge>
-            </div>
-
-            {/* 连接信息 */}
-            <div className="space-y-1 text-[13px] text-[#6e6e73]">
-              <div>{device?.data.device_id}</div>
-              <div className="lowercase">
-                {`${device?.data.transport}://${device?.data.address}`}
-              </div>
-            </div>
-
             {/* 设备属性 */}
             <div className="space-y-2">
               <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                 {t("common:device_attributes")}
               </h4>
               <div className="flex flex-wrap gap-1.5">
+                <Badge
+                  variant="secondary"
+                  className={`text-[11px] ${
+                    device?.data.is_online ? "bg-green-300" : "bg-red-400"
+                  } text-white hover:bg-current pointer-events-none`}
+                >
+                  {device?.data.is_online
+                    ? t("common:online")
+                    : t("common:offline")}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {device?.data.ext.name}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  ID: {device?.data.device_id}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {device?.data.transport}://{device?.data.address}
+                </Badge>
                 <Badge variant="secondary" className="text-[11px]">
                   {t("common:vendor")}: {device?.data.ext.manufacturer}
                 </Badge>
@@ -308,14 +302,22 @@ export default function DeviceDetailView({
               </div>
             </div>
 
-            {/* 通道信息 + 媒体信息 */}
+            {/* 通道属性 + 媒体信息 */}
             {channelId && (
-              <div className="space-y-1.5">
-                {channelName && (
-                  <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
-                    {t("common:channel_name")}: {channelName}
-                  </h4>
-                )}
+              <div className="space-y-2">
+                <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+                  {t("common:channel_attributes")}
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {channelName && (
+                    <Badge variant="secondary" className="text-[11px]">
+                      {channelName}
+                    </Badge>
+                  )}
+                  <Badge variant="secondary" className="text-[11px]">
+                    ID: {channelId}
+                  </Badge>
+                </div>
                 <MediaInfoPanel channelId={channelId} />
               </div>
             )}

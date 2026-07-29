@@ -314,6 +314,7 @@
   "audio": "音频",
   "ptz": "云台",
   "channel_name": "通道名称",
+  "channel_attributes": "通道属性",
   "device_attributes": "设备属性",
   "stream_attributes": "流属性"
 }
