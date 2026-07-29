@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Button, Form, Input, InputNumber } from "antd";
+import { Form, Input, InputNumber } from "antd";
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { GlassButton } from "~/components/ui/glass-button";
 import { toastSuccess } from "~/components/xui/toast";
 import {
   GetConfigInfo,
@@ -59,8 +60,8 @@ export default function config() {
   };
 
   return (
-    <div className="w-[380px] px-6 pt-6 m-auto">
-      <Form form={form} layout="vertical" size="large">
+    <div className="max-w-xs px-6 pt-6 m-auto">
+      <Form form={form} layout="vertical" className="[&_.ant-form-item]:mb-3">
         <Form.Item
           label={t("server_ip")}
           name="host"
@@ -112,16 +113,15 @@ export default function config() {
           <Input.Password placeholder={t("input_password_placeholder")} />
         </Form.Item>
 
-        <Button
-          type="primary"
-          loading={isPending}
+        <GlassButton
+          variant="primary"
+          size="lg"
+          className="w-full mt-4"
           onClick={handleSubmit}
-          block
-          size="large"
-          className="mt-6"
+          disabled={isPending}
         >
-          {t("save_config")}
-        </Button>
+          {isPending ? "..." : t("save_config")}
+        </GlassButton>
       </Form>
     </div>
   );
