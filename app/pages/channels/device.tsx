@@ -266,7 +266,7 @@ export default function DeviceDetailView({
         <TabsContent value="device">
           <div className="px-3 pt-3 pb-4 space-y-4 overflow-hidden">
             {/* 设备属性 — Apple Settings 分组列表 */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <h4 className="text-[11px] font-medium text-[#8e8e93] uppercase tracking-wide px-1">
                 {t("common:device_attributes")}
               </h4>
@@ -289,10 +289,20 @@ export default function DeviceDetailView({
                 />
                 <InfoRow label="ID" value={device?.data.device_id} />
                 <InfoRow label={t("common:address")} value={`${device?.data.transport}://${device?.data.address}`} />
-                <InfoRow label={t("common:vendor")} value={device?.data.ext.manufacturer} />
-                <InfoRow label={t("common:model")} value={device?.data.ext.model} />
-                <InfoRow label={t("common:firmware")} value={device?.data.ext.firmware} />
-                <InfoRow label={t("common:created")} value={device?.data.created_at} />
+              </div>
+              <div className="flex flex-wrap gap-1.5 px-1">
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:vendor")}: {device?.data.ext.manufacturer}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:model")}: {device?.data.ext.model}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:firmware")}: {device?.data.ext.firmware}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:created")}: {device?.data.created_at}
+                </Badge>
               </div>
             </div>
 
