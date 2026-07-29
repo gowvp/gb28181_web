@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { Button, Popconfirm, Tooltip } from "antd";
+import { Popconfirm, Tooltip } from "antd";
 import { Cctv, Loader2, Monitor, Search, Server, Wifi, X } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -54,16 +54,8 @@ export default function ChannelsView() {
       <div className="mx-auto ">
         {/* 导航按钮 */}
         <div className="mb-6 flex flex-row gap-2 items-center">
-          {/* Apple Segment Control */}
-          <div
-            style={{
-              display: "inline-flex",
-              background: "rgba(0,0,0,0.06)",
-              borderRadius: 9,
-              padding: 2,
-              gap: 0,
-            }}
-          >
+          {/* macOS Segmented Control - 带滑动指示器 */}
+          <div className="inline-flex rounded-lg bg-black/[0.06] p-[3px] gap-0 relative">
             {options.map((opt) => {
               const active = opt.value === "/nchannels";
               return (
@@ -71,20 +63,15 @@ export default function ChannelsView() {
                   key={opt.value as string}
                   type="button"
                   onClick={() => navigate(opt.value as string)}
+                  className={cn(
+                    "relative z-10 h-7 px-3.5 rounded-[6px] text-[13px] font-medium border-none cursor-pointer whitespace-nowrap transition-colors duration-200",
+                    "font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text',sans-serif]",
+                    "active:scale-[0.97] active:opacity-80",
+                    active ? "text-[#1d1d1f]" : "text-[#6e6e73] hover:text-[#1d1d1f]",
+                  )}
                   style={{
-                    height: 28,
-                    padding: "0 14px",
-                    borderRadius: 7,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: active ? "#1d1d1f" : "#6e6e73",
                     background: active ? "#fff" : "transparent",
-                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.12), 0 0.5px 0 rgba(0,0,0,0.06)" : "none",
-                    border: "none",
-                    cursor: "pointer",
-                    transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-                    whiteSpace: "nowrap",
-                    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.1), 0 0.5px 1px rgba(0,0,0,0.06)" : "none",
                   }}
                 >
                   {opt.label as string}
@@ -94,66 +81,27 @@ export default function ChannelsView() {
           </div>
 
           <Link to="/gb/sip">
-            <Button
-              style={{
-                padding: "0 16px",
-                height: 32,
-                borderRadius: 9999,
-                fontSize: 13,
-                fontWeight: 500,
-                color: "#6e6e73",
-                background: "transparent",
-                border: "1px solid rgba(0,0,0,0.08)",
-                boxShadow: "none",
-                display: "flex",
-                alignItems: "center",
-              }}
+            <button
+              type="button"
+              className="h-8 px-3.5 rounded-lg text-[13px] font-medium text-[#6e6e73] bg-transparent border border-black/[0.12] cursor-pointer flex items-center transition-all duration-150 hover:bg-black/[0.04] hover:text-[#1d1d1f] hover:border-black/[0.18] active:scale-[0.96] active:bg-black/[0.06]"
             >
               {t("access_info")}
-            </Button>
+            </button>
           </Link>
 
           {/* 设备发现按钮 */}
-          <Button
-            icon={<Wifi style={{ width: 14, height: 14 }} />}
+          <button
+            type="button"
             onClick={() => discoverRef.current?.open()}
-            style={{
-              padding: "0 16px",
-              height: 32,
-              borderRadius: 9999,
-              fontSize: 13,
-              fontWeight: 500,
-              color: "#6e6e73",
-              background: "transparent",
-              border: "1px solid rgba(0,0,0,0.08)",
-              boxShadow: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
+            className="h-8 px-3.5 rounded-lg text-[13px] font-medium text-[#6e6e73] bg-transparent border border-black/[0.12] cursor-pointer flex items-center gap-1.5 transition-all duration-150 hover:bg-black/[0.04] hover:text-[#1d1d1f] hover:border-black/[0.18] active:scale-[0.96] active:bg-black/[0.06]"
           >
+            <Wifi className="w-3.5 h-3.5" />
             {t("device_discover")}
-          </Button>
+          </button>
 
           {/* 搜索框 - 右对齐 */}
-          <div
-            style={{
-              marginLeft: "auto",
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <Search
-              style={{
-                position: "absolute",
-                left: 10,
-                width: 14,
-                height: 14,
-                color: "#9ca3af",
-                pointerEvents: "none",
-              }}
-            />
+          <div className="ml-auto relative flex items-center">
+            <Search className="absolute left-2.5 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
             <input
               type="text"
               value={searchKey}
@@ -162,19 +110,8 @@ export default function ChannelsView() {
                 if (e.key === "Enter") setDebouncedKey(searchKey);
               }}
               placeholder={t("search_channel")}
-              style={{
-                height: 32,
-                paddingLeft: 30,
-                paddingRight: searchKey ? 30 : 12,
-                width: 200,
-                borderRadius: 9999,
-                fontSize: 13,
-                color: "#1d1d1f",
-                background: "transparent",
-                border: "1px solid rgba(0,0,0,0.08)",
-                outline: "none",
-                transition: "border-color 0.2s",
-              }}
+              className="h-8 pl-[30px] w-[200px] rounded-lg text-[13px] text-[#1d1d1f] bg-transparent border border-black/[0.12] outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
+              style={{ paddingRight: searchKey ? 30 : 12 }}
             />
             {searchKey && (
               <button
@@ -183,22 +120,9 @@ export default function ChannelsView() {
                   setSearchKey("");
                   setDebouncedKey("");
                 }}
-                style={{
-                  position: "absolute",
-                  right: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.06)",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
+                className="absolute right-2 flex items-center justify-center w-[18px] h-[18px] rounded-full bg-black/[0.06] border-none cursor-pointer p-0 hover:bg-black/[0.1] active:scale-90"
               >
-                <X style={{ width: 12, height: 12, color: "#6e6e73" }} />
+                <X className="w-3 h-3 text-[#6e6e73]" />
               </button>
             )}
           </div>

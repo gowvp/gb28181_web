@@ -8,8 +8,8 @@ import { defineConfig } from "vite";
 export default defineConfig(({ mode }) => {
   return {
     experimental: {
-      // bundledDev 有 bug：JS 内部引用路径用的是 build 产物文件名，dev 模式下 404
-      // 等 https://github.com/vitejs/vite/issues/22749 修复后再启用
+      // bundledDev 有 tree-shaking 半残留 bug（#22749），8.1.5 未修复
+      // 等 changelog 明确列出 #22749 fix 后再启用
       // bundledDev: true,
     },
     plugins: [

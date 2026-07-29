@@ -69,9 +69,9 @@ export default function AccountSettings({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="max-w-sm">
-      <h3 className="text-base font-medium mb-4">账户设置</h3>
-      <Form form={form} layout="vertical" size="large">
+    <div className="max-w-xs">
+      <h3 className="text-[15px] font-semibold mb-3 text-[#1d1d1f]">账户设置</h3>
+      <Form form={form} layout="vertical" className="[&_.ant-form-item]:mb-3">
         <Form.Item
           label="账号"
           name="username"
@@ -125,7 +125,7 @@ export default function AccountSettings({ onClose }: { onClose: () => void }) {
           <Button
             type="primary"
             loading={isPending}
-            className="mt-2 w-1/2"
+            className="mt-1"
           >
             提交
           </Button>
