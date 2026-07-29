@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { Cctv, Monitor, Video, Wifi } from "lucide-react";
+import { Cctv, Monitor, Video } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -55,10 +55,6 @@ export default function RecordingsView() {
             <GlassButton>{t("access_info")}</GlassButton>
           </Link>
 
-          <GlassButton disabled>
-            <Wifi className="w-3.5 h-3.5" />
-            {t("device_discover")}
-          </GlassButton>
         </div>
 
         {/* Device Cards */}
