@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
-import { Button } from "antd";
 import { Cctv, Monitor, Video, Wifi } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { GlassButton } from "~/components/ui/glass-button";
+import { GlassSegment } from "~/components/ui/glass-segment";
 import { cn } from "~/lib/utils";
 import { COVER_BLUR_STORAGE_KEY } from "~/components/settings/general_settings";
 import { RefreshSnapshot } from "~/service/api/channel/channel";
@@ -42,87 +43,22 @@ export default function RecordingsView() {
   return (
     <div className="min-h-screen bg-transparent p-6">
       <div className="mx-auto">
-        {/* 导航按钮 */}
+        {/* 导航工具栏 — macOS 26 Liquid Glass */}
         <div className="mb-6 flex flex-row gap-2 items-center">
-          {/* Apple Segment Control */}
-          <div
-            style={{
-              display: "inline-flex",
-              background: "rgba(0,0,0,0.06)",
-              borderRadius: 9,
-              padding: 2,
-              gap: 0,
-            }}
-          >
-            {options.map((opt) => {
-              const active = opt.value === "/playback";
-              return (
-                <button
-                  key={opt.value as string}
-                  type="button"
-                  onClick={() => navigate(opt.value as string)}
-                  style={{
-                    height: 28,
-                    padding: "0 14px",
-                    borderRadius: 7,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: active ? "#1d1d1f" : "#6e6e73",
-                    background: active ? "#fff" : "transparent",
-                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.12), 0 0.5px 0 rgba(0,0,0,0.06)" : "none",
-                    border: "none",
-                    cursor: "pointer",
-                    transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-                    whiteSpace: "nowrap",
-                    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
-                  }}
-                >
-                  {opt.label as string}
-                </button>
-              );
-            })}
-          </div>
+          <GlassSegment
+            options={options}
+            value="/playback"
+            onChange={(v) => navigate(v)}
+          />
 
           <Link to="/gb/sip">
-            <Button
-              style={{
-                padding: "0 16px",
-                height: 32,
-                borderRadius: 9999,
-                fontSize: 13,
-                fontWeight: 500,
-                color: "#6e6e73",
-                background: "transparent",
-                border: "1px solid rgba(0,0,0,0.08)",
-                boxShadow: "none",
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              {t("access_info")}
-            </Button>
+            <GlassButton>{t("access_info")}</GlassButton>
           </Link>
 
-          <Button
-            icon={<Wifi style={{ width: 14, height: 14 }} />}
-            disabled
-            style={{
-              padding: "0 16px",
-              height: 32,
-              borderRadius: 9999,
-              fontSize: 13,
-              fontWeight: 500,
-              color: "#6e6e73",
-              background: "transparent",
-              border: "1px solid rgba(0,0,0,0.08)",
-              boxShadow: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <GlassButton disabled>
+            <Wifi className="w-3.5 h-3.5" />
             {t("device_discover")}
-          </Button>
+          </GlassButton>
         </div>
 
         {/* Device Cards */}
@@ -353,15 +289,9 @@ function RecordingDeviceCard({ device }: { device: DeviceWithChannelsItem }) {
               </span>
 
               <Link to={`/channels?did=${encodeURIComponent(device.id)}`}>
-                <Button
-                  variant="outlined"
-                  size="middle"
-                  style={{
-                    boxShadow: "none",
-                  }}
-                >
+                <GlassButton variant="ghost" size="sm">
                   {t("view_more")}
-                </Button>
+                </GlassButton>
               </Link>
             </div>
           )}

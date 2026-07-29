@@ -3,7 +3,7 @@ import { Form, Input, Radio, Select } from "antd";
 import { SquarePlus } from "lucide-react";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "~/components/ui/button";
+import { GlassButton } from "~/components/ui/glass-button";
 import { EditSheet, type EditSheetImpl, type PFormProps } from "~/components/xui/edit-sheet";
 import { AddChannel, EditChannel } from "~/service/api/channel/channel";
 import type {
@@ -215,26 +215,10 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       }}
       fieldsPerStep={3}
       trigger={
-        <Button
-          variant="outline"
-          style={{
-            height: 32,
-            padding: "0 14px",
-            borderRadius: 9999,
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#6e6e73",
-            background: "transparent",
-            border: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "none",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-        >
-          <SquarePlus style={{ width: 14, height: 14 }} />
+        <GlassButton size="lg">
+          <SquarePlus className="w-3.5 h-3.5" />
           {t("add_channel")}
-        </Button>
+        </GlassButton>
       }
     >
       <Form.Item name="id" hidden>

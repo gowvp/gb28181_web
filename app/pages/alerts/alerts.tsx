@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { GlassButton } from "~/components/ui/glass-button";
+import { cn } from "~/lib/utils";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import {
   FindEvents,
@@ -344,32 +346,15 @@ export default function AlertsView() {
         />
 
         {/* 刷新按钮 */}
-        <button
-          type="button"
+        <GlassButton
           onClick={() => refetch()}
           title={t("refresh")}
-          style={{
-            height: 32,
-            width: 32,
-            borderRadius: 9999,
-            fontSize: 13,
-            color: "#6e6e73",
-            background: "transparent",
-            border: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.2s",
-            flexShrink: 0,
-          }}
+          className="w-8 h-8 !px-0 shrink-0"
         >
           <RefreshCw
-            style={{ width: 14, height: 14, color: "#6e6e73" }}
-            className={isLoading ? "animate-spin" : ""}
+            className={cn("w-3.5 h-3.5", isLoading && "animate-spin")}
           />
-        </button>
+        </GlassButton>
       </div>
 
       {/* 瀑布流内容区 */}
