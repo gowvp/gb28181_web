@@ -273,11 +273,16 @@ export default function DeviceDetailView({
               <div className="space-y-1 text-[13px] text-[#6e6e73] break-all">
                 <p className="flex items-center gap-2">
                   <span className="font-medium text-[#1d1d1f]">{device?.data.ext.name}</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/5 text-[11px]">
-                    <span className={`w-1.5 h-1.5 rounded-full ${device?.data.is_online ? "bg-green-500" : "bg-red-500"}`} />
-                    <span className={device?.data.is_online ? "text-green-600" : "text-red-500"}>
-                      {device?.data.is_online ? t("common:online") : t("common:offline")}
-                    </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-2xl bg-black/5 text-[11px] text-[#424245]">
+                    {device?.data.is_online ? (
+                      <span className="relative flex items-center justify-center mr-1">
+                        <span className="absolute w-2 h-2 rounded-full bg-green-500" style={{ animation: "livePulse 2s infinite" }} />
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                      </span>
+                    ) : (
+                      <span className="w-2 h-2 rounded-full mr-1 bg-red-500" />
+                    )}
+                    {device?.data.is_online ? t("common:online") : t("common:offline")}
                   </span>
                 </p>
                 <p>{device?.data.device_id}</p>
