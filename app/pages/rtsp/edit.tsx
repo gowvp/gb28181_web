@@ -172,7 +172,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         edit: EditProxy,
       }}
       trigger={
-        <GlassButton size="lg">
+        <GlassButton>
           <SquarePlus className="w-3.5 h-3.5" />
           {t("add_channel")}
         </GlassButton>

@@ -209,7 +209,7 @@ export default function RTMPView() {
   }, 500);
 
   return (
-    <div>
+    <div className="min-h-screen bg-transparent p-4 sm:p-6">
       {/* 工具栏独立一行 */}
       <div className="mb-6 flex justify-end items-center gap-2">
         <GlassSearch

@@ -215,7 +215,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       }}
       fieldsPerStep={3}
       trigger={
-        <GlassButton size="lg">
+        <GlassButton>
           <SquarePlus className="w-3.5 h-3.5" />
           {t("add_channel")}
         </GlassButton>

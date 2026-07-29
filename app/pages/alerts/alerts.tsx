@@ -272,9 +272,9 @@ export default function AlertsView() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col">
+    <div className="h-[calc(100vh-80px)] flex flex-col p-4 sm:p-6">
       {/* 筛选栏 */}
-      <div className="flex flex-wrap items-center gap-3 p-4 bg-transparent">
+      <div className="mb-6 flex flex-wrap items-center gap-3 bg-transparent">
         {/* 通道筛选 */}
         <Select
           value={selectedChannel || "__all__"}
