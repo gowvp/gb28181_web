@@ -264,62 +264,42 @@ export default function DeviceDetailView({
         </TabsList>
 
         <TabsContent value="device">
-          <div className="px-4 pt-4 space-y-4">
-            {/* 设备名称 + 状态 */}
-            <div className="flex items-center gap-2">
-              <span className="text-[15px] font-semibold text-[#1d1d1f]">
-                {device?.data.ext.name}
-              </span>
-              <Badge
-                variant="secondary"
-                className={`${
-                  device?.data.is_online ? "bg-green-300" : "bg-red-400"
-                } text-white pointer-events-none`}
-              >
-                {device?.data.is_online
-                  ? t("common:online")
-                  : t("common:offline")}
-              </Badge>
-            </div>
-
-            {/* 连接信息 */}
-            <div className="text-[13px] text-[#6e6e73]">
-              {device?.data.transport}://{device?.data.address}
-            </div>
-
+          <div className="px-4 pt-4 space-y-4 overflow-hidden">
             {/* 设备属性 */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                 {t("common:device_attributes")}
               </h4>
-              <div className="flex flex-wrap gap-1.5">
-                <Badge variant="secondary" className="text-[11px]">
-                  ID: {device?.data.device_id}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:vendor")}: {device?.data.ext.manufacturer}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:model")}: {device?.data.ext.model}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:firmware")}: {device?.data.ext.firmware}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:created")}: {device?.data.created_at}
-                </Badge>
+              <div className="space-y-1 text-[13px] text-[#6e6e73] break-all">
+                <p className="flex items-center gap-2">
+                  <span className="font-medium text-[#1d1d1f]">{device?.data.ext.name}</span>
+                  <Badge
+                    variant="secondary"
+                    className={`${
+                      device?.data.is_online ? "bg-green-300" : "bg-red-400"
+                    } text-white pointer-events-none text-[10px]`}
+                  >
+                    {device?.data.is_online ? t("common:online") : t("common:offline")}
+                  </Badge>
+                </p>
+                <p>{device?.data.device_id}</p>
+                <p>{device?.data.transport}://{device?.data.address}</p>
+                <p>{t("common:vendor")}: {device?.data.ext.manufacturer}</p>
+                <p>{t("common:model")}: {device?.data.ext.model}</p>
+                <p>{t("common:firmware")}: {device?.data.ext.firmware}</p>
+                <p>{t("common:created")}: {device?.data.created_at}</p>
               </div>
             </div>
 
             {/* 通道属性 + 媒体信息 */}
             {channelId && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                   {t("common:channel_attributes")}
                 </h4>
-                <div className="space-y-1 text-[13px] text-[#6e6e73]">
-                  {channelName && <div>{channelName}</div>}
-                  {channelDeviceId && <div>{channelDeviceId}</div>}
+                <div className="space-y-1 text-[13px] text-[#6e6e73] break-all">
+                  {channelName && <p>{channelName}</p>}
+                  {channelDeviceId && <p>{channelDeviceId}</p>}
                 </div>
                 <MediaInfoPanel channelId={channelId} />
               </div>
@@ -329,7 +309,7 @@ export default function DeviceDetailView({
 
         <TabsContent value="ptz">
           {channelId && (
-            <div className="px-4 py-4">
+            <div className="px-4 py-4 overflow-hidden">
               <PTZPanel
                 channelId={channelId}
                 deviceType={channelType || device?.data.type}

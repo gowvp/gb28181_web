@@ -228,7 +228,7 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
   );
 
   return (
-    <div className="rounded-2xl p-3 sm:p-4 bg-white/45 backdrop-blur-[40px] backdrop-saturate-[180%] border border-white/50 shadow-[0_2px_20px_rgba(0,0,0,0.06),inset_0_0.5px_0_rgba(255,255,255,0.8)]">
+    <div className="rounded-2xl p-3 sm:p-4 max-w-full overflow-hidden bg-white/45 backdrop-blur-[40px] backdrop-saturate-[180%] border border-white/50 shadow-[0_2px_20px_rgba(0,0,0,0.06),inset_0_0.5px_0_rgba(255,255,255,0.8)]">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-[#424245]">云台控制</span>
         <Badge
