@@ -54,8 +54,18 @@ export default function ChannelsView() {
       <div className="mx-auto ">
         {/* 导航按钮 */}
         <div className="mb-6 flex flex-row gap-2 items-center">
-          {/* macOS Segmented Control - 带滑动指示器 */}
-          <div className="inline-flex rounded-lg bg-black/[0.06] p-[3px] gap-0 relative">
+          {/* macOS 26 Segmented Control — capsule + Liquid Glass */}
+          <div
+            className="inline-flex p-[3px] gap-0 relative"
+            style={{
+              borderRadius: 9999,
+              background: "rgba(255,255,255,0.35)",
+              backdropFilter: "blur(20px) saturate(150%)",
+              WebkitBackdropFilter: "blur(20px) saturate(150%)",
+              border: "1px solid rgba(255,255,255,0.4)",
+              boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+            }}
+          >
             {options.map((opt) => {
               const active = opt.value === "/nchannels";
               return (
@@ -63,15 +73,21 @@ export default function ChannelsView() {
                   key={opt.value as string}
                   type="button"
                   onClick={() => navigate(opt.value as string)}
-                  className={cn(
-                    "relative z-10 h-7 px-3.5 rounded-[6px] text-[13px] font-medium border-none cursor-pointer whitespace-nowrap transition-colors duration-200",
-                    "font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text',sans-serif]",
-                    "active:scale-[0.97] active:opacity-80",
-                    active ? "text-[#1d1d1f]" : "text-[#6e6e73] hover:text-[#1d1d1f]",
-                  )}
+                  className="active:scale-[0.96]"
                   style={{
-                    background: active ? "#fff" : "transparent",
-                    boxShadow: active ? "0 1px 3px rgba(0,0,0,0.1), 0 0.5px 1px rgba(0,0,0,0.06)" : "none",
+                    height: 26,
+                    padding: "0 14px",
+                    borderRadius: 9999,
+                    fontSize: 13,
+                    fontWeight: 500,
+                    border: "none",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+                    color: active ? "#1d1d1f" : "#6e6e73",
+                    background: active ? "rgba(255,255,255,0.85)" : "transparent",
+                    boxShadow: active ? "0 1px 4px rgba(0,0,0,0.1), 0 0.5px 0 rgba(255,255,255,0.9) inset" : "none",
                   }}
                 >
                   {opt.label as string}
@@ -83,25 +99,71 @@ export default function ChannelsView() {
           <Link to="/gb/sip">
             <button
               type="button"
-              className="h-8 px-3.5 rounded-lg text-[13px] font-medium text-[#6e6e73] bg-transparent border border-black/[0.12] cursor-pointer flex items-center transition-all duration-150 hover:bg-black/[0.04] hover:text-[#1d1d1f] hover:border-black/[0.18] active:scale-[0.96] active:bg-black/[0.06]"
+              className="active:scale-[0.96]"
+              style={{
+                height: 28,
+                padding: "0 14px",
+                borderRadius: 9999,
+                fontSize: 13,
+                fontWeight: 500,
+                color: "#424245",
+                background: "rgba(255,255,255,0.55)",
+                backdropFilter: "blur(20px) saturate(150%)",
+                WebkitBackdropFilter: "blur(20px) saturate(150%)",
+                border: "1px solid rgba(255,255,255,0.6)",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.08), 0 0.5px 0 rgba(255,255,255,0.7) inset",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+              }}
             >
               {t("access_info")}
             </button>
           </Link>
 
-          {/* 设备发现按钮 */}
+          {/* 设备发现按钮 — Liquid Glass capsule */}
           <button
             type="button"
             onClick={() => discoverRef.current?.open()}
-            className="h-8 px-3.5 rounded-lg text-[13px] font-medium text-[#6e6e73] bg-transparent border border-black/[0.12] cursor-pointer flex items-center gap-1.5 transition-all duration-150 hover:bg-black/[0.04] hover:text-[#1d1d1f] hover:border-black/[0.18] active:scale-[0.96] active:bg-black/[0.06]"
+            className="active:scale-[0.96]"
+            style={{
+              height: 28,
+              padding: "0 14px",
+              borderRadius: 9999,
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#424245",
+              background: "rgba(255,255,255,0.55)",
+              backdropFilter: "blur(20px) saturate(150%)",
+              WebkitBackdropFilter: "blur(20px) saturate(150%)",
+              border: "1px solid rgba(255,255,255,0.6)",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.08), 0 0.5px 0 rgba(255,255,255,0.7) inset",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+            }}
           >
-            <Wifi className="w-3.5 h-3.5" />
+            <Wifi style={{ width: 14, height: 14 }} />
             {t("device_discover")}
           </button>
 
-          {/* 搜索框 - 右对齐 */}
+          {/* 搜索框 — capsule + Liquid Glass + focus ring */}
           <div className="ml-auto relative flex items-center">
-            <Search className="absolute left-2.5 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+            <Search
+              style={{
+                position: "absolute",
+                left: 10,
+                width: 14,
+                height: 14,
+                color: "#9ca3af",
+                pointerEvents: "none",
+              }}
+            />
             <input
               type="text"
               value={searchKey}
@@ -110,8 +172,24 @@ export default function ChannelsView() {
                 if (e.key === "Enter") setDebouncedKey(searchKey);
               }}
               placeholder={t("search_channel")}
-              className="h-8 pl-[30px] w-[200px] rounded-lg text-[13px] text-[#1d1d1f] bg-transparent border border-black/[0.12] outline-none transition-all duration-200 placeholder:text-gray-400 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
-              style={{ paddingRight: searchKey ? 30 : 12 }}
+              className="focus:ring-[3px] focus:ring-blue-500/15 focus:border-blue-500/50"
+              style={{
+                height: 28,
+                paddingLeft: 30,
+                paddingRight: searchKey ? 30 : 12,
+                width: 200,
+                borderRadius: 9999,
+                fontSize: 13,
+                color: "#1d1d1f",
+                background: "rgba(255,255,255,0.45)",
+                backdropFilter: "blur(20px) saturate(150%)",
+                WebkitBackdropFilter: "blur(20px) saturate(150%)",
+                border: "1px solid rgba(255,255,255,0.5)",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.06) inset",
+                outline: "none",
+                transition: "all 0.2s",
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+              }}
             />
             {searchKey && (
               <button
@@ -120,9 +198,23 @@ export default function ChannelsView() {
                   setSearchKey("");
                   setDebouncedKey("");
                 }}
-                className="absolute right-2 flex items-center justify-center w-[18px] h-[18px] rounded-full bg-black/[0.06] border-none cursor-pointer p-0 hover:bg-black/[0.1] active:scale-90"
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
+                  background: "rgba(0,0,0,0.06)",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+                className="hover:bg-black/10 active:scale-90"
               >
-                <X className="w-3 h-3 text-[#6e6e73]" />
+                <X style={{ width: 12, height: 12, color: "#6e6e73" }} />
               </button>
             )}
           </div>
