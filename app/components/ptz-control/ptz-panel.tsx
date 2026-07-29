@@ -15,9 +15,8 @@ import {
 import { memo, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Slider } from "~/components/ui/slider";
+import { cn } from "~/lib/utils";
 import { PTZControl, type PTZDirection } from "~/service/api/channel/channel";
 
 interface PTZPanelProps {
@@ -60,17 +59,15 @@ const DirectionButton = memo(function DirectionButton({
       onMouseLeave={onStop}
       onTouchStart={(e) => onStart(direction, e)}
       onTouchEnd={onStop}
-      className={`
-        relative flex items-center justify-center
-        h-11 w-11 sm:h-12 sm:w-12 rounded-xl select-none
-        transition-all duration-150 active:scale-95
-        border shadow-sm
-        ${
-          isActive
-            ? "bg-primary text-primary-foreground border-primary shadow-md shadow-primary/30"
-            : "bg-background text-foreground/80 border-border hover:bg-accent hover:text-foreground hover:-translate-y-[1px]"
-        }
-      `}
+      className={cn(
+        "relative flex items-center justify-center",
+        "h-11 w-11 sm:h-12 sm:w-12 rounded-xl select-none",
+        "transition-all duration-150 active:scale-[0.92]",
+        "backdrop-blur-[20px] backdrop-saturate-150",
+        isActive
+          ? "bg-[#0071e3]/90 text-white border border-[#0071e3]/30 shadow-[0_2px_8px_rgba(0,113,227,0.35)]"
+          : "bg-white/55 text-[#424245] border border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75 hover:shadow-[0_2px_8px_rgba(0,0,0,0.1)]",
+      )}
     >
       {icon}
     </button>
@@ -101,16 +98,15 @@ const ZoomButton = memo(function ZoomButton({
       onMouseLeave={onStop}
       onTouchStart={(e) => onStart(direction, e)}
       onTouchEnd={onStop}
-      className={`
-        flex items-center justify-center
-        h-9 rounded-lg border text-xs font-medium
-        transition-all duration-150 active:scale-95 select-none
-        ${
-          isActive
-            ? "bg-primary text-primary-foreground border-primary shadow-sm"
-            : "bg-background text-foreground/80 border-border hover:bg-accent"
-        }
-      `}
+      className={cn(
+        "flex items-center justify-center",
+        "h-9 rounded-lg text-xs font-medium select-none",
+        "transition-all duration-150 active:scale-[0.92]",
+        "backdrop-blur-[20px] backdrop-saturate-150",
+        isActive
+          ? "bg-[#0071e3]/90 text-white border border-[#0071e3]/30 shadow-[0_1px_4px_rgba(0,113,227,0.3)]"
+          : "bg-white/55 text-[#424245] border border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75",
+      )}
     >
       {icon}
     </button>
@@ -187,7 +183,7 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
         type="button"
         onClick={(e) => handleStop(e)}
         aria-label="停止"
-        className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl select-none bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-destructive-foreground transition-all duration-150 active:scale-95"
+        className="flex items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl select-none bg-red-500/15 text-red-600 border border-red-500/30 backdrop-blur-[20px] hover:bg-red-500/25 transition-all duration-150 active:scale-[0.92]"
       >
         <Square className="h-3.5 w-3.5 fill-current" />
       </button>
@@ -232,29 +228,25 @@ export function PTZPanel({ channelId, deviceType, ptztype }: PTZPanelProps) {
   );
 
   return (
-    <Card className="border-primary/15 sm:border bg-gradient-to-b from-background to-muted/30 shadow-sm sm:shadow-sm border-0 sm:border-primary/15">
-      <CardHeader className="pb-2 pt-2 sm:pt-3 px-1 sm:px-3">
-        <CardTitle className="text-xs font-semibold flex items-center justify-between text-foreground/70">
-          <span>云台控制</span>
-          <Badge
-            variant="outline"
-            className="text-[10px] px-1.5 py-0 h-5 font-normal"
-          >
-            {deviceType || "PTZ"}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-1 sm:px-3 pb-2 sm:pb-3">
-        {/* 移动端左右布局，PC端上下布局 */}
-        <div className="flex gap-3 sm:hidden mx-auto max-w-[350px]">
-          <div className="shrink-0">{directionPad}</div>
-          {controlPanel}
-        </div>
-        <div className="hidden sm:block space-y-3">
-          {directionPad}
-          {controlPanel}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="rounded-2xl p-3 sm:p-4 bg-white/45 backdrop-blur-[40px] backdrop-saturate-[180%] border border-white/50 shadow-[0_2px_20px_rgba(0,0,0,0.06),inset_0_0.5px_0_rgba(255,255,255,0.8)]">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-[#424245]">云台控制</span>
+        <Badge
+          variant="outline"
+          className="text-[10px] px-1.5 py-0 h-5 font-normal"
+        >
+          {deviceType || "PTZ"}
+        </Badge>
+      </div>
+      {/* 移动端左右布局，PC端上下布局 */}
+      <div className="flex gap-3 sm:hidden mx-auto max-w-[350px]">
+        <div className="shrink-0">{directionPad}</div>
+        {controlPanel}
+      </div>
+      <div className="hidden sm:block space-y-3">
+        {directionPad}
+        {controlPanel}
+      </div>
+    </div>
   );
 }
