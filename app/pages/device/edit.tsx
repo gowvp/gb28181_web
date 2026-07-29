@@ -23,6 +23,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       ref={ref}
       title={title}
       description={t("device_edit_desc")}
+      fieldsPerStep={99}
       onSuccess={{
         add: onAddSuccess,
         edit: onEditSuccess,

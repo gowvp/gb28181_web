@@ -162,7 +162,7 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
       ref={ref}
       title={t("pull_info")}
       description={t("pull_info_desc")}
-      fieldsPerStep={3}
+      fieldsPerStep={99}
       onSuccess={{
         add: onAddSuccess,
         edit: onEditSuccess,
