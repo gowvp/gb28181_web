@@ -2,14 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import type { ColumnsType } from "antd/es/table";
 import { Edit, SquarePlay } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PlayDrawer, {
   type PlayDrawerRef,
 } from "~/components/player/play-drawer";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { GlassSearch } from "~/components/ui/glass-search";
 import { formatDate } from "~/components/util/date";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
@@ -29,11 +29,10 @@ type RTSPItem = ChannelItem;
 
 export default function RTSPView() {
   const { t } = useTranslation("common");
-  // 从 URL 获取 did 参数，用于过滤特定设备下的通道
   const [urlSearchParams] = useSearchParams();
   const searchParams = { did: urlSearchParams.get("did") || undefined };
 
-  // =============== 状态定义 ===============
+  const [searchKey, setSearchKey] = useState("");
 
   // refs
   const editFromRef = useRef<EditSheetImpl>(null);
@@ -182,18 +181,12 @@ export default function RTSPView() {
       <div className="w-full rounded-[20px] overflow-hidden" style={{ background: "rgba(255,255,255,0.70)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", border: "1px solid rgba(255,255,255,0.6)", boxShadow: "0 4px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
         {/* 搜索和添加区域 */}
         <div className="flex justify-end items-center gap-2 p-4">
-          <Input
+          <GlassSearch
+            value={searchKey}
+            onChange={(v) => { setSearchKey(v); debouncedFilters(v); }}
+            onClear={() => debouncedFilters("")}
             placeholder={t("placeholder_search")}
-            onChange={(event) => debouncedFilters(event.target.value)}
-            className="w-56"
-            style={{
-              height: 32,
-              borderRadius: 9999,
-              background: "rgba(255,255,255,0.65)",
-              border: "1px solid rgba(0,0,0,0.08)",
-              fontSize: 13,
-              boxShadow: "none",
-            }}
+            width={220}
           />
 
           <EditForm
