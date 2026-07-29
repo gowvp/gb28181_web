@@ -264,55 +264,47 @@ export default function DeviceDetailView({
         </TabsList>
 
         <TabsContent value="device">
-          <div className="px-4 pt-4 space-y-4 overflow-hidden">
-            {/* 设备属性 */}
-            <div className="space-y-2">
-              <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+          <div className="px-3 pt-3 pb-4 space-y-4 overflow-hidden">
+            {/* 设备属性 — Apple Settings 分组列表 */}
+            <div className="space-y-1">
+              <h4 className="text-[11px] font-medium text-[#8e8e93] uppercase tracking-wide px-1">
                 {t("common:device_attributes")}
               </h4>
-              <div className="space-y-1 text-[13px] text-[#6e6e73] break-all">
-                <p className="flex items-center gap-2">
-                  <span className="font-medium text-[#1d1d1f]">{device?.data.ext.name}</span>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-2xl bg-black/5 text-[11px] text-[#424245]">
-                    {device?.data.is_online ? (
-                      <span className="relative flex items-center justify-center mr-1">
-                        <span className="absolute w-2 h-2 rounded-full bg-green-500" style={{ animation: "livePulse 2s infinite" }} />
-                        <span className="w-2 h-2 rounded-full bg-green-500" />
-                      </span>
-                    ) : (
-                      <span className="w-2 h-2 rounded-full mr-1 bg-red-500" />
-                    )}
-                    {device?.data.is_online ? t("common:online") : t("common:offline")}
-                  </span>
-                </p>
-                <p>{device?.data.device_id}</p>
-                <p>{device?.data.transport}://{device?.data.address}</p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:vendor")}: {device?.data.ext.manufacturer}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:model")}: {device?.data.ext.model}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:firmware")}: {device?.data.ext.firmware}
-                </Badge>
-                <Badge variant="secondary" className="text-[11px]">
-                  {t("common:created")}: {device?.data.created_at}
-                </Badge>
+              <div className="rounded-lg bg-white/60 divide-y divide-black/[0.06]">
+                <InfoRow
+                  label={device?.data.ext.name || ""}
+                  trailing={
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-black/[0.04] text-[10px] text-[#424245]">
+                      {device?.data.is_online ? (
+                        <span className="relative flex items-center justify-center mr-1">
+                          <span className="absolute w-1.5 h-1.5 rounded-full bg-green-500" style={{ animation: "livePulse 2s infinite" }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        </span>
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full mr-1 bg-red-500" />
+                      )}
+                      {device?.data.is_online ? t("common:online") : t("common:offline")}
+                    </span>
+                  }
+                />
+                <InfoRow label="ID" value={device?.data.device_id} />
+                <InfoRow label={t("common:address")} value={`${device?.data.transport}://${device?.data.address}`} />
+                <InfoRow label={t("common:vendor")} value={device?.data.ext.manufacturer} />
+                <InfoRow label={t("common:model")} value={device?.data.ext.model} />
+                <InfoRow label={t("common:firmware")} value={device?.data.ext.firmware} />
+                <InfoRow label={t("common:created")} value={device?.data.created_at} />
               </div>
             </div>
 
-            {/* 通道属性 + 媒体信息 */}
+            {/* 通道属性 — Apple Settings 分组列表 */}
             {channelId && (
-              <div className="space-y-2">
-                <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+              <div className="space-y-1">
+                <h4 className="text-[11px] font-medium text-[#8e8e93] uppercase tracking-wide px-1">
                   {t("common:channel_attributes")}
                 </h4>
-                <div className="space-y-1 text-[13px] text-[#6e6e73] break-all">
-                  {channelName && <p>{channelName}</p>}
-                  {channelDeviceId && <p>{channelDeviceId}</p>}
+                <div className="rounded-lg bg-white/60 divide-y divide-black/[0.06]">
+                  {channelName && <InfoRow label={t("common:channel_name")} value={channelName} />}
+                  {channelDeviceId && <InfoRow label="ID" value={channelDeviceId} />}
                 </div>
                 <MediaInfoPanel channelId={channelId} />
               </div>
@@ -465,6 +457,17 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+function InfoRow({ label, value, trailing }: { label: string; value?: string; trailing?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-3 py-2 min-h-[32px]">
+      <span className="text-[13px] text-[#1d1d1f] font-medium shrink-0 mr-3">{label}</span>
+      {trailing || (
+        <span className="text-[12px] text-[#6e6e73] text-right break-all leading-tight">{value}</span>
       )}
     </div>
   );
