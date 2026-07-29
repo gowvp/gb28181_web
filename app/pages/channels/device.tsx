@@ -12,11 +12,6 @@ import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "~/components/ui/drawer";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -165,11 +160,11 @@ export default function DeviceDetailView({
   };
 
   return (
-    <div className="w-[300px]">
-      {/* AI分析、录像设置和区域设置按钮 */}
+    <div className="w-[320px]">
+      {/* 操作按钮组 */}
       {channelId && (
-        <>
-          <div className="flex gap-2 p-4 pb-3 flex-wrap">
+        <div className="px-4 pt-4 pb-3">
+          <div className="flex gap-2 flex-wrap">
             <ToolTips
               tips={
                 detectEnabled
@@ -182,31 +177,32 @@ export default function DeviceDetailView({
                 variant={detectEnabled ? "default" : "outline"}
                 onClick={handleToggleAI}
                 disabled={isAIPending}
+                className="rounded-lg"
               >
                 {isAIPending ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                 ) : (
-                  <ScanSearch className="w-4 h-4 mr-1" />
+                  <ScanSearch className="w-3.5 h-3.5 mr-1.5" />
                 )}
                 {t("common:ai_analysis")}
               </Button>
             </ToolTips>
 
-            {/* 录像设置下拉按钮 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={recordModePending}
+                  className="rounded-lg"
                 >
                   {recordModePending ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                   ) : (
-                    <Video className="w-4 h-4 mr-1" />
+                    <Video className="w-3.5 h-3.5 mr-1.5" />
                   )}
                   {t(`common:record_mode_${recordMode}`)}
-                  <ChevronDown className="w-4 h-4 ml-1" />
+                  <ChevronDown className="w-3.5 h-3.5 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -232,18 +228,17 @@ export default function DeviceDetailView({
             </DropdownMenu>
 
             <ToolTips tips={t("common:zone_settings")}>
-              <Button size="sm" variant="outline" onClick={onZoneSettings}>
-                <Settings2 className="w-4 h-4 mr-1" />
+              <Button size="sm" variant="outline" onClick={onZoneSettings} className="rounded-lg">
+                <Settings2 className="w-3.5 h-3.5 mr-1.5" />
                 {t("common:zone_settings")}
               </Button>
             </ToolTips>
           </div>
-          <div className="border-b border-dashed border-gray-200 mb-2 mx-4" />
-        </>
+        </div>
       )}
 
       <Tabs defaultValue="device">
-        <TabsList className="ml-4">
+        <TabsList className="mx-4">
           <TabsTrigger
             className="data-[state=active]:bg-black data-[state=active]:text-white"
             value="device"
@@ -266,12 +261,15 @@ export default function DeviceDetailView({
         </TabsList>
 
         <TabsContent value="device">
-          <DrawerHeader className="pt-2">
-            <DrawerTitle className="flex items-center">
-              <span>{device?.data.ext.name}</span>
+          <div className="px-4 pt-4 space-y-4">
+            {/* 设备名称 + 状态 */}
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-semibold text-[#1d1d1f]">
+                {device?.data.ext.name}
+              </span>
               <Badge
                 variant="secondary"
-                className={`ml-2 ${
+                className={`${
                   device?.data.is_online ? "bg-green-300" : "bg-red-400"
                 } text-white`}
               >
@@ -279,40 +277,49 @@ export default function DeviceDetailView({
                   ? t("common:online")
                   : t("common:offline")}
               </Badge>
-            </DrawerTitle>
-
-            <DrawerDescription>{device?.data.device_id}</DrawerDescription>
-            <DrawerDescription>
-              {`${device?.data.transport}://${device?.data.address}`}
-            </DrawerDescription>
-
-            <h4 className="pt-3 pb-1 text-sm font-medium">{t("common:device_attributes")}</h4>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">
-                {t("common:vendor")}:{device?.data.ext.manufacturer}
-              </Badge>
-              <Badge variant="secondary">
-                {t("common:model")}:{device?.data.ext.model}
-              </Badge>
-              <Badge variant="secondary">
-                {t("common:firmware")}:{device?.data.ext.firmware}
-              </Badge>
-              <Badge variant="secondary">
-                {t("common:created")}:{device?.data.created_at}
-              </Badge>
             </div>
-          </DrawerHeader>
 
-          {channelId && (
-            <>
-              {channelName && (
-                <h4 className="px-4 pt-2 pb-1 text-sm font-medium">
-                  {t("common:channel_name")}: {channelName}
-                </h4>
-              )}
-              <MediaInfoPanel channelId={channelId} />
-            </>
-          )}
+            {/* 连接信息 */}
+            <div className="space-y-1 text-[13px] text-[#6e6e73]">
+              <div>{device?.data.device_id}</div>
+              <div className="lowercase">
+                {`${device?.data.transport}://${device?.data.address}`}
+              </div>
+            </div>
+
+            {/* 设备属性 */}
+            <div className="space-y-2">
+              <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+                {t("common:device_attributes")}
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:vendor")}: {device?.data.ext.manufacturer}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:model")}: {device?.data.ext.model}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:firmware")}: {device?.data.ext.firmware}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:created")}: {device?.data.created_at}
+                </Badge>
+              </div>
+            </div>
+
+            {/* 通道信息 + 媒体信息 */}
+            {channelId && (
+              <div className="space-y-2">
+                {channelName && (
+                  <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+                    {t("common:channel_name")}: {channelName}
+                  </h4>
+                )}
+                <MediaInfoPanel channelId={channelId} />
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="ptz">
@@ -400,7 +407,7 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
   };
 
   return (
-    <div className="px-4 py-3 space-y-3">
+    <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {info.alive_second > 0 && (
           <Badge variant="secondary">
