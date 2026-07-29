@@ -37,7 +37,7 @@ function GlassSegment({ options, value, onChange, className }: GlassSegmentProps
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "h-[26px] px-3.5 rounded-full text-[13px] font-medium border-none cursor-pointer whitespace-nowrap",
+              "h-[30px] px-4 rounded-full text-[13px] font-medium border-none cursor-pointer whitespace-nowrap",
               "transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
               "active:scale-[0.96]",
               "font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text',system-ui,sans-serif]",

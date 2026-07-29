@@ -305,13 +305,13 @@ export function EditSheet({
   // 渲染底部按钮
   const renderFooter = () => {
     if (!isMultiStep) {
-      // 单步骤模式
       return [
-        <Button key="cancel" onClick={handleCancel}>
+        <Button key="cancel" size="middle" onClick={handleCancel}>
           {t("cancel")}
         </Button>,
         <Button
           key="submit"
+          size="middle"
           type="primary"
           loading={isPending}
           onClick={handleSubmit}
@@ -321,19 +321,19 @@ export function EditSheet({
       ];
     }
 
-    // 多步骤模式（无取消按钮）
     const isFirstStep = currentStep === 0;
     const isLastStep = currentStep === totalSteps - 1;
 
     return [
       !isFirstStep && (
-        <Button key="prev" onClick={handlePrev}>
+        <Button key="prev" size="middle" onClick={handlePrev}>
           {t("prev_step")}
         </Button>
       ),
       isLastStep ? (
         <Button
           key="submit"
+          size="middle"
           type="primary"
           loading={isPending}
           onClick={handleSubmit}
@@ -341,7 +341,7 @@ export function EditSheet({
           {isEditMode() ? t("save") : t("add")}
         </Button>
       ) : (
-        <Button key="next" type="primary" onClick={handleNext}>
+        <Button key="next" size="middle" type="primary" onClick={handleNext}>
           {t("next_step")}
         </Button>
       ),

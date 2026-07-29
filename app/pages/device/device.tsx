@@ -1,13 +1,13 @@
 import { Link, useNavigate } from "react-router";
 import type { ColumnsType } from "antd/es/table";
 import { Edit, Folder, Wifi } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { GlassButton } from "~/components/ui/glass-button";
+import { GlassSearch } from "~/components/ui/glass-search";
 import { GlassSegment } from "~/components/ui/glass-segment";
-import { Input } from "~/components/ui/input";
 import { formatDate } from "~/components/util/date";
 import useDebounce from "~/components/util/debounce";
 import { XButtonDelete } from "~/components/xui/button";
@@ -25,6 +25,7 @@ import { EditForm } from "./edit";
 export default function DeviceView() {
   const { t } = useTranslation(["device", "common"]);
   const navigate = useNavigate();
+  const [searchKey, setSearchKey] = useState("");
   // refs
   const editFromRef = useRef<EditSheetImpl>(null);
   const tableRef = useRef<TableQueryRef<DeviceItem>>(null);
@@ -232,21 +233,12 @@ export default function DeviceView() {
 
           {/* 搜索和添加区域 */}
           <div className="flex items-center gap-2">
-            <Input
+            <GlassSearch
+              value={searchKey}
+              onChange={(v) => { setSearchKey(v); debouncedFilters(v); }}
+              onClear={() => debouncedFilters("")}
               placeholder={t("common:search_device_placeholder")}
-              onChange={(event) => debouncedFilters(event.target.value)}
-              className="w-56"
-              style={{
-                height: 32,
-                borderRadius: 9999,
-                background: "rgba(255,255,255,0.65)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                border: "1px solid rgba(0,0,0,0.08)",
-                fontSize: 13,
-                color: "#1d1d1f",
-                boxShadow: "none",
-              }}
+              width={220}
             />
 
             <EditForm

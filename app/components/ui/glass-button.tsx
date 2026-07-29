@@ -46,9 +46,9 @@ const glassButtonVariants = cva(
         ].join(" "),
       },
       size: {
-        sm: "h-[24px] px-2.5 text-[12px] rounded-full [&_svg]:size-3",
-        default: "h-[28px] px-3.5 text-[13px] rounded-full [&_svg]:size-3.5",
-        lg: "h-[32px] px-4 text-[14px] rounded-full [&_svg]:size-4",
+        sm: "h-[26px] px-3 text-[12px] rounded-full [&_svg]:size-3",
+        default: "h-[32px] px-4 text-[13px] rounded-full [&_svg]:size-3.5",
+        lg: "h-[36px] px-5 text-[14px] rounded-full [&_svg]:size-4",
       },
     },
     defaultVariants: {

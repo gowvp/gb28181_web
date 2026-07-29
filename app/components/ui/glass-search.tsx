@@ -45,7 +45,7 @@ function GlassSearch({
         }}
         placeholder={placeholder}
         className={cn(
-          "h-7 pl-[30px] rounded-full text-[13px] text-[#1d1d1f] outline-none",
+          "h-8 pl-[32px] rounded-full text-[13px] text-[#1d1d1f] outline-none",
           "bg-white/45 backdrop-blur-[20px] backdrop-saturate-150",
           "border border-white/50",
           "shadow-[inset_0_1px_4px_rgba(0,0,0,0.06)]",

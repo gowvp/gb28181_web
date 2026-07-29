@@ -209,9 +209,9 @@ export default function RTMPView() {
   }, 500);
 
   return (
-    <div className="space-y-4">
+    <div>
       {/* 工具栏独立一行 */}
-      <div className="flex justify-end items-center gap-2">
+      <div className="mb-6 flex justify-end items-center gap-2">
         <GlassSearch
           value={searchKey}
           onChange={(v) => { setSearchKey(v); debouncedFilters(v); }}
