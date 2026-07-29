@@ -365,7 +365,7 @@ export function EditSheet({
           <p className="text-gray-500 text-sm mb-4">{description}</p>
         )}
 
-        <Form form={form} layout="vertical" size="large">
+        <Form form={form} layout="vertical" className="[&_.ant-form-item]:mb-3">
           {renderFormContent()}
         </Form>
       </Modal>
