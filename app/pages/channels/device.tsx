@@ -407,56 +407,67 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {info.alive_second > 0 && (
-          <Badge variant="secondary">
-            {t("alive")}: {info.alive_second}s
-          </Badge>
-        )}
-        {info.reader_count > 0 && (
-          <Badge variant="secondary">
-            {t("readers")}: {info.reader_count}
-          </Badge>
-        )}
-      </div>
-
-      {sortedTracks.map((track, i) => (
-        <div
-          key={i}
-          className="rounded-lg border border-gray-100 p-3 space-y-1.5"
-        >
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">
-              {track.codec_type === 0 ? t("video") : t("audio")}
+    <div className="space-y-3">
+      {/* 流信息概要 */}
+      {(info.alive_second > 0 || info.reader_count > 0) && (
+        <div className="flex flex-wrap gap-1.5">
+          {info.alive_second > 0 && (
+            <Badge variant="secondary" className="text-[11px]">
+              {t("alive")}: {info.alive_second}s
             </Badge>
-            <span className="text-sm font-medium">{track.codec_id_name}</span>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-            {track.codec_type === 0 && track.width > 0 && (
-              <span>
-                {track.width}×{track.height}
-              </span>
-            )}
-            {track.codec_type === 0 && track.fps > 0 && (
-              <span>{track.fps} fps</span>
-            )}
-            {track.codec_type === 0 && (
-              <span className={track.loss > 0 ? "text-amber-500" : ""}>
-                {t("loss")}: {formatLoss(track.loss)}
-              </span>
-            )}
-            {track.codec_type === 1 && track.sample_rate > 0 && (
-              <span>{track.sample_rate} Hz</span>
-            )}
-            {track.codec_type === 1 && track.channels > 0 && (
-              <span>
-                {track.channels}ch / {track.sample_bit}bit
-              </span>
-            )}
-          </div>
+          )}
+          {info.reader_count > 0 && (
+            <Badge variant="secondary" className="text-[11px]">
+              {t("readers")}: {info.reader_count}
+            </Badge>
+          )}
         </div>
-      ))}
+      )}
+
+      {/* 视频轨 */}
+      {videoTracks.length > 0 && (
+        <div className="space-y-1.5">
+          <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+            {t("video")}
+          </h4>
+          {videoTracks.map((track, i) => (
+            <div key={i} className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary" className="text-[11px]">{track.codec_id_name}</Badge>
+              {track.width > 0 && (
+                <Badge variant="secondary" className="text-[11px]">{track.width}×{track.height}</Badge>
+              )}
+              {track.fps > 0 && (
+                <Badge variant="secondary" className="text-[11px]">{track.fps} fps</Badge>
+              )}
+              <Badge variant="secondary" className={`text-[11px] ${track.loss > 0 ? "text-amber-500" : ""}`}>
+                {t("loss")}: {formatLoss(track.loss)}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 音频轨 */}
+      {audioTracks.length > 0 && (
+        <div className="space-y-1.5">
+          <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+            {t("audio")}
+          </h4>
+          {audioTracks.map((track, i) => (
+            <div key={i} className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary" className="text-[11px]">{track.codec_id_name}</Badge>
+              {track.sample_rate > 0 && (
+                <Badge variant="secondary" className="text-[11px]">{track.sample_rate} Hz</Badge>
+              )}
+              {track.channels > 0 && (
+                <Badge variant="secondary" className="text-[11px]">
+                  {track.channels}ch / {track.sample_bit}bit
+                </Badge>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
