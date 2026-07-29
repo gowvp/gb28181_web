@@ -308,7 +308,7 @@ export default function DeviceDetailView({
 
             {/* 通道属性 — Apple Settings 分组列表 */}
             {channelId && (
-              <div className="space-y-1">
+              <div className="space-y-1 pt-2">
                 <h4 className="text-[11px] font-medium text-[#8e8e93] uppercase tracking-wide px-1">
                   {t("common:channel_attributes")}
                 </h4>
