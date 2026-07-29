@@ -56,7 +56,7 @@ export default function ChannelsView() {
     <div className="min-h-screen bg-transparent p-4 sm:p-6">
       <div className="mx-auto ">
         {/* 导航工具栏 — macOS 26 Liquid Glass 组件 */}
-        <div className="mb-6 flex flex-row gap-2 items-center">
+        <div className="mb-4 flex flex-row gap-2 items-center">
           <GlassSegment
             options={options}
             value="/nchannels"
