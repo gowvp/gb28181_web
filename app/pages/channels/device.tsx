@@ -163,7 +163,7 @@ export default function DeviceDetailView({
   };
 
   return (
-    <div className="w-[320px] overflow-hidden">
+    <div className="w-full overflow-hidden">
       {/* 操作按钮组 */}
       {channelId && (
         <div className="px-4 pt-4 pb-3">
@@ -266,7 +266,7 @@ export default function DeviceDetailView({
         <TabsContent value="device">
           <div className="px-4 pt-4 space-y-4 overflow-hidden">
             {/* 设备属性 */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                 {t("common:device_attributes")}
               </h4>
@@ -284,16 +284,26 @@ export default function DeviceDetailView({
                 </p>
                 <p>{device?.data.device_id}</p>
                 <p>{device?.data.transport}://{device?.data.address}</p>
-                <p>{t("common:vendor")}: {device?.data.ext.manufacturer}</p>
-                <p>{t("common:model")}: {device?.data.ext.model}</p>
-                <p>{t("common:firmware")}: {device?.data.ext.firmware}</p>
-                <p>{t("common:created")}: {device?.data.created_at}</p>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:vendor")}: {device?.data.ext.manufacturer}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:model")}: {device?.data.ext.model}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:firmware")}: {device?.data.ext.firmware}
+                </Badge>
+                <Badge variant="secondary" className="text-[11px]">
+                  {t("common:created")}: {device?.data.created_at}
+                </Badge>
               </div>
             </div>
 
             {/* 通道属性 + 媒体信息 */}
             {channelId && (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                   {t("common:channel_attributes")}
                 </h4>

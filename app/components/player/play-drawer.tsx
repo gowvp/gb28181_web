@@ -282,7 +282,7 @@ export default function PlayDrawer({
 
           {/* 设备详情/介绍 - 小屏幕时隐藏 */}
           {showSidebar && (
-            <div className="hidden sm:block w-72 lg:w-[360px] bg-white overflow-y-auto">
+            <div className="hidden sm:block w-72 lg:w-[360px] bg-white overflow-y-auto overflow-x-hidden">
               <DeviceDetailView
                 ref={deviceDetailRef}
                 channelId={currentChannelId}
