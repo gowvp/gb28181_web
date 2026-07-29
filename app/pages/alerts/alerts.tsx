@@ -268,17 +268,12 @@ export default function AlertsView() {
     <div className="h-[calc(100vh-80px)] flex flex-col">
       {/* 筛选栏 */}
       <div className="flex flex-wrap items-center gap-3 p-4 bg-transparent">
-        {/* 通道筛选 - 使用 id 作为 cid 进行筛选 */}
+        {/* 通道筛选 */}
         <Select
           placeholder={t("alert_filter_channel")}
           allowClear
-          style={{
-            minWidth: 180,
-            background: "rgba(255, 255, 255, 0.65)",
-            backdropFilter: "blur(40px)",
-            WebkitBackdropFilter: "blur(40px)",
-            borderRadius: 9999,
-          }}
+          className="glass-select"
+          style={{ minWidth: 180 }}
           variant="borderless"
           value={selectedChannel || undefined}
           onChange={(value) => setSelectedChannel(value || "")}
@@ -295,13 +290,8 @@ export default function AlertsView() {
         <Select
           placeholder={t("alert_filter_label")}
           allowClear
-          style={{
-            minWidth: 120,
-            background: "rgba(255, 255, 255, 0.65)",
-            backdropFilter: "blur(40px)",
-            WebkitBackdropFilter: "blur(40px)",
-            borderRadius: 9999,
-          }}
+          className="glass-select"
+          style={{ minWidth: 120 }}
           variant="borderless"
           value={selectedLabel || undefined}
           onChange={(value) => setSelectedLabel(value || "")}
@@ -316,12 +306,7 @@ export default function AlertsView() {
             setTimeRange(dates ? [dates[0], dates[1]] : [null, null])
           }
           variant="borderless"
-          style={{
-            background: "rgba(255, 255, 255, 0.65)",
-            backdropFilter: "blur(40px)",
-            WebkitBackdropFilter: "blur(40px)",
-            borderRadius: 9999,
-          }}
+          className="glass-select"
           presets={[
             {
               label: t("today"),
@@ -367,8 +352,18 @@ export default function AlertsView() {
             <Spin size="large" />
           </div>
         ) : allEvents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-            <div className="text-lg">{t("alert_no_events")}</div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "60px 20px",
+              color: "#9ca3af",
+            }}
+          >
+            <RefreshCw style={{ width: 32, height: 32, marginBottom: 12, opacity: 0.4 }} />
+            <span style={{ fontSize: 14 }}>{t("alert_no_events")}</span>
           </div>
         ) : (
           <>
