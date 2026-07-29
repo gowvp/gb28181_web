@@ -33,7 +33,7 @@ function GlassSearch({
   return (
     <div className={cn("relative flex items-center", className)}>
       <Search
-        className="absolute left-2.5 w-3.5 h-3.5 pointer-events-none"
+        className="absolute left-2.5 w-3.5 h-3.5 pointer-events-none z-10"
         style={{ color: "#6e6e73" }}
       />
       <input
@@ -63,7 +63,7 @@ function GlassSearch({
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-2 flex items-center justify-center w-[18px] h-[18px] rounded-full bg-black/[0.08] border-none cursor-pointer p-0 hover:bg-black/[0.14] active:scale-90 transition-all"
+          className="absolute right-2 z-10 flex items-center justify-center w-[18px] h-[18px] rounded-full bg-black/[0.08] border-none cursor-pointer p-0 hover:bg-black/[0.14] active:scale-90 transition-all"
         >
           <X className="w-3 h-3 text-[#6e6e73]" />
         </button>
