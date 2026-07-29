@@ -1,10 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { Popconfirm, Tooltip } from "antd";
-import { Cctv, Loader2, Monitor, Search, Server, Wifi, X } from "lucide-react";
+import { Cctv, Loader2, Monitor, Search, Server, Wifi } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { GlassButton } from "~/components/ui/glass-button";
+import { GlassSearch } from "~/components/ui/glass-search";
+import { GlassSegment } from "~/components/ui/glass-segment";
 import { cn } from "~/lib/utils";
 import { COVER_BLUR_STORAGE_KEY } from "~/components/settings/general_settings";
 import { RefreshSnapshot, StopPlay } from "~/service/api/channel/channel";
@@ -52,172 +55,31 @@ export default function ChannelsView() {
   return (
     <div className="min-h-screen bg-transparent p-4 sm:p-6">
       <div className="mx-auto ">
-        {/* 导航按钮 */}
+        {/* 导航工具栏 — macOS 26 Liquid Glass 组件 */}
         <div className="mb-6 flex flex-row gap-2 items-center">
-          {/* macOS 26 Segmented Control — capsule + Liquid Glass */}
-          <div
-            className="inline-flex p-[3px] gap-0 relative"
-            style={{
-              borderRadius: 9999,
-              background: "rgba(255,255,255,0.35)",
-              backdropFilter: "blur(20px) saturate(150%)",
-              WebkitBackdropFilter: "blur(20px) saturate(150%)",
-              border: "1px solid rgba(255,255,255,0.4)",
-              boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
-            }}
-          >
-            {options.map((opt) => {
-              const active = opt.value === "/nchannels";
-              return (
-                <button
-                  key={opt.value as string}
-                  type="button"
-                  onClick={() => navigate(opt.value as string)}
-                  className="active:scale-[0.96]"
-                  style={{
-                    height: 26,
-                    padding: "0 14px",
-                    borderRadius: 9999,
-                    fontSize: 13,
-                    fontWeight: 500,
-                    border: "none",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-                    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-                    color: active ? "#1d1d1f" : "#6e6e73",
-                    background: active ? "rgba(255,255,255,0.85)" : "transparent",
-                    boxShadow: active ? "0 1px 4px rgba(0,0,0,0.1), 0 0.5px 0 rgba(255,255,255,0.9) inset" : "none",
-                  }}
-                >
-                  {opt.label as string}
-                </button>
-              );
-            })}
-          </div>
+          <GlassSegment
+            options={options}
+            value="/nchannels"
+            onChange={(v) => navigate(v)}
+          />
 
           <Link to="/gb/sip">
-            <button
-              type="button"
-              className="active:scale-[0.96]"
-              style={{
-                height: 28,
-                padding: "0 14px",
-                borderRadius: 9999,
-                fontSize: 13,
-                fontWeight: 500,
-                color: "#424245",
-                background: "rgba(255,255,255,0.55)",
-                backdropFilter: "blur(20px) saturate(150%)",
-                WebkitBackdropFilter: "blur(20px) saturate(150%)",
-                border: "1px solid rgba(255,255,255,0.6)",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.08), 0 0.5px 0 rgba(255,255,255,0.7) inset",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-              }}
-            >
-              {t("access_info")}
-            </button>
+            <GlassButton>{t("access_info")}</GlassButton>
           </Link>
 
-          {/* 设备发现按钮 — Liquid Glass capsule */}
-          <button
-            type="button"
-            onClick={() => discoverRef.current?.open()}
-            className="active:scale-[0.96]"
-            style={{
-              height: 28,
-              padding: "0 14px",
-              borderRadius: 9999,
-              fontSize: 13,
-              fontWeight: 500,
-              color: "#424245",
-              background: "rgba(255,255,255,0.55)",
-              backdropFilter: "blur(20px) saturate(150%)",
-              WebkitBackdropFilter: "blur(20px) saturate(150%)",
-              border: "1px solid rgba(255,255,255,0.6)",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.08), 0 0.5px 0 rgba(255,255,255,0.7) inset",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
-              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-            }}
-          >
-            <Wifi style={{ width: 14, height: 14 }} />
+          <GlassButton onClick={() => discoverRef.current?.open()}>
+            <Wifi className="w-3.5 h-3.5" />
             {t("device_discover")}
-          </button>
+          </GlassButton>
 
-          {/* 搜索框 — capsule + Liquid Glass + focus ring */}
-          <div className="ml-auto relative flex items-center">
-            <Search
-              style={{
-                position: "absolute",
-                left: 10,
-                width: 14,
-                height: 14,
-                color: "#9ca3af",
-                pointerEvents: "none",
-              }}
-            />
-            <input
-              type="text"
-              value={searchKey}
-              onChange={(e) => setSearchKey(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") setDebouncedKey(searchKey);
-              }}
-              placeholder={t("search_channel")}
-              className="focus:ring-[3px] focus:ring-blue-500/15 focus:border-blue-500/50"
-              style={{
-                height: 28,
-                paddingLeft: 30,
-                paddingRight: searchKey ? 30 : 12,
-                width: 200,
-                borderRadius: 9999,
-                fontSize: 13,
-                color: "#1d1d1f",
-                background: "rgba(255,255,255,0.45)",
-                backdropFilter: "blur(20px) saturate(150%)",
-                WebkitBackdropFilter: "blur(20px) saturate(150%)",
-                border: "1px solid rgba(255,255,255,0.5)",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.06) inset",
-                outline: "none",
-                transition: "all 0.2s",
-                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-              }}
-            />
-            {searchKey && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchKey("");
-                  setDebouncedKey("");
-                }}
-                style={{
-                  position: "absolute",
-                  right: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  background: "rgba(0,0,0,0.06)",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-                className="hover:bg-black/10 active:scale-90"
-              >
-                <X style={{ width: 12, height: 12, color: "#6e6e73" }} />
-              </button>
-            )}
-          </div>
+          <GlassSearch
+            className="ml-auto"
+            value={searchKey}
+            onChange={setSearchKey}
+            onSearch={setDebouncedKey}
+            onClear={() => setDebouncedKey("")}
+            placeholder={t("search_channel")}
+          />
         </div>
 
         {/* Device Cards */}
