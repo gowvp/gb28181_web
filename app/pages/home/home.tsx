@@ -6,6 +6,7 @@ import VersionUpdateModal, {
   isVersionIgnored,
 } from "~/components/version/version_update_modal";
 import logger from "~/lib/logger";
+import { getUserInfo } from "~/service/api/user/user";
 import type { CheckVersionResponse } from "~/service/api/version/state";
 import { checkVersion } from "~/service/api/version/version";
 import { TopMenu } from "./top_menu";
@@ -16,9 +17,10 @@ const VERSION_CHECKED_KEY = "GOWVP_VERSION_CHECKED_SESSION";
 function useNavigationData() {
   const { t } = useTranslation("common");
 
+  const userInfo = getUserInfo();
   return {
     user: {
-      name: t("app_name"),
+      name: userInfo?.username || t("app_name"),
       email: t("app_title"),
       avatar: "./assets/imgs/bg.avif",
     },

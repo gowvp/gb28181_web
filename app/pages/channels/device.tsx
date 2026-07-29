@@ -310,7 +310,7 @@ export default function DeviceDetailView({
 
             {/* 通道信息 + 媒体信息 */}
             {channelId && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {channelName && (
                   <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
                     {t("common:channel_name")}: {channelName}
@@ -407,7 +407,7 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
         {info.alive_second > 0 && (
           <Badge variant="secondary">
