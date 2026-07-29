@@ -280,7 +280,7 @@ export default function AlertsView() {
           value={selectedChannel || "__all__"}
           onValueChange={(v) => setSelectedChannel(v === "__all__" ? "" : v)}
         >
-          <SelectTrigger className="h-7 min-w-[180px] w-auto rounded-full text-[13px] bg-white/55 backdrop-blur-[20px] backdrop-saturate-150 border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75">
+          <SelectTrigger className="h-8 min-w-[180px] w-auto rounded-full text-[13px] bg-white/55 backdrop-blur-[20px] backdrop-saturate-150 border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75">
             <SelectValue placeholder={t("alert_filter_channel")} />
           </SelectTrigger>
           <SelectContent>
@@ -298,7 +298,7 @@ export default function AlertsView() {
           value={selectedLabel || "__all__"}
           onValueChange={(v) => setSelectedLabel(v === "__all__" ? "" : v)}
         >
-          <SelectTrigger className="h-7 min-w-[120px] w-auto rounded-full text-[13px] bg-white/55 backdrop-blur-[20px] backdrop-saturate-150 border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75">
+          <SelectTrigger className="h-8 min-w-[120px] w-auto rounded-full text-[13px] bg-white/55 backdrop-blur-[20px] backdrop-saturate-150 border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75">
             <SelectValue placeholder={t("alert_filter_label")} />
           </SelectTrigger>
           <SelectContent>

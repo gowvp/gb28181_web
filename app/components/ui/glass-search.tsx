@@ -23,7 +23,7 @@ function GlassSearch({
   onClear,
   placeholder = "Search",
   className,
-  width = 200,
+  width = 220,
 }: GlassSearchProps) {
   const handleClear = () => {
     onChange("");

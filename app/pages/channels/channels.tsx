@@ -79,6 +79,7 @@ export default function ChannelsView() {
             onSearch={setDebouncedKey}
             onClear={() => setDebouncedKey("")}
             placeholder={t("search_channel")}
+            width={220}
           />
         </div>
 
