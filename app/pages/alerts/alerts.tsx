@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { DatePicker, Modal, Select, Spin } from "antd";
+import { DatePicker, Modal, Spin } from "antd";
 import { Masonry } from "antd";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
@@ -8,6 +8,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { GlassButton } from "~/components/ui/glass-button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { cn } from "~/lib/utils";
 import { FindChannels, findChannelsKey } from "~/service/api/channel/channel";
 import {
@@ -270,33 +277,38 @@ export default function AlertsView() {
       <div className="flex flex-wrap items-center gap-3 p-4 bg-transparent">
         {/* 通道筛选 */}
         <Select
-          placeholder={t("alert_filter_channel")}
-          allowClear
-          className="glass-select"
-          style={{ minWidth: 180 }}
-          variant="borderless"
-          value={selectedChannel || undefined}
-          onChange={(value) => setSelectedChannel(value || "")}
-          options={[
-            { label: t("all_channels"), value: "" },
-            ...channels.map((ch) => ({
-              label: ch.name || ch.channel_id,
-              value: ch.id,
-            })),
-          ]}
-        />
+          value={selectedChannel || "__all__"}
+          onValueChange={(v) => setSelectedChannel(v === "__all__" ? "" : v)}
+        >
+          <SelectTrigger className="h-7 min-w-[180px] w-auto rounded-full text-[13px] bg-white/55 backdrop-blur-[20px] backdrop-saturate-150 border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75">
+            <SelectValue placeholder={t("alert_filter_channel")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t("all_channels")}</SelectItem>
+            {channels.map((ch) => (
+              <SelectItem key={ch.id} value={ch.id}>
+                {ch.name || ch.channel_id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* 类型筛选 */}
         <Select
-          placeholder={t("alert_filter_label")}
-          allowClear
-          className="glass-select"
-          style={{ minWidth: 120 }}
-          variant="borderless"
-          value={selectedLabel || undefined}
-          onChange={(value) => setSelectedLabel(value || "")}
-          options={labelOptions}
-        />
+          value={selectedLabel || "__all__"}
+          onValueChange={(v) => setSelectedLabel(v === "__all__" ? "" : v)}
+        >
+          <SelectTrigger className="h-7 min-w-[120px] w-auto rounded-full text-[13px] bg-white/55 backdrop-blur-[20px] backdrop-saturate-150 border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.7)] hover:bg-white/75">
+            <SelectValue placeholder={t("alert_filter_label")} />
+          </SelectTrigger>
+          <SelectContent>
+            {labelOptions.map((opt) => (
+              <SelectItem key={opt.value || "__all__"} value={opt.value || "__all__"}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* 时间范围 */}
         <RangePicker
