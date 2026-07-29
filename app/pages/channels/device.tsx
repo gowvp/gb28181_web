@@ -288,7 +288,7 @@ export default function DeviceDetailView({
                   }
                 />
                 <InfoRow label="ID" value={device?.data.device_id} />
-                <InfoRow label={t("common:address")} value={`${device?.data.transport}://${device?.data.address}`} />
+                <InfoRow label="Host" value={`${device?.data.transport}://${device?.data.address}`} />
               </div>
               <div className="flex flex-wrap gap-1.5 px-1">
                 <Badge variant="secondary" className="text-[11px]">
