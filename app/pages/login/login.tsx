@@ -17,6 +17,7 @@ import {
 } from "~/components/settings/general_settings";
 import { GetMetadata } from "~/service/api/metadata/metadata";
 import { login } from "~/service/api/user/user";
+import { startWs } from "~/service/ws";
 import logger from "~/lib/logger";
 
 type FieldType = {
@@ -99,6 +100,7 @@ export default function LoginView() {
         localStorage.removeItem("app_tour_completed");
       }
 
+      startWs();
       message.success("登录成功！");
       navigate("/desktop");
     } catch (error) {

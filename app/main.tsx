@@ -10,6 +10,7 @@ import {
 } from "react-router";
 import { Toaster } from "~/components/ui/sonner";
 import { DrawerCSSProvider } from "~/components/xui/drawer";
+import { startWs } from "~/service/ws";
 import i18n from "~/i18n/config";
 import "./app.css";
 
@@ -108,6 +109,9 @@ const router = createBrowserRouter(
 const REACT_ROOT_KEY = "__gowvp_react_root__" as const;
 type AppRoot = ReturnType<typeof ReactDOM.createRoot>;
 const globalStore = globalThis as typeof globalThis & { [REACT_ROOT_KEY]?: AppRoot };
+
+// 页面加载时若已有 token（刷新场景），自动重连 WebSocket
+startWs();
 
 const rootElement = document.getElementById("app");
 if (rootElement) {
