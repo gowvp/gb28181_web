@@ -91,10 +91,13 @@ export function MediaServerCard() {
 
       <EditForm
         ref={editRef}
-        onEditSuccess={() => {
-          queryClient.invalidateQueries({
-            queryKey: [findMediaServersKey],
-          });
+        onEditSuccess={(data) => {
+          const delay = data?.id === "local" ? 2000 : 370;
+          setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: [findMediaServersKey],
+            });
+          }, delay);
         }}
       />
     </div>

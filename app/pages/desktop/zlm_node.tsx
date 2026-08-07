@@ -113,13 +113,13 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
 
       <EditForm
         ref={editRef}
-        onEditSuccess={() => {
-          // 延迟370毫秒后执行查询失效
+        onEditSuccess={(data) => {
+          const delay = data?.id === "local" ? 2000 : 370;
           setTimeout(() => {
             queryClient.invalidateQueries({
               queryKey: [findMediaServersKey],
             });
-          }, 370);
+          }, delay);
         }}
       />
     </BaseNode>

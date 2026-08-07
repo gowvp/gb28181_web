@@ -212,12 +212,13 @@ const ZLMNode = ({ data }: { data: any }) => {
 
       <EditForm
         ref={editRef}
-        onEditSuccess={() => {
+        onEditSuccess={(data) => {
+          const delay = data?.id === "local" ? 2000 : 370;
           setTimeout(() => {
             queryClient.invalidateQueries({
               queryKey: [findMediaServersKey],
             });
-          }, 370);
+          }, delay);
         }}
       />
     </div>
