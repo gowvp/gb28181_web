@@ -163,7 +163,7 @@ export default function DeviceDetailView({
   };
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full">
       {/* 操作按钮组 */}
       {channelId && (
         <div className="px-4 pt-4 pb-3">
@@ -335,7 +335,7 @@ export default function DeviceDetailView({
         </TabsContent>
 
         <TabsContent value="channels">
-          <div className="px-4 space-y-2">
+          <div className="px-4 pb-6 space-y-2">
             {channels?.data.items?.map((item) => (
               <ChannelCardItem
                 key={item.id}
