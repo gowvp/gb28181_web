@@ -182,10 +182,8 @@ function ChannelCard({
         isActive && "ring-2 ring-blue-500",
       )}
       style={{
-        background: "rgba(255, 255, 255, 0.70)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        border: "1px solid rgba(255, 255, 255, 0.8)",
+        background: "rgba(255, 255, 255, 0.88)",
+        border: "1px solid rgba(255, 255, 255, 0.9)",
         transition: "all 0.3s cubic-bezier(0.4,0,0.2,1)",
       }}
     >
@@ -358,11 +356,9 @@ function DeviceCard({
     <Card
       className="w-full rounded-[24px]"
       style={{
-        background: "rgba(255, 255, 255, 0.65)",
-        backdropFilter: "blur(40px)",
-        WebkitBackdropFilter: "blur(40px)",
-        border: "1px solid rgba(255, 255, 255, 0.6)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8)",
+        background: "rgba(255, 255, 255, 0.82)",
+        border: "1px solid rgba(255, 255, 255, 0.7)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.04), 0 1px 4px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.7)",
       }}
     >
       <CardHeader className="p-2 px-4">
