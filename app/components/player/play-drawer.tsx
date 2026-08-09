@@ -6,11 +6,9 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Player, { type PlayerRef } from "~/components/player/player";
 import { AspectRatio } from "~/components/ui/aspect-ratio";
-import { Button } from "~/components/ui/button";
-import { Drawer, DrawerContent } from "~/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
 import { copy2Clipboard } from "~/components/util/copy";
-import ToolTips from "~/components/xui/tips";
 import { PTZPanel } from "~/components/ptz-control/ptz-panel";
 import { usePlayerLayout } from "~/hooks/use-player-layout";
 import DeviceDetailView, {
@@ -25,6 +23,9 @@ export interface PlayDrawerRef {
 
 const PROTOCOLS_EXPANDED_KEY = "player_protocols_expanded";
 
+// 播放区与菜单区各自保留同高顶隙，使圆角下方仍能看出左右分区。
+const DRAWER_TOP_GAP = 17;
+
 export default function PlayDrawer({
   ref,
 }: {
@@ -33,6 +34,7 @@ export default function PlayDrawer({
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const deviceDetailRef = useRef<DeviceDetailViewRef>(null);
+  const [actionBarPortal, setActionBarPortal] = useState<HTMLDivElement | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentChannelId, setCurrentChannelId] = useState<string>("");
   const [currentChannelDeviceId, setCurrentChannelDeviceId] = useState<string>("");
@@ -40,6 +42,7 @@ export default function PlayDrawer({
   const [currentChannelExt, setCurrentChannelExt] = useState<any>(undefined);
   const [currentChannelType, setCurrentChannelType] = useState<string>("");
   const [currentChannelPtztype, setCurrentChannelPtztype] = useState<number>(0);
+  const [selectedProtocol, setSelectedProtocol] = useState("WebRTC");
   // 协议选择器收缩/展开状态 - 从 localStorage 读取，默认收缩
   const [protocolsExpanded, setProtocolsExpanded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -57,23 +60,24 @@ export default function PlayDrawer({
 
   // 使用布局计算 Hook（使用固定 footer 高度避免展开/收缩时视频位置变动）
   const layout = usePlayerLayout({
-    headerHeight: 40,
+    headerHeight: DRAWER_TOP_GAP,
     fixedFooterHeight: 120, // 固定高度，无论展开收缩都保持视频位置一致
     sidebarWidth:
       showSidebar && typeof window !== "undefined" && window.innerWidth >= 640
-        ? 290
+        ? 311
         : 0,
   });
 
   // 播放功能
   // 为什么: WebRTC 端到端延迟最低(300~500ms), H.265 兼容浏览器优先走 WebRTC;
-  // 不兼容的浏览器 WebRTCPlayer 内部会弹窗提示, 用户可手动切 HTTP_FLV 兜底。
+  // 不兼容的浏览器 WebRTCPlayer 内部会弹窗提示, 用户可手动切 FLV 兜底。
   const { mutate: playMutate, data: playData } = useMutation({
     mutationFn: Play,
     onSuccess(data) {
       const item = data.data.items[0];
-      const preferred = item?.webrtc || item?.http_flv || "";
+      const preferred = item?.webrtc || item?.["ws-flv"] || item?.flv || "";
       setLink(preferred);
+      setSelectedProtocol(preferred === item?.webrtc ? "WebRTC" : "WS-FLV");
       playRef.current?.play(preferred);
     },
     onError: (error) => {
@@ -154,31 +158,40 @@ export default function PlayDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="h-[85vh] sm:h-[95vh]">
+      <DrawerContent className="h-[85vh] overflow-hidden border-0 shadow-[0_-4px_40px_rgba(0,0,0,0.12)] sm:h-[95vh]">
+        <DrawerTitle className="sr-only">{currentChannelName || t("play")}</DrawerTitle>
+        <DrawerDescription className="sr-only">{t("play")}</DrawerDescription>
         <div className="flex flex-col sm:flex-row h-full overflow-hidden">
-          {/* 播放器内容区域 - 背景色改为白色，移动端允许滚动以容纳 PTZ */}
-          <div className="flex-1 bg-white overflow-y-auto sm:overflow-visible" style={layout.containerStyle}>
-            {/* 播放器容器 */}
-            <div style={layout.contentStyle}>
-              <AspectRatio ratio={16 / 9}>
-                <Player ref={playRef} link={link} />
-              </AspectRatio>
+          {/* 播放器内容区域 - 拆为黑底视频区 + 白底 footer，与 HTML 原型对齐 */}
+          <div
+            className="flex-1 flex flex-col min-w-0 bg-white overflow-y-auto sm:overflow-hidden"
+            style={{ paddingTop: DRAWER_TOP_GAP }}
+          >
+            {/* 视频区域 - 黑底填充剩余空间，视频居中保持宽高比 */}
+            <div
+              className="flex-1 bg-black flex items-center justify-center min-h-0 overflow-hidden"
+              style={{ paddingLeft: layout.containerStyle.paddingLeft, paddingRight: layout.containerStyle.paddingRight }}
+            >
+              <div style={layout.contentStyle} className="relative group">
+                <AspectRatio ratio={16 / 9}>
+                  <Player ref={playRef} link={link} />
+                </AspectRatio>
+              </div>
             </div>
 
-            {/* 底部信息 - 固定高度容器，通过 visibility 控制显隐避免视频位置变动 */}
+            {/* 底部协议信息 - 白底全宽，独立于视频区域 */}
             <div
-              className="w-full mt-2"
-              style={{ ...layout.contentStyle, height: "120px" }}
+              className="w-full bg-white shrink-0"
+              style={{ height: "120px", padding: "8px 16px 10px" }}
             >
-              {/* ZLM 标签 - 点击展开/收缩整个底部区域 */}
-              <div className="flex items-center my-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 font-medium transition-transform duration-200 hover:scale-105"
+              {/* 协议标签 - 点击展开/收缩整个底部区域 */}
+              <div className="flex items-center min-h-6 mb-1.5">
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-[84px] shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-black/[0.06] bg-[#f5f5f7] px-2 text-[11px] font-semibold text-[#1d1d1f] transition-transform duration-200 hover:scale-105"
                   onClick={toggleProtocolsExpanded}
                 >
-                  {playData?.data?.items?.[selected]?.label || "ZLM"}
+                  {selectedProtocol}
                   <span
                     className={`ml-1 transition-transform duration-300 ${
                       protocolsExpanded ? "rotate-180" : "rotate-0"
@@ -186,7 +199,8 @@ export default function PlayDrawer({
                   >
                     <ChevronDown className="w-4 h-4" />
                   </span>
-                </Button>
+                </button>
+                <div ref={setActionBarPortal} className="ml-2 flex min-w-0 items-center gap-1.5" />
               </div>
 
               {/* 地址输入框和协议按钮 - 固定高度，通过 opacity 和 visibility 控制显隐 */}
@@ -197,12 +211,29 @@ export default function PlayDrawer({
                     : "opacity-0 invisible"
                 }`}
               >
-                <Input
-                  className="bg-gray-50 w-full my-2"
-                  disabled
-                  value={link}
-                />
-                <div className="flex flex-wrap gap-1.5 sm:gap-2.5 my-2">
+                <div className="relative mb-1.5">
+                  <Input
+                    className="h-8 w-full rounded-full border-black/[0.05] bg-[#f5f5f7] py-0 pr-9 font-mono text-[11px] md:text-[11px] text-[#6e6e73] shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    readOnly
+                    value={link}
+                  />
+                  <button
+                    type="button"
+                    title="复制地址"
+                    aria-label="复制地址"
+                    disabled={!link}
+                    className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-[#6e6e73] transition-colors hover:bg-black/[0.06] hover:text-[#1d1d1f] disabled:pointer-events-none disabled:opacity-40"
+                    onClick={() =>
+                      copy2Clipboard(link, {
+                        title: t("stream_address_copied"),
+                        description: link,
+                      })
+                    }
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
                   {[
                     {
                       name: "WebRTC",
@@ -210,14 +241,14 @@ export default function PlayDrawer({
                       copy: false,
                     },
                     {
-                      name: "HTTP_FLV",
-                      addr: getStream()?.http_flv ?? "",
-                      copy: true,
+                      name: "FLV",
+                      addr: getStream()?.flv ?? "",
+                      copy: false,
                     },
                     {
-                      name: "WS_FLV",
-                      addr: getStream()?.ws_flv ?? "",
-                      copy: true,
+                      name: "WS-FLV",
+                      addr: getStream()?.["ws-flv"] ?? "",
+                      copy: false,
                     },
                     {
                       name: "HLS",
@@ -234,17 +265,19 @@ export default function PlayDrawer({
                       addr: getStream()?.rtsp ?? "",
                       copy: true,
                     },
-                  ].map((item, i) => (
-                    <ToolTips tips={item.addr || t("no_address")} key={i}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className={`text-[10px] h-6 px-1.5 sm:text-sm sm:h-9 sm:px-3 transition-all duration-200 ${
-                          item.addr === link ? "border-gray-800" : ""
-                        }`}
-                        disabled={!item.addr}
-                        onClick={() => {
-                          if (!item.addr) return;
+                  ].map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      title={item.copy ? "点击复制" : undefined}
+                      className={`inline-flex h-6 items-center justify-center rounded-full border px-2.5 text-[10px] font-semibold tracking-wide transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 ${
+                        item.addr === link
+                          ? "bg-[#1d1d1f] text-white border-[#1d1d1f] hover:bg-[#1d1d1f]/90 hover:text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
+                          : "bg-[#f5f5f7] border-black/[0.06] text-[#6e6e73]"
+                      }`}
+                      disabled={!item.addr}
+                      onClick={() => {
+                        if (!item.addr) return;
 
                           if (item.copy === true) {
                             copy2Clipboard(item.addr, {
@@ -254,14 +287,14 @@ export default function PlayDrawer({
                             return;
                           }
 
-                          playRef.current?.play(item.addr);
-                          setLink(item.addr);
-                        }}
-                      >
-                        {item.copy && <Copy className="hidden sm:inline w-4 h-4 mr-1" />}
-                        {item.name}
-                      </Button>
-                    </ToolTips>
+                        playRef.current?.play(item.addr);
+                        setLink(item.addr);
+                        setSelectedProtocol(item.name);
+                      }}
+                    >
+                      {item.copy && <Copy className="hidden sm:inline w-4 h-4 mr-1" />}
+                      {item.name}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -282,9 +315,13 @@ export default function PlayDrawer({
 
           {/* 设备详情/介绍 - 小屏幕时隐藏 */}
           {showSidebar && (
-            <div className="hidden sm:block w-72 lg:w-[360px] bg-white overflow-y-auto overflow-x-hidden">
+            <div
+              className="hidden sm:block w-[311px] bg-[#f5f5f7] overflow-y-auto overflow-x-hidden border-l border-black/[0.06]"
+              style={{ paddingTop: DRAWER_TOP_GAP }}
+            >
               <DeviceDetailView
                 ref={deviceDetailRef}
+                actionBarPortal={actionBarPortal}
                 channelId={currentChannelId}
                 channelDeviceId={currentChannelDeviceId}
                 channelName={currentChannelName}

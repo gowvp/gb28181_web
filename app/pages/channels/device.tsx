@@ -7,6 +7,7 @@ import {
   Video,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Badge } from "~/components/ui/badge";
@@ -41,6 +42,7 @@ export interface DeviceDetailViewRef {
 
 interface DeviceDetailViewProps {
   ref: React.RefObject<DeviceDetailViewRef | null>;
+  actionBarPortal?: HTMLDivElement | null;
   channelId?: string;
   /** 设备侧通道编号 */
   channelDeviceId?: string;
@@ -59,6 +61,7 @@ interface DeviceDetailViewProps {
 
 export default function DeviceDetailView({
   ref,
+  actionBarPortal,
   channelId,
   channelDeviceId,
   channelName,
@@ -118,7 +121,9 @@ export default function DeviceDetailView({
     mutationFn: () => EnableAI(channelId!),
     onSuccess: (data) => {
       setDetectEnabled(true);
-      toast.success(data.data.message || t("common:ai_enabled"));
+      toast.success(data.data.message || t("common:ai_enabled"), {
+        position: "top-right",
+      });
     },
     onError: (error) => {
       ErrorHandle(error);
@@ -130,7 +135,9 @@ export default function DeviceDetailView({
     mutationFn: () => DisableAI(channelId!),
     onSuccess: (data) => {
       setDetectEnabled(false);
-      toast.success(data.data.message || t("common:ai_disabled"));
+      toast.success(data.data.message || t("common:ai_disabled"), {
+        position: "top-right",
+      });
     },
     onError: (error) => {
       ErrorHandle(error);
@@ -152,6 +159,8 @@ export default function DeviceDetailView({
 
   const isAIPending = enablePending || disablePending;
 
+  const footerAction = "inline-flex h-6 items-center gap-1 rounded-full border border-black/[0.06] bg-[#f5f5f7] px-2 text-[10px] font-semibold text-[#424245] transition-colors hover:bg-black/[0.06] disabled:opacity-50";
+
   // 切换 AI 检测状态
   const handleToggleAI = () => {
     if (!channelId || isAIPending) return;
@@ -164,98 +173,99 @@ export default function DeviceDetailView({
 
   return (
     <div className="w-full">
-      {/* 操作按钮组 */}
+      {/* 操作按钮置于协议栏，避免覆盖视频画面。 */}
       {channelId && (
-        <div className="px-4 pt-4 pb-3">
-          <div className="flex gap-2 flex-wrap">
-            <ToolTips
-              tips={
-                detectEnabled
-                  ? t("common:click_to_disable_ai")
-                  : t("common:click_to_enable_ai")
-              }
-            >
-              <Button
-                size="sm"
-                variant={detectEnabled ? "default" : "outline"}
+        <>
+          {actionBarPortal && createPortal(
+            <div className="flex min-w-0 items-center gap-1.5">
+              <button
+                type="button"
                 onClick={handleToggleAI}
                 disabled={isAIPending}
-                className="rounded-lg"
+                className={footerAction}
+                style={
+                  detectEnabled
+                    ? {
+                        backgroundColor: "#000",
+                        borderColor: "#000",
+                        color: "#fff",
+                      }
+                    : undefined
+                }
               >
-                {isAIPending ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <ScanSearch className="w-3.5 h-3.5 mr-1.5" />
-                )}
+                {isAIPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ScanSearch className="w-3.5 h-3.5" />}
                 {t("common:ai_analysis")}
-              </Button>
-            </ToolTips>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={recordModePending}
-                  className="rounded-lg"
-                >
-                  {recordModePending ? (
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  ) : (
-                    <Video className="w-3.5 h-3.5 mr-1.5" />
-                  )}
-                  {t(`common:record_mode_${recordMode}`)}
-                  <ChevronDown className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() => setRecordModeMutate("always")}
-                  className={recordMode === "always" ? "bg-accent" : ""}
-                >
-                  {t("common:record_mode_always")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setRecordModeMutate("ai")}
-                  className={recordMode === "ai" ? "bg-accent" : ""}
-                >
-                  {t("common:record_mode_ai")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setRecordModeMutate("none")}
-                  className={recordMode === "none" ? "bg-accent" : ""}
-                >
-                  {t("common:record_mode_none")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <ToolTips tips={t("common:zone_settings")}>
-              <Button size="sm" variant="outline" onClick={onZoneSettings} className="rounded-lg">
-                <Settings2 className="w-3.5 h-3.5 mr-1.5" />
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" disabled={recordModePending} className={footerAction}>
+                    {recordModePending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Video className="w-3.5 h-3.5" />}
+                    {t(`common:record_mode_${recordMode}`)}
+                    <ChevronDown className="w-3 h-3 opacity-60 -ml-0.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setRecordModeMutate("always")} className={recordMode === "always" ? "bg-accent" : ""}>{t("common:record_mode_always")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setRecordModeMutate("ai")} className={recordMode === "ai" ? "bg-accent" : ""}>{t("common:record_mode_ai")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setRecordModeMutate("none")} className={recordMode === "none" ? "bg-accent" : ""}>{t("common:record_mode_none")}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <button type="button" onClick={onZoneSettings} className={footerAction}>
+                <Settings2 className="w-3.5 h-3.5" />
                 {t("common:zone_settings")}
-              </Button>
-            </ToolTips>
+              </button>
+            </div>,
+            actionBarPortal
+          )}
+          <div className="sm:hidden px-4 pt-4 pb-3">
+            <div className="flex gap-2 flex-wrap">
+              <ToolTips tips={detectEnabled ? t("common:click_to_disable_ai") : t("common:click_to_enable_ai")}>
+                <Button size="sm" variant={detectEnabled ? "default" : "outline"} onClick={handleToggleAI} disabled={isAIPending} className="rounded-full text-[12px]">
+                  {isAIPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ScanSearch className="w-3.5 h-3.5 mr-1.5" />}
+                  {t("common:ai_analysis")}
+                </Button>
+              </ToolTips>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={recordModePending} className="rounded-full text-[12px]">
+                    {recordModePending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Video className="w-3.5 h-3.5 mr-1.5" />}
+                    {t(`common:record_mode_${recordMode}`)}
+                    <ChevronDown className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setRecordModeMutate("always")} className={recordMode === "always" ? "bg-accent" : ""}>{t("common:record_mode_always")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setRecordModeMutate("ai")} className={recordMode === "ai" ? "bg-accent" : ""}>{t("common:record_mode_ai")}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setRecordModeMutate("none")} className={recordMode === "none" ? "bg-accent" : ""}>{t("common:record_mode_none")}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <ToolTips tips={t("common:zone_settings")}>
+                <Button size="sm" variant="outline" onClick={onZoneSettings} className="rounded-full text-[12px]">
+                  <Settings2 className="w-3.5 h-3.5 mr-1.5" />
+                  {t("common:zone_settings")}
+                </Button>
+              </ToolTips>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <Tabs defaultValue="device">
-        <TabsList className="mx-4">
+        <TabsList className="mx-4 flex h-9 rounded-full bg-black/[0.06] p-[3px]">
           <TabsTrigger
-            className="data-[state=active]:bg-black data-[state=active]:text-white"
+            className="h-[30px] flex-1 rounded-full px-1 text-[13px] font-medium text-[#6e6e73] data-[state=active]:bg-white data-[state=active]:text-[#1d1d1f] data-[state=active]:shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.9)]"
             value="device"
           >
             {t("common:device_detail")}
           </TabsTrigger>
           <TabsTrigger
-            className="data-[state=active]:bg-black data-[state=active]:text-white"
+            className="h-[30px] flex-1 rounded-full px-1 text-[13px] font-medium text-[#6e6e73] data-[state=active]:bg-white data-[state=active]:text-[#1d1d1f] data-[state=active]:shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.9)]"
             value="ptz"
           >
             {t("common:ptz")}
           </TabsTrigger>
           <TabsTrigger
-            className="data-[state=active]:bg-black data-[state=active]:text-white"
+            className="h-[30px] flex-1 rounded-full px-1 text-[13px] font-medium text-[#6e6e73] data-[state=active]:bg-white data-[state=active]:text-[#1d1d1f] data-[state=active]:shadow-[0_1px_4px_rgba(0,0,0,0.08),inset_0_0.5px_0_rgba(255,255,255,0.9)]"
             value="channels"
             onClick={() => refetchChannels()}
           >
@@ -264,13 +274,13 @@ export default function DeviceDetailView({
         </TabsList>
 
         <TabsContent value="device">
-          <div className="px-3 pt-3 pb-4 space-y-4 overflow-hidden">
+          <div className="px-4 pt-4 pb-4 space-y-4 overflow-hidden">
             {/* 设备属性 — Apple Settings 分组列表 */}
             <div className="space-y-2">
-              <h4 className="text-[11px] font-medium text-[#8e8e93] uppercase tracking-wide px-1">
+              <h4 className="text-[11px] font-semibold text-[#8e8e93] uppercase tracking-[0.06em] px-1">
                 {t("common:device_attributes")}
               </h4>
-              <div className="rounded-lg bg-white/60 divide-y divide-black/[0.06]">
+              <div className="rounded-xl bg-white divide-y divide-black/[0.05]">
                 <InfoRow
                   label={device?.data.ext.name || ""}
                   trailing={
@@ -291,16 +301,16 @@ export default function DeviceDetailView({
                 <InfoRow label="Host" value={`${device?.data.transport}://${device?.data.address}`} />
               </div>
               <div className="flex flex-wrap gap-1.5 px-1">
-                <Badge variant="secondary" className="text-[11px]">
+                <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">
                   {t("common:vendor")}: {device?.data.ext.manufacturer}
                 </Badge>
-                <Badge variant="secondary" className="text-[11px]">
+                <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">
                   {t("common:model")}: {device?.data.ext.model}
                 </Badge>
-                <Badge variant="secondary" className="text-[11px]">
+                <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">
                   {t("common:firmware")}: {device?.data.ext.firmware}
                 </Badge>
-                <Badge variant="secondary" className="text-[11px]">
+                <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">
                   {t("common:created")}: {device?.data.created_at}
                 </Badge>
               </div>
@@ -309,10 +319,10 @@ export default function DeviceDetailView({
             {/* 通道属性 — Apple Settings 分组列表 */}
             {channelId && (
               <div className="space-y-1 pt-8">
-                <h4 className="text-[11px] font-medium text-[#8e8e93] uppercase tracking-wide px-1">
+                <h4 className="text-[11px] font-semibold text-[#8e8e93] uppercase tracking-[0.06em] px-1">
                   {t("common:channel_attributes")}
                 </h4>
-                <div className="rounded-lg bg-white/60 divide-y divide-black/[0.06]">
+                <div className="rounded-xl bg-white divide-y divide-black/[0.05]">
                   {channelName && <InfoRow label={t("common:channel_name")} value={channelName} />}
                   {channelDeviceId && <InfoRow label="ID" value={channelDeviceId} />}
                 </div>
@@ -399,7 +409,6 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
   const info = data.data;
   const videoTracks = info.tracks?.filter((t) => t.codec_type === 0) ?? [];
   const audioTracks = info.tracks?.filter((t) => t.codec_type === 1) ?? [];
-  const sortedTracks = [...videoTracks, ...audioTracks];
 
   const formatLoss = (loss: number) => {
     const pct = loss * 100;
@@ -412,12 +421,12 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
       {(info.alive_second > 0 || info.reader_count > 0) && (
         <div className="flex flex-wrap gap-1.5">
           {info.alive_second > 0 && (
-            <Badge variant="secondary" className="text-[11px]">
+            <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">
               {t("alive")}: {info.alive_second}s
             </Badge>
           )}
           {info.reader_count > 0 && (
-            <Badge variant="secondary" className="text-[11px]">
+            <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">
               {t("readers")}: {info.reader_count}
             </Badge>
           )}
@@ -427,19 +436,19 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
       {/* 视频轨 */}
       {videoTracks.length > 0 && (
         <div className="space-y-1.5">
-          <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
+          <h4 className="text-[12px] font-semibold text-[#8e8e93] uppercase tracking-[0.04em]">
             {t("video")}
           </h4>
           {videoTracks.map((track, i) => (
             <div key={i} className="flex flex-wrap gap-1.5">
-              <Badge variant="secondary" className="text-[11px]">{track.codec_id_name}</Badge>
+              <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">{track.codec_id_name}</Badge>
               {track.width > 0 && (
-                <Badge variant="secondary" className="text-[11px]">{track.width}×{track.height}</Badge>
+                <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">{track.width}×{track.height}</Badge>
               )}
               {track.fps > 0 && (
-                <Badge variant="secondary" className="text-[11px]">{track.fps} fps</Badge>
+                <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">{track.fps} fps</Badge>
               )}
-              <Badge variant="secondary" className={`text-[11px] ${track.loss > 0 ? "text-amber-500" : ""}`}>
+              <Badge variant="secondary" className={`text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] ${track.loss > 0 ? "text-amber-500" : "text-[#424245]"}`}>
                 {t("loss")}: {formatLoss(track.loss)}
               </Badge>
             </div>
@@ -448,33 +457,33 @@ function MediaInfoPanel({ channelId }: { channelId: string }) {
       )}
 
       {/* 音频轨 */}
-      {audioTracks.length > 0 && (
-        <div className="space-y-1.5">
-          <h4 className="text-[12px] font-medium text-[#8e8e93] uppercase tracking-wide">
-            {t("audio")}
-          </h4>
-          {audioTracks.map((track, i) => (
-            <div key={i} className="flex flex-wrap gap-1.5">
-              <Badge variant="secondary" className="text-[11px]">{track.codec_id_name}</Badge>
-              {track.sample_rate > 0 && (
-                <Badge variant="secondary" className="text-[11px]">{track.sample_rate} Hz</Badge>
-              )}
-              {track.channels > 0 && (
-                <Badge variant="secondary" className="text-[11px]">
-                  {track.channels}ch / {track.sample_bit}bit
-                </Badge>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="space-y-1.5">
+        <h4 className="text-[12px] font-semibold text-[#8e8e93] uppercase tracking-[0.04em]">
+          {t("audio")}
+        </h4>
+        {audioTracks.length === 0 ? (
+          <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">{t("no_audio_track")}</Badge>
+        ) : audioTracks.map((track, i) => (
+          <div key={i} className="flex flex-wrap gap-1.5">
+            <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">{track.codec_id_name}</Badge>
+            {track.sample_rate > 0 && (
+              <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">{track.sample_rate} Hz</Badge>
+            )}
+            {track.channels > 0 && (
+              <Badge variant="secondary" className="text-[11px] rounded-full h-[22px] px-2 py-0 font-medium bg-black/[0.04] text-[#424245]">
+                {track.channels}ch / {track.sample_bit}bit
+              </Badge>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 function InfoRow({ label, value, trailing }: { label: string; value?: string; trailing?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2 min-h-[32px]">
+    <div className="flex items-center justify-between px-[14px] py-[10px] min-h-[38px]">
       <span className="text-[13px] text-[#1d1d1f] font-medium shrink-0 mr-3">{label}</span>
       {trailing || (
         <span className="text-[12px] text-[#6e6e73] text-right break-all leading-tight">{value}</span>

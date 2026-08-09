@@ -8,6 +8,11 @@ export function copy2Clipboard(
 ) {
   copy(s);
   if (toast?.title) {
-    toastSuccess(toast.title, { description: toast.description });
+    toastSuccess(toast.title, {
+      description: toast.description,
+      classNames: {
+        description: "max-w-[min(65vw,280px)] truncate",
+      },
+    });
   }
 }

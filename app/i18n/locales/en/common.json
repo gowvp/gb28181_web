@@ -313,6 +313,7 @@
   "loss": "Loss",
   "video": "Video",
   "audio": "Audio",
+  "no_audio_track": "No audio",
   "ptz": "PTZ",
   "channel_name": "Channel",
   "channel_attributes": "Channel",

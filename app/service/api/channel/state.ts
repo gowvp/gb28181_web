@@ -11,7 +11,7 @@ export type PlayItem = {
   /**
    * http flv 播放地址
    */
-  http_flv: string;
+  flv: string;
   /**
    * rtmp 播放地址
    */
@@ -23,7 +23,7 @@ export type PlayItem = {
   /**
    * websocket flv 播放地址
    */
-  ws_flv: string;
+  "ws-flv": string;
 
   // 标签
   label: string;

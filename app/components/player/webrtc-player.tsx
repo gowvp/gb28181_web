@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } 
 import logger from "~/lib/logger";
 
 const WARN_MSG =
-  "WebRTC 协商失败! 请检查您的 Chrome 浏览器是否为 105 及以上版本。\n作为替代方案，您可以复制 HTTP_FLV 流地址到 VLC 播放器中打开。";
+  "WebRTC 协商失败! 请检查您的 Chrome 浏览器是否为 105 及以上版本。\n作为替代方案，您可以复制 FLV 流地址到 VLC 播放器中打开。";
 
 // 为什么: 流媒体服务端可能在信令成功后才开始推流，首次连接时 track 延迟到达是正常现象，
 // 单次超时判定为故障会造成误报，所以用多次重试来容忍这种延迟。

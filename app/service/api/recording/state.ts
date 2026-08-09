@@ -129,3 +129,54 @@ export type MonthlyResponse = {
   /** 位图字符串，如 "10101010..." 第 1 天有录像则第 1 位为 1 */
   has_video: string;
 };
+
+/** GB28181 设备录像的连续时间段。 */
+export type DevicePlaybackRange = {
+  start_ms: number;
+  end_ms: number;
+};
+
+/** GB28181 设备录像时间轴响应。 */
+export type DevicePlaybackTimelineResponse = {
+  channel_id: string;
+  start_ms: number;
+  end_ms: number;
+  ranges: DevicePlaybackRange[];
+};
+
+/** 查询 GB28181 设备录像时间轴的参数。 */
+export type DevicePlaybackTimelineParams = {
+  start_ms: number;
+  end_ms: number;
+};
+
+/** 回放播放器可使用的媒体地址。 */
+export type PlaybackStreamAddress = {
+  label: string;
+  "ws-flv": string;
+  flv: string;
+  rtmp: string;
+  rtsp: string;
+  webrtc: string;
+  hls: string;
+};
+
+/** 启动 GB28181 设备录像回放的参数。 */
+export type StartDevicePlaybackParams = {
+  start_ms: number;
+  end_ms: number;
+  wait: number;
+};
+
+/** GB28181 设备录像回放会话。 */
+export type DevicePlaybackOutput = {
+  playback_id: string;
+  channel_id: string;
+  start_ms: number;
+  end_ms: number;
+  state: "playing" | "paused" | "stopped";
+  app: string;
+  stream: string;
+  ssrc: string;
+  items: PlaybackStreamAddress[];
+};

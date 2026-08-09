@@ -312,6 +312,7 @@
   "loss": "丢包",
   "video": "视频",
   "audio": "音频",
+  "no_audio_track": "暂无音频",
   "ptz": "云台",
   "channel_name": "通道名称",
   "channel_attributes": "通道属性",
