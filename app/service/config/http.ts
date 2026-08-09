@@ -18,6 +18,8 @@ const headers = {
   "Content-Type": "application/json",
 };
 
+let isRedirectingForAuth = false;
+
 export const service = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
   timeout: 60000,
@@ -26,7 +28,10 @@ export const service = axios.create({
 });
 
 service.interceptors.response.use(
-  (resp) => resp,
+  (resp) => {
+    isRedirectingForAuth = false;
+    return resp;
+  },
   (error) => {
     if (!error) {
       //   message.error("网络异常");
@@ -42,22 +47,13 @@ service.interceptors.response.use(
       errorText = codeMessage[resp?.status] || resp.statusText;
     }
 
-    if (neglectUrl.includes(error.config.url)) {
-      return Promise.reject(error);
-    }
-    const redireUrl: string = resp?.headers["x-redirect"];
     switch (resp?.status) {
       case 401:
-        // message.error(errTips ?? "token 无效");
-        if (!redireUrl) {
-          //   CleanLoginStoreage();
-          //   history.push(`/login`);
-        } else {
-          if (redireUrl.startsWith("http")) {
-            window.location.href = redireUrl;
-            break;
-          }
-          window.location.href = `${window.location.protocol}//${window.location.hostname}${redireUrl}`;
+      case 403:
+        CleanLoginStoreage();
+        if (!isRedirectingForAuth) {
+          isRedirectingForAuth = true;
+          window.location.assign(import.meta.env.BASE_URL);
         }
         break;
       case 404:
@@ -75,6 +71,9 @@ service.interceptors.response.use(
         // message.error();
         break;
       default:
+        if (neglectUrl.includes(error.config.url)) {
+          return Promise.reject(error);
+        }
         console.log(
           "🚀 ~ file: http.ts ~ line 50 ~ service.interceptors.response.use",
           errorText,
