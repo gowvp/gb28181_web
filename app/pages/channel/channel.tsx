@@ -207,38 +207,47 @@ export default function ChannelsView() {
     });
 
   return (
-    <>
-      <div className="w-full bg-white p-4 rounded-lg">
-        <div className="flex items-center gap-2 mb-4">
-          <GlassButton
-            onClick={() => {
-              if (did) refreshCatalogMutate(did);
-            }}
-            disabled={refreshCatalogIsPending}
-          >
-            <RefreshCcw
-              className={cn(
-                "w-3.5 h-3.5",
-                refreshCatalogIsPending && "animate-spin",
-              )}
-            />
-            向设备同步通道
-          </GlassButton>
-
-          <GlassSearch
-            className="ml-auto"
-            value={searchKey}
-            onChange={(v) => {
-              setSearchKey(v);
-              debouncedFilters(v);
-            }}
-            onSearch={(v) => debouncedFilters(v)}
-            onClear={() => debouncedFilters("")}
-            placeholder="名称/国标ID/ID"
-            width={220}
+    <div className="bg-transparent p-4 sm:p-6">
+      <div className="mb-6 flex items-center gap-2">
+        <GlassButton
+          onClick={() => {
+            if (did) refreshCatalogMutate(did);
+          }}
+          disabled={refreshCatalogIsPending}
+        >
+          <RefreshCcw
+            className={cn(
+              "w-3.5 h-3.5",
+              refreshCatalogIsPending && "animate-spin",
+            )}
           />
-        </div>
+          向设备同步通道
+        </GlassButton>
 
+        <GlassSearch
+          className="ml-auto"
+          value={searchKey}
+          onChange={(v) => {
+            setSearchKey(v);
+            debouncedFilters(v);
+          }}
+          onSearch={(v) => debouncedFilters(v)}
+          onClear={() => debouncedFilters("")}
+          placeholder="名称/国标ID/ID"
+          width={220}
+        />
+      </div>
+
+      <div
+        className="w-full rounded-[20px] overflow-hidden"
+        style={{
+          background: "rgba(255,255,255,0.70)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(40px)",
+          border: "1px solid rgba(255,255,255,0.6)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.9)",
+        }}
+      >
         <TableQuery
           ref={tableRef}
           queryKey={findChannelsKey}
@@ -246,11 +255,10 @@ export default function ChannelsView() {
           columns={columns}
           defaultFilters={{ page: 1, size: 10, did: did ?? "" }}
         />
-
-        {/* 播放器 */}
-        <ChannelDetailView ref={detailRef} />
       </div>
-    </>
+
+      <ChannelDetailView ref={detailRef} />
+    </div>
   );
 }
 
