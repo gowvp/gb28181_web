@@ -6,7 +6,8 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { GlassButton } from "~/components/ui/glass-button";
+import { GlassSearch } from "~/components/ui/glass-search";
 import useDebounce from "~/components/util/debounce";
 import { TableQuery, type TableQueryRef } from "~/components/xui/table-query";
 import { toastSuccess } from "~/components/xui/toast";
@@ -189,7 +190,8 @@ export default function ChannelsView() {
     },
   ];
 
-  // 搜索防抖
+  const [searchKey, setSearchKey] = useState("");
+
   const debouncedFilters = useDebounce((key: string) => {
     tableRef.current?.setFilters((prev: any) => ({ ...prev, page: 1, key }));
   }, 500);
@@ -206,14 +208,9 @@ export default function ChannelsView() {
 
   return (
     <>
-      {/* <XHeader
-        items={[{ title: "国标设备", url: "devices" }, { title: "通道列表" }]}
-      /> */}
       <div className="w-full bg-white p-4 rounded-lg">
-        <div className="flex justify-between items-center">
-          <Button
-            // variant="ghost"
-            size="sm"
+        <div className="flex items-center gap-2 mb-4">
+          <GlassButton
             onClick={() => {
               if (did) refreshCatalogMutate(did);
             }}
@@ -221,28 +218,25 @@ export default function ChannelsView() {
           >
             <RefreshCcw
               className={cn(
-                "h-4 w-4 mr-1",
+                "w-3.5 h-3.5",
                 refreshCatalogIsPending && "animate-spin",
               )}
             />
             向设备同步通道
-          </Button>
+          </GlassButton>
 
-          {/* 搜索和添加区域 */}
-          <div className="flex justify-end items-center py-4">
-            <span className="mr-3">搜索</span>
-            <Input
-              placeholder="可输入名称/国标ID/ID 模糊搜索"
-              onChange={(event) => debouncedFilters(event.target.value)}
-              className="w-56"
-            />
-
-            {/* <EditForm
-            ref={editFromRef}
-            onAddSuccess={() => tableRef.current?.handleAddSuccess()}
-            onEditSuccess={(data) => tableRef.current?.handleEditSuccess(data)}
-          /> */}
-          </div>
+          <GlassSearch
+            className="ml-auto"
+            value={searchKey}
+            onChange={(v) => {
+              setSearchKey(v);
+              debouncedFilters(v);
+            }}
+            onSearch={(v) => debouncedFilters(v)}
+            onClear={() => debouncedFilters("")}
+            placeholder="名称/国标ID/ID"
+            width={220}
+          />
         </div>
 
         <TableQuery
