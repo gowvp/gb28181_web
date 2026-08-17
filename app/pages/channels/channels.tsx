@@ -195,7 +195,7 @@ function ChannelCard({
         <img
           src={snapshotUrl || "./assets/imgs/bg.avif"}
           alt="通道预览"
-          className="aspect-[4/3] object-cover"
+          className="w-full h-full object-cover"
           style={coverBlur ? { filter: "blur(6px)" } : undefined}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
