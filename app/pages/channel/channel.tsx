@@ -164,7 +164,7 @@ export default function ChannelsView() {
     {
       title: t("record_mode"),
       key: "record_mode",
-      width: 140,
+      width: 180,
       render: (_, record) => <RecordModeRadio record={record} />,
     },
     {
