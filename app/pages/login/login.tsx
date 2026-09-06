@@ -14,6 +14,11 @@ import { Card, CardContent } from "~/components/ui/card";
 import {
   COVER_BLUR_KEY,
   COVER_BLUR_STORAGE_KEY,
+  LOGIN_PAGE_KEY,
+  LOGIN_PAGE_STORAGE_KEY,
+  type LoginPageConfig,
+  getLoginPageConfig,
+  syncDocumentTitle,
 } from "~/components/settings/general_settings";
 import { GetMetadata } from "~/service/api/metadata/metadata";
 import { login } from "~/service/api/user/user";
@@ -65,6 +70,27 @@ export default function LoginView() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  const [pageConfig, setPageConfig] = useState<LoginPageConfig>(getLoginPageConfig);
+
+  React.useEffect(() => {
+    GetMetadata(LOGIN_PAGE_KEY)
+      .then((res) => {
+        if (!res.data?.ext) return;
+        try {
+          const remote: LoginPageConfig = JSON.parse(res.data.ext);
+          const cached = JSON.stringify(pageConfig);
+          if (JSON.stringify(remote) !== cached) {
+            setPageConfig(remote);
+            localStorage.setItem(LOGIN_PAGE_STORAGE_KEY, res.data.ext);
+          }
+          if (remote.subtitle) {
+            syncDocumentTitle(remote.subtitle);
+          }
+        } catch { /* ignore */ }
+      })
+      .catch(() => { /* 网络不通时静默使用 localStorage 缓存 */ });
+  }, []);
 
   const onFinish: FormProps<FieldType>["onFinish"] = async (values) => {
     if (!values.username || !values.password) {
@@ -125,15 +151,12 @@ export default function LoginView() {
         <Card className="shadow-2xl bg-white/80 backdrop-blur-xl border-0 rounded-3xl overflow-hidden">
           {/* Logo 和标题区域 */}
           <div className="px-8 pt-10 pb-8 text-center">
-            {/* <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div> */}
             <h1 className="text-2xl font-semibold text-gray-900 mb-1">
-              欢迎回来
+              {pageConfig.title || "欢迎回来"}
             </h1>
-            <p className="text-gray-500 text-sm">开箱即用的监控平台</p>
+            <p className="text-gray-500 text-sm">
+              {pageConfig.subtitle || "开箱即用的监控平台"}
+            </p>
           </div>
 
           <CardContent className="px-8 pb-10 pt-0">
@@ -174,20 +197,20 @@ export default function LoginView() {
                   placeholder="admin"
                   size="large"
                   autoComplete="new-password"
-                  className="h-12 rounded-xl border-gray-200 hover:border-blue-400 focus:border-blue-500"
                   iconRender={(visible) =>
                     visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                   }
+                  className="h-12 rounded-xl border-gray-200 hover:border-blue-400 focus:border-blue-500"
                 />
               </Form.Item>
 
-              <Form.Item className="mb-4 flex justify-center">
+              <Form.Item className="mb-0">
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-72 min-h-11 via-zinc-800 to-zinc-900 hover:from-zinc-900 hover:to-black disabled:from-zinc-700 disabled:to-zinc-800 text-white font-medium rounded-xl shadow-lg hover:shadow-xl disabled:shadow-none transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 border-0"
+                  className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
                 >
-                  {loading ? "登录中..." : "登 录"}
+                  {loading ? "登录中..." : "登录"}
                 </Button>
               </Form.Item>
             </Form>
@@ -197,11 +220,6 @@ export default function LoginView() {
             </div>
           </CardContent>
         </Card>
-
-        {/* 底部信息 */}
-        {/* <div className="mt-8 text-center">
-          <p className="text-xs text-gray-400">© 2024 监控平台 保留所有权利</p>
-        </div> */}
       </div>
     </div>
   );

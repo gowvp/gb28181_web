@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import {
   type Node,
   type NodeProps,
@@ -7,11 +6,10 @@ import {
   useStore,
 } from "@xyflow/react";
 import { Settings } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BaseNode } from "~/components/base-node";
 import { LabeledHandle } from "~/components/labeled-handle";
-import { findMediaServersKey } from "~/service/api/media/media";
-import { EditForm } from "./media/edit";
+import SettingsModal from "~/components/settings/settings_modal";
 
 export type SumNode = Node<{
   value: number;
@@ -43,8 +41,7 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
     updateNodeData(id, { value: x + y });
   }, [x, y, id, updateNodeData]);
 
-  const editRef = useRef<any>(null);
-  const queryClient = useQueryClient();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <BaseNode className="w-52">
@@ -67,9 +64,9 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
           <button
             type="button"
             onClick={() => {
-              editRef.current?.edit(data.item);
+              setSettingsOpen(true);
             }}
-            className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
+            className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors cursor-pointer"
           >
             <Settings className="w-5 h-5" />
           </button>
@@ -111,16 +108,10 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
         {/* <LabeledHandle title="out" type="source" position={Position.Right} /> */}
       </footer>
 
-      <EditForm
-        ref={editRef}
-        onEditSuccess={(data) => {
-          const delay = data?.id === "local" ? 2000 : 370;
-          setTimeout(() => {
-            queryClient.invalidateQueries({
-              queryKey: [findMediaServersKey],
-            });
-          }, delay);
-        }}
+      <SettingsModal
+        open={settingsOpen}
+        initialKey="stream"
+        onClose={() => setSettingsOpen(false)}
       />
     </BaseNode>
   );

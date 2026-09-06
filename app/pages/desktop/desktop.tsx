@@ -43,7 +43,6 @@ import {
 } from "~/service/api/media/media";
 import { checkVersion, checkVersionKey } from "~/service/api/version/version";
 import { ErrorHandle } from "~/service/config/error";
-import { EditForm } from "./media/edit";
 
 // ── 节点组件 ──────────────────────────
 
@@ -86,11 +85,10 @@ const SimpleNode = ({ data }: { data: any }) => {
 
 /**
  * 为什么流媒体节点内嵌编辑表单：
- * 现场改端口/IP 是高频操作，跳转到独立页会打断拓扑扫视；就地编辑成功后失效查询即可与列表页数据对齐。
+ * 现场改端口/IP 是高频操作，点击直接唤起全局设置中的收流配置面板。
  */
 const ZLMNode = ({ data }: { data: any }) => {
-  const editRef = useRef<any>(null);
-  const queryClient = useQueryClient();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { t } = useTranslation("desktop");
   const mediaType = data.item?.type || "zlm";
   const mediaImage =
@@ -130,7 +128,7 @@ const ZLMNode = ({ data }: { data: any }) => {
               type="button"
               data-tour-id="zlm-settings"
               onClick={() => {
-                editRef.current?.edit(data.item);
+                setSettingsOpen(true);
               }}
               className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
             >
@@ -210,16 +208,10 @@ const ZLMNode = ({ data }: { data: any }) => {
         </div>
       </div>
 
-      <EditForm
-        ref={editRef}
-        onEditSuccess={(data) => {
-          const delay = data?.id === "local" ? 2000 : 370;
-          setTimeout(() => {
-            queryClient.invalidateQueries({
-              queryKey: [findMediaServersKey],
-            });
-          }, delay);
-        }}
+      <SettingsModal
+        open={settingsOpen}
+        initialKey="stream"
+        onClose={() => setSettingsOpen(false)}
       />
     </div>
   );

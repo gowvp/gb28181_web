@@ -182,7 +182,7 @@
   "timeout_range": "超时时间应为1-100秒",
   "input_timeout": "请输入超时时间",
   "input_ip_placeholder": "请输入IP地址",
-  "input_gb_address": "请输入国标收流地址",
+  "input_gb_address": "请输入 IP 或 域名",
   "input_hook_ip": "请输入Hook IP",
   "input_api_secret": "请输入API密钥",
   "ip_length": "IP地址长度应为2-20位",

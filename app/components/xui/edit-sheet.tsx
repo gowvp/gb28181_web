@@ -44,6 +44,8 @@ interface EditSheetProps {
   width?: number | string; // Modal 宽度，默认 520
   steps?: StepConfig[]; // 步骤配置，如果不提供则自动分组
   fieldsPerStep?: number; // 每步字段数，默认 2
+  singlePage?: boolean; // 是否启用单页模式（不切分步骤，直接呈现自定义 children 布局）
+  onFinishFailed?: (errorInfo: any) => void; // 表单校验失败回调
 }
 
 export interface EditSheetImpl {
@@ -67,6 +69,8 @@ export function EditSheet({
   width = 520,
   steps: customSteps,
   fieldsPerStep = 2,
+  singlePage = false,
+  onFinishFailed,
 }: EditSheetProps) {
   const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
@@ -137,7 +141,7 @@ export function EditSheet({
 
   const stepsConfig = generateSteps();
   const totalSteps = stepsConfig.length;
-  const isMultiStep = totalSteps > 1;
+  const isMultiStep = !singlePage && totalSteps > 1;
 
   // 获取当前步骤应该显示的字段
   const getCurrentStepFields = (): string[] => {
@@ -206,11 +210,12 @@ export function EditSheet({
 
   const handleSubmit = async () => {
     try {
-      // 最后一步时验证所有字段
+      // 验证表单字段并提交
       const values = await form.validateFields();
       await mutateAsync(values);
     } catch (error) {
       console.log("表单验证失败:", error);
+      onFinishFailed?.(error);
     }
   };
 
@@ -275,6 +280,10 @@ export function EditSheet({
 
   // 渲染表单内容
   const renderFormContent = () => {
+    if (singlePage) {
+      return children;
+    }
+
     const currentFields = getCurrentStepFields();
 
     return (
@@ -304,7 +313,7 @@ export function EditSheet({
 
   // 渲染底部按钮
   const renderFooter = () => {
-    if (!isMultiStep) {
+    if (!isMultiStep || singlePage) {
       return [
         <Button key="cancel" size="middle" onClick={handleCancel}>
           {t("cancel")}
@@ -365,7 +374,12 @@ export function EditSheet({
           <p className="text-gray-500 text-sm mb-4">{description}</p>
         )}
 
-        <Form form={form} layout="vertical" className="[&_.ant-form-item]:mb-3">
+        <Form
+          form={form}
+          layout="vertical"
+          className="[&_.ant-form-item]:mb-3"
+          onFinishFailed={onFinishFailed}
+        >
           {renderFormContent()}
         </Form>
       </Modal>

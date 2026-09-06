@@ -1,30 +1,40 @@
 import { Modal } from "antd";
-import { KeyRound, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { KeyRound, Radio, SlidersHorizontal } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import AccountSettings from "./account_settings";
 import GeneralSettings from "./general_settings";
+import StreamSettings from "./stream_settings";
 
 /** 左侧菜单项定义 */
 const menuItems = [
   { key: "account", label: "账户设置", icon: KeyRound },
-  { key: "general", label: "基本设置", icon: SlidersHorizontal },
+  { key: "stream", label: "收流配置", icon: Radio },
+  { key: "general", label: "基础配置", icon: SlidersHorizontal },
 ] as const;
 
-type MenuKey = (typeof menuItems)[number]["key"];
+export type MenuKey = (typeof menuItems)[number]["key"];
 
 /**
  * 全局设置弹窗
  * 为什么用 Modal 而非路由页面：设置是低频操作，弹窗避免离开当前上下文，
- * 且与 ZLM 节点就地编辑的交互范式一致。
+ * 且与流媒体收流配置和系统全局参数就地编辑的交互范式一致。
  */
 export default function SettingsModal({
   open,
   onClose,
+  initialKey = "account",
 }: {
   open: boolean;
   onClose: () => void;
+  initialKey?: MenuKey;
 }) {
-  const [activeKey, setActiveKey] = useState<MenuKey>("account");
+  const [activeKey, setActiveKey] = useState<MenuKey>(initialKey);
+
+  useEffect(() => {
+    if (open) {
+      setActiveKey(initialKey);
+    }
+  }, [open, initialKey]);
 
   return (
     <Modal
@@ -44,7 +54,7 @@ export default function SettingsModal({
               key={item.key}
               type="button"
               onClick={() => setActiveKey(item.key)}
-              className={`flex items-center gap-2 w-full px-4 py-2.5 text-sm transition-colors ${
+              className={`flex items-center gap-2 w-full px-4 py-2.5 text-sm transition-colors cursor-pointer ${
                 activeKey === item.key
                   ? "bg-gray-100 text-gray-900 font-medium border-l-2 border-gray-900"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-2 border-transparent"
@@ -59,6 +69,7 @@ export default function SettingsModal({
         {/* 右侧内容 */}
         <div className="flex-1 p-6">
           {activeKey === "account" && <AccountSettings onClose={onClose} />}
+          {activeKey === "stream" && <StreamSettings />}
           {activeKey === "general" && <GeneralSettings />}
         </div>
       </div>

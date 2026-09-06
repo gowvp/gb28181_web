@@ -13,6 +13,18 @@
       href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
     />
     <title>GoWVP 开箱即用的国标平台</title>
+    <script>
+      // 为什么在 head 中内联执行：优先从 localStorage 读取副标题并更新标签页，避免页面初始加载时标签标题闪烁
+      try {
+        var rawLoginConfig = localStorage.getItem("gowvp_login_page");
+        if (rawLoginConfig) {
+          var parsedLoginConfig = JSON.parse(rawLoginConfig);
+          if (parsedLoginConfig && parsedLoginConfig.subtitle) {
+            document.title = parsedLoginConfig.subtitle;
+          }
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

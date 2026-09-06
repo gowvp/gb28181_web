@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App as AntdApp, ConfigProvider } from "antd";
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import {
@@ -10,6 +10,13 @@ import {
 } from "react-router";
 import { Toaster } from "~/components/ui/sonner";
 import { DrawerCSSProvider } from "~/components/xui/drawer";
+import {
+  LOGIN_PAGE_KEY,
+  LOGIN_PAGE_STORAGE_KEY,
+  type LoginPageConfig,
+  syncDocumentTitle,
+} from "~/components/settings/general_settings";
+import { GetMetadata } from "~/service/api/metadata/metadata";
 import { startWs } from "~/service/ws";
 import i18n from "~/i18n/config";
 import "./app.css";
@@ -39,8 +46,32 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * 为什么在根布局同步网页标题：
+ * 保证在系统任一页面打开或刷新时，都能及时从 localStorage 初始化标签页副标题，
+ * 并在后台静默拉取服务端最新配置完成同步。
+ */
+function useDocumentTitleSync() {
+  useEffect(() => {
+    syncDocumentTitle();
+    GetMetadata(LOGIN_PAGE_KEY)
+      .then((res) => {
+        if (!res.data?.ext) return;
+        try {
+          const remote: LoginPageConfig = JSON.parse(res.data.ext);
+          if (remote.subtitle) {
+            syncDocumentTitle(remote.subtitle);
+            localStorage.setItem(LOGIN_PAGE_STORAGE_KEY, res.data.ext);
+          }
+        } catch { /* ignore */ }
+      })
+      .catch(() => { /* 静默失败，保持 localStorage 缓存 */ });
+  }, []);
+}
+
 // 根布局：提供全局 Provider 上下文
 function RootLayout() {
+  useDocumentTitleSync();
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>

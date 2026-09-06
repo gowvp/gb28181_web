@@ -127,7 +127,7 @@ export default function AccountSettings({ onClose }: { onClose: () => void }) {
             loading={isPending}
             className="mt-1"
           >
-            提交
+            保存
           </Button>
         </Popconfirm>
       </Form>

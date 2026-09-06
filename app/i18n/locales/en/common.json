@@ -183,7 +183,7 @@
   "timeout_range": "Timeout should be 1-100 seconds",
   "input_timeout": "Please enter timeout",
   "input_ip_placeholder": "Please enter IP address",
-  "input_gb_address": "Please enter GB receive address",
+  "input_gb_address": "Please enter IP or domain",
   "input_hook_ip": "Please enter Hook IP",
   "input_api_secret": "Please enter API secret",
   "ip_length": "IP address should be 2-20 characters",

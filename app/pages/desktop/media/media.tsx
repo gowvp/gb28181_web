@@ -1,12 +1,12 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
-import { useRef } from "react";
+import { useState } from "react";
+import SettingsModal from "~/components/settings/settings_modal";
 import {
   FindMediaServers,
   findMediaServersKey,
 } from "~/service/api/media/media";
 import { ErrorHandle } from "~/service/config/error";
-import { EditForm } from "./edit";
 
 export function MediaServerCard() {
   const { data } = useQuery({
@@ -19,8 +19,7 @@ export function MediaServerCard() {
   });
 
   const item = data?.data.items[0];
-  const editRef = useRef<any>(null);
-  const queryClient = useQueryClient();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <div>
       <div className="h-auto w-full max-w-[150px] max-h-[150px] relative">
@@ -71,9 +70,9 @@ export function MediaServerCard() {
             <button
               type="button"
               onClick={() => {
-                editRef.current?.edit(item);
+                setSettingsOpen(true);
               }}
-              className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
+              className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors cursor-pointer"
             >
               <Settings className="w-3 h-3" />
             </button>
@@ -89,16 +88,10 @@ export function MediaServerCard() {
         </div>
       </div>
 
-      <EditForm
-        ref={editRef}
-        onEditSuccess={(data) => {
-          const delay = data?.id === "local" ? 2000 : 370;
-          setTimeout(() => {
-            queryClient.invalidateQueries({
-              queryKey: [findMediaServersKey],
-            });
-          }, delay);
-        }}
+      <SettingsModal
+        open={settingsOpen}
+        initialKey="stream"
+        onClose={() => setSettingsOpen(false)}
       />
     </div>
   );
