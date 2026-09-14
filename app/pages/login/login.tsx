@@ -1,14 +1,8 @@
-import {
-  EyeInvisibleOutlined,
-  EyeTwoTone,
-  LockOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
 import { useNavigate } from "react-router";
 import type { FormProps } from "antd";
 import { Form, Input, message } from "antd";
 import React, { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Lock, User } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import {
@@ -55,7 +49,7 @@ function ForgotPasswordDialog() {
           </p>
           <Button
             onClick={() => setOpen(false)}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+            className="w-full bg-[#1d1d1f] hover:bg-[#333] text-white rounded-lg"
           >
             确定
           </Button>
@@ -179,7 +173,7 @@ export default function LoginView() {
                 className="mb-6"
               >
                 <Input
-                  prefix={<UserOutlined className="text-gray-400" />}
+                  prefix={<User className="h-4 w-4 text-gray-400" />}
                   placeholder="admin"
                   size="large"
                   autoComplete="nope"
@@ -193,24 +187,26 @@ export default function LoginView() {
                 className="mb-8"
               >
                 <Input.Password
-                  prefix={<LockOutlined className="text-gray-400" />}
+                  prefix={<Lock className="h-4 w-4 text-gray-400" />}
                   placeholder="admin"
                   size="large"
                   autoComplete="new-password"
-                  iconRender={(visible) =>
-                    visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
-                  }
                   className="h-12 rounded-xl border-gray-200 hover:border-blue-400 focus:border-blue-500"
+                  iconRender={(visible) =>
+                    visible
+                      ? <Eye style={{ width: 18, height: 18, color: "#d1d5db" }} className="cursor-pointer" />
+                      : <EyeOff style={{ width: 18, height: 18, color: "#d1d5db" }} className="cursor-pointer" />
+                  }
                 />
               </Form.Item>
 
-              <Form.Item className="mb-0">
+              <Form.Item className="mb-4 flex justify-center">
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/30 active:scale-[0.98]"
+                  className="w-72 min-h-11 bg-slate-900 hover:bg-black disabled:bg-slate-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl disabled:shadow-none transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 border-0"
                 >
-                  {loading ? "登录中..." : "登录"}
+                  {loading ? "登录中..." : "登 录"}
                 </Button>
               </Form.Item>
             </Form>

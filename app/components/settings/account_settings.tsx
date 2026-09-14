@@ -1,7 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
-import { Button, Form, Input, Popconfirm } from "antd";
+import { Popconfirm } from "antd";
+import { useState } from "react";
 import { useNavigate } from "react-router";
-import { toastSuccess } from "~/components/xui/toast";
+import { AppleInput } from "~/components/xui/apple_input";
+import { toastSuccess, toastWarn } from "~/components/xui/toast";
 import { PUT } from "~/service/config/http";
 import { ErrorHandle } from "~/service/config/error";
 import { getPublicKey, getUserInfo } from "~/service/api/user/user";
@@ -39,12 +41,15 @@ async function updateCredentials(data: {
 
 /**
  * 账户设置面板
- * 为什么提交后清 token 并跳登录：凭据变更后旧 JWT 语义上已失效，
- * 强制重新登录避免后续请求带过期身份。
+ * 采用与其它弹窗统一的原生表单与 AppleInput 组件结构，
+ * 消除 Antd Form.Item 的额外占位，保持视觉层级与边框表现 100% 相同。
  */
 export default function AccountSettings({ onClose }: { onClose: () => void }) {
-  const [form] = Form.useForm();
   const navigate = useNavigate();
+  const [username, setUsername] = useState(() => getUserInfo()?.username || "");
+  const [oldPassword, setOldPassword] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: updateCredentials,
@@ -58,79 +63,98 @@ export default function AccountSettings({ onClose }: { onClose: () => void }) {
     },
   });
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      const { confirmPassword: _, ...payload } = values;
-      await mutateAsync(payload);
-    } catch {
-      // 表单验证未通过
+  const handleConfirmSubmit = async () => {
+    if (!username.trim()) {
+      toastWarn("请输入账号");
+      return;
     }
+    if (!oldPassword) {
+      toastWarn("请输入旧密码");
+      return;
+    }
+    if (!password) {
+      toastWarn("请输入新密码");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toastWarn("两次输入的密码不一致");
+      return;
+    }
+
+    await mutateAsync({
+      username: username.trim(),
+      old_password: oldPassword,
+      password,
+    });
   };
 
   return (
-    <div className="max-w-xs">
-      <h3 className="text-[15px] font-semibold mb-3 text-[#1d1d1f]">账户设置</h3>
-      <Form form={form} layout="vertical" className="[&_.ant-form-item]:mb-3" initialValues={{ username: getUserInfo()?.username || "" }}>
-        <Form.Item
+    <div className="max-w-[340px]">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+        }}
+        className="space-y-3.5"
+      >
+        <AppleInput
           label="账号"
-          name="username"
-          rules={[{ required: true, message: "请输入账号" }]}
-        >
-          <Input placeholder="请输入新账号" />
-        </Form.Item>
+          required
+          value={username}
+          onChange={(val) => setUsername(val)}
+          placeholder="请输入新账号"
+        />
 
-        <Form.Item
+        <AppleInput
           label="旧密码"
-          name="old_password"
-          rules={[{ required: true, message: "请输入旧密码" }]}
-        >
-          <Input.Password placeholder="请输入当前密码" />
-        </Form.Item>
+          type="password"
+          required
+          fontMono={false}
+          value={oldPassword}
+          onChange={(val) => setOldPassword(val)}
+          placeholder="请输入当前密码"
+          allowTogglePassword
+        />
 
-        <Form.Item
+        <AppleInput
           label="新密码"
-          name="password"
-          rules={[{ required: true, message: "请输入新密码" }]}
-        >
-          <Input.Password placeholder="请输入新密码" />
-        </Form.Item>
+          type="password"
+          required
+          fontMono={false}
+          value={password}
+          onChange={(val) => setPassword(val)}
+          placeholder="请输入新密码"
+          allowTogglePassword
+        />
 
-        <Form.Item
+        <AppleInput
           label="确认密码"
-          name="confirmPassword"
-          dependencies={["password"]}
-          rules={[
-            { required: true, message: "请确认密码" },
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                if (!value || getFieldValue("password") === value) {
-                  return Promise.resolve();
-                }
-                return Promise.reject(new Error("两次输入的密码不一致"));
-              },
-            }),
-          ]}
-        >
-          <Input.Password placeholder="请再次输入密码" />
-        </Form.Item>
+          type="password"
+          required
+          fontMono={false}
+          value={confirmPassword}
+          onChange={(val) => setConfirmPassword(val)}
+          placeholder="请再次输入密码"
+          allowTogglePassword
+        />
 
-        <Popconfirm
-          title="确认修改"
-          description="修改账户信息后将自动退出登录，需要使用新凭据重新登录。"
-          okText="确认"
-          cancelText="取消"
-          onConfirm={handleSubmit}
-        >
-          <Button
-            type="primary"
-            loading={isPending}
-            className="mt-1"
+        <div className="pt-2">
+          <Popconfirm
+            title="确认修改"
+            description="修改账户信息后将自动退出登录，需要使用新凭据重新登录。"
+            okText="确认"
+            cancelText="取消"
+            onConfirm={handleConfirmSubmit}
           >
-            保存
-          </Button>
-        </Popconfirm>
-      </Form>
+            <button
+              type="button"
+              disabled={isPending}
+              className="apple-btn-capsule px-5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-semibold shadow-2xs cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {isPending ? "保存中..." : "保存"}
+            </button>
+          </Popconfirm>
+        </div>
+      </form>
     </div>
   );
 }

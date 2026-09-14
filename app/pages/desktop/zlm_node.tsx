@@ -9,7 +9,7 @@ import { Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { BaseNode } from "~/components/base-node";
 import { LabeledHandle } from "~/components/labeled-handle";
-import SettingsModal from "~/components/settings/settings_modal";
+import { useSettings } from "~/components/settings/settings_context";
 
 export type SumNode = Node<{
   value: number;
@@ -41,7 +41,7 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
     updateNodeData(id, { value: x + y });
   }, [x, y, id, updateNodeData]);
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { openSettings } = useSettings();
 
   return (
     <BaseNode className="w-52">
@@ -64,7 +64,7 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
           <button
             type="button"
             onClick={() => {
-              setSettingsOpen(true);
+              openSettings("stream");
             }}
             className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors cursor-pointer"
           >
@@ -107,12 +107,6 @@ export function ZLMNode({ id, data }: NodeProps<SumNode>) {
 
         {/* <LabeledHandle title="out" type="source" position={Position.Right} /> */}
       </footer>
-
-      <SettingsModal
-        open={settingsOpen}
-        initialKey="stream"
-        onClose={() => setSettingsOpen(false)}
-      />
     </BaseNode>
   );
 }

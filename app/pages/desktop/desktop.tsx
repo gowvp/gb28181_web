@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import SettingsModal from "~/components/settings/settings_modal";
+import { useSettings } from "~/components/settings/settings_context";
 import AppTour from "~/components/tour/app-tour";
 import FloorPlanEditor from "./floor_plan";
 import {
@@ -88,7 +88,7 @@ const SimpleNode = ({ data }: { data: any }) => {
  * 现场改端口/IP 是高频操作，点击直接唤起全局设置中的收流配置面板。
  */
 const ZLMNode = ({ data }: { data: any }) => {
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { openSettings } = useSettings();
   const { t } = useTranslation("desktop");
   const mediaType = data.item?.type || "zlm";
   const mediaImage =
@@ -128,9 +128,9 @@ const ZLMNode = ({ data }: { data: any }) => {
               type="button"
               data-tour-id="zlm-settings"
               onClick={() => {
-                setSettingsOpen(true);
+                openSettings("stream");
               }}
-              className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
+              className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors cursor-pointer select-none active:scale-95"
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -207,12 +207,6 @@ const ZLMNode = ({ data }: { data: any }) => {
           </div>
         </div>
       </div>
-
-      <SettingsModal
-        open={settingsOpen}
-        initialKey="stream"
-        onClose={() => setSettingsOpen(false)}
-      />
     </div>
   );
 };
@@ -223,7 +217,7 @@ const ZLMNode = ({ data }: { data: any }) => {
  */
 const GoWVPNode = ({ data }: { data: { version?: string } }) => {
   const { t } = useTranslation("desktop");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { openSettings } = useSettings();
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl shadow-md p-4 w-52 relative">
@@ -233,7 +227,7 @@ const GoWVPNode = ({ data }: { data: { version?: string } }) => {
           <Tooltip title="设置">
             <button
               type="button"
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => openSettings()}
               className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors"
             >
               <Settings className="w-5 h-5" />
@@ -322,8 +316,6 @@ const GoWVPNode = ({ data }: { data: { version?: string } }) => {
         </div>
       </div>
       </div>
-
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 };
@@ -646,7 +638,7 @@ function DesktopFab({ i18n, forceOpen, onOpenChange }: {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
   const [open, setOpenInternal] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { openSettings } = useSettings();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const setOpen = useCallback((v: boolean) => {
@@ -687,7 +679,7 @@ function DesktopFab({ i18n, forceOpen, onOpenChange }: {
       const next = i18n.language === "zh" ? "en" : "zh";
       i18n.changeLanguage(next);
     }},
-    { icon: Settings, label: "设置", action: () => { setSettingsOpen(true); }, tourId: "" },
+    { icon: Settings, label: "设置", action: () => { openSettings(); }, tourId: "" },
     { icon: Github, label: "Github", action: () => window.open("https://github.com/gowvp/gb28181"), tourId: "" },
     { icon: Sparkles, label: "Gitee", action: () => window.open("https://gitee.com/gowvp/gb28181"), tourId: "" },
   ];
@@ -756,8 +748,6 @@ function DesktopFab({ i18n, forceOpen, onOpenChange }: {
           </AvatarFallback>
         </Avatar>
       </button>
-
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

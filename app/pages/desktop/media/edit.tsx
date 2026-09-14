@@ -1,7 +1,8 @@
-import { Form, Input, Radio } from "antd";
+import { Form, Input } from "antd";
 import { ChevronDown } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CapsuleRadio } from "~/components/xui/capsule_radio";
 import { isDemoMode } from "~/components/settings/general_settings";
 import { EditSheet, type PFormProps } from "~/components/xui/edit-sheet";
 import { toastWarn } from "~/components/xui/toast";
@@ -135,14 +136,12 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
           rules={[{ required: true, message: t("input_required") }]}
           className="!mb-0"
         >
-          <Radio.Group
-            size="small"
-            optionType="button"
-            buttonStyle="solid"
-          >
-            <Radio.Button value="zlm" className="min-w-[72px] text-center">ZLM</Radio.Button>
-            <Radio.Button value="lalmax" className="min-w-[72px] text-center">Lalmax</Radio.Button>
-          </Radio.Group>
+          <CapsuleRadio
+            options={[
+              { label: "ZLM", value: "zlm", fontMono: true },
+              { label: "Lalmax", value: "lalmax", fontMono: true },
+            ]}
+          />
         </Form.Item>
       </div>
 

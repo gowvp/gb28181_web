@@ -222,3 +222,20 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   color: #424245 !important;
 }
+
+/* antd 输入框聚焦描边统一减细 */
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input:focus,
+.ant-input-focused {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) !important;
+}
+
+.apple-btn-capsule {
+  border-radius: 9999px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.apple-btn-capsule:active {
+  transform: scale(0.96);
+}
+

@@ -148,8 +148,8 @@ const data = {
     },
 
     {
-      name: "监控指标",
-      url: "home",
+      name: "快捷桌面",
+      url: "desktop",
       icon: SquareTerminal,
     },
 

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Form, Input, Radio, Spin } from "antd";
+import { Form, Input, Spin } from "antd";
 import { ChevronDown } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { CapsuleRadio } from "~/components/xui/capsule_radio";
 import { isDemoMode } from "~/components/settings/general_settings";
 import { toastSuccess, toastWarn } from "~/components/xui/toast";
 import {
@@ -19,8 +20,8 @@ interface AdvancedStreamOptionsProps {
 }
 
 /**
- * 为什么将收流配置的高级选项独立成子组件：
- * 保持主表单函数简洁在40行内，同时封装高级选择的折叠交互与网络地址字段。
+ * 将收流配置的高级选项独立成子组件：
+ * 保持主表单函数简洁，封装高级选择的折叠交互与网络地址字段。
  */
 function AdvancedStreamOptions({
   show,
@@ -45,7 +46,7 @@ function AdvancedStreamOptions({
       </div>
       <div style={{ display: show ? "block" : "none" }}>
         <Form.Item
-          label="ZLM IP"
+          label={<span className="text-xs font-semibold text-slate-700">ZLM IP</span>}
           name="ip"
           rules={[
             { required: true, message: t("input_required") },
@@ -53,11 +54,14 @@ function AdvancedStreamOptions({
           ]}
           tooltip={t("ip_desc")}
         >
-          <Input placeholder={t("input_ip_placeholder")} />
+          <Input
+            placeholder={t("input_ip_placeholder")}
+            className="!w-full !px-3 !py-2 !text-xs !bg-white !border-slate-200 !rounded-xl focus-within:!ring-2 focus-within:!ring-slate-900/10 focus-within:!border-slate-300 font-mono transition-all"
+          />
         </Form.Item>
 
         <Form.Item
-          label={t("hook_ip")}
+          label={<span className="text-xs font-semibold text-slate-700">{t("hook_ip")}</span>}
           name="hook_ip"
           rules={[
             { required: true, message: t("input_required") },
@@ -65,7 +69,10 @@ function AdvancedStreamOptions({
           ]}
           tooltip={t("hook_ip_desc")}
         >
-          <Input placeholder={t("input_hook_ip")} />
+          <Input
+            placeholder={t("input_hook_ip")}
+            className="!w-full !px-3 !py-2 !text-xs !bg-white !border-slate-200 !rounded-xl focus-within:!ring-2 focus-within:!ring-slate-900/10 focus-within:!border-slate-300 font-mono transition-all"
+          />
         </Form.Item>
       </div>
     </>
@@ -73,7 +80,7 @@ function AdvancedStreamOptions({
 }
 
 /**
- * 为什么封装收流配置的保存逻辑：
+ * 封装收流配置的保存逻辑：
  * 集中管理演示模式校验、接口提交及成功后的缓存刷新与提示。
  */
 function useStreamSettingsMutation(onSuccessCallback?: () => void) {
@@ -103,8 +110,8 @@ function useStreamSettingsMutation(onSuccessCallback?: () => void) {
 }
 
 /**
- * 为什么在设置中提供收流配置面板：
- * 将原本分散在流媒体节点的配置统一收敛至全局设置中，方便集中运维与参数修改。
+ * 收流配置面板
+ * 应用统一的 Apple 质感输入框、CapsuleRadio 胶囊单选及药丸按钮。
  */
 export default function StreamSettings() {
   const { t } = useTranslation("common");
@@ -150,15 +157,10 @@ export default function StreamSettings() {
 
   return (
     <div>
-      <h3 className="text-base font-medium mb-1">收流配置</h3>
-      <p className="text-xs text-gray-500 mb-4">
-        配置流媒体服务接入参数，管理国标收流与回调用网络地址
-      </p>
-
       <Form
         form={form}
         layout="vertical"
-        className="[&_.ant-form-item]:mb-3 max-w-lg"
+        className="[&_.ant-form-item]:mb-3.5 max-w-lg"
         onFinish={handleFinish}
         onFinishFailed={handleFinishFailed}
       >
@@ -166,10 +168,10 @@ export default function StreamSettings() {
           <Input />
         </Form.Item>
 
-        <div className="flex items-center justify-between py-3 mb-2">
+        <div className="flex items-center justify-between pb-3 mb-1 border-b border-slate-100">
           <div>
-            <div className="text-sm font-medium text-gray-900">{t("media_type")}</div>
-            <div className="text-xs text-gray-500 mt-0.5">
+            <div className="text-xs font-semibold text-slate-800">{t("media_type")}</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
               {t("media_type_desc")}
             </div>
           </div>
@@ -179,19 +181,17 @@ export default function StreamSettings() {
             rules={[{ required: true, message: t("input_required") }]}
             className="!mb-0"
           >
-            <Radio.Group
-              size="small"
-              optionType="button"
-              buttonStyle="solid"
-            >
-              <Radio.Button value="zlm" className="min-w-[72px] text-center">ZLM</Radio.Button>
-              <Radio.Button value="lalmax" className="min-w-[72px] text-center">Lalmax</Radio.Button>
-            </Radio.Group>
+            <CapsuleRadio
+              options={[
+                { label: "ZLM", value: "zlm", fontMono: true },
+                { label: "Lalmax", value: "lalmax", fontMono: true },
+              ]}
+            />
           </Form.Item>
         </div>
 
         <Form.Item
-          label={t("api_secret")}
+          label={<span className="text-xs font-semibold text-slate-700">{t("api_secret")}</span>}
           name="secret"
           rules={[
             { required: true, message: t("input_required") },
@@ -199,18 +199,24 @@ export default function StreamSettings() {
           ]}
           tooltip={t("api_secret_desc")}
         >
-          <Input placeholder={t("input_api_secret")} />
+          <Input.Password
+            placeholder={t("input_api_secret")}
+            className="!w-full !px-3 !py-2 !text-xs !bg-white !border-slate-200 !rounded-xl focus-within:!ring-2 focus-within:!ring-slate-900/10 focus-within:!border-slate-300 font-mono transition-all"
+          />
         </Form.Item>
 
         <Form.Item
-          label={t("gb_receive_address")}
+          label={<span className="text-xs font-semibold text-slate-700">{t("gb_receive_address")}</span>}
           name="sdp_ip"
           rules={[
             { required: true, message: t("input_required") },
             { min: 2, max: 20, message: t("address_length") },
           ]}
         >
-          <Input placeholder={t("input_gb_address", "请输入 IP 或 域名")} />
+          <Input
+            placeholder={t("input_gb_address", "请输入 IP 或 域名")}
+            className="!w-full !px-3 !py-2 !text-xs !bg-white !border-slate-200 !rounded-xl focus-within:!ring-2 focus-within:!ring-slate-900/10 focus-within:!border-slate-300 font-mono transition-all"
+          />
         </Form.Item>
 
         <AdvancedStreamOptions
@@ -223,7 +229,7 @@ export default function StreamSettings() {
           <button
             type="submit"
             disabled={isPending}
-            className="px-4 py-2 text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 rounded-lg transition-colors cursor-pointer"
+            className="apple-btn-capsule px-5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-semibold shadow-2xs cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50"
           >
             {isPending ? "保存中..." : "保存"}
           </button>

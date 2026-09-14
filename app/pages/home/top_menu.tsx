@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import SettingsModal from "~/components/settings/settings_modal";
+import { useSettings } from "~/components/settings/settings_context";
 import { LanguageSwitcher } from "~/components/language-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
@@ -157,7 +157,7 @@ function TopMenuUser({
   const navigate = useNavigate();
   const { t } = useTranslation("common");
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const { openSettings } = useSettings();
 
   return (
     <>
@@ -195,7 +195,7 @@ function TopMenuUser({
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+            <DropdownMenuItem onClick={() => openSettings()}>
               <Settings className="mr-2 h-4 w-4" />
               设置
             </DropdownMenuItem>
@@ -236,8 +236,6 @@ function TopMenuUser({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 }

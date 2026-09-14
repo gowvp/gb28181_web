@@ -8,6 +8,7 @@ import Player, { type PlayerRef } from "~/components/player/player";
 import { AspectRatio } from "~/components/ui/aspect-ratio";
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
+import { Tooltip } from "antd";
 import { copy2Clipboard } from "~/components/util/copy";
 import { PTZPanel } from "~/components/ptz-control/ptz-panel";
 import { usePlayerLayout } from "~/hooks/use-player-layout";
@@ -35,6 +36,10 @@ export default function PlayDrawer({
   const navigate = useNavigate();
   const deviceDetailRef = useRef<DeviceDetailViewRef>(null);
   const [actionBarPortal, setActionBarPortal] = useState<HTMLDivElement | null>(null);
+  const [copiedProtocol, setCopiedProtocol] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const copyLinkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [currentChannelId, setCurrentChannelId] = useState<string>("");
   const [currentChannelDeviceId, setCurrentChannelDeviceId] = useState<string>("");
@@ -43,6 +48,17 @@ export default function PlayDrawer({
   const [currentChannelType, setCurrentChannelType] = useState<string>("");
   const [currentChannelPtztype, setCurrentChannelPtztype] = useState<number>(0);
   const [selectedProtocol, setSelectedProtocol] = useState("WebRTC");
+
+  React.useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      if (copyLinkTimeoutRef.current) {
+        clearTimeout(copyLinkTimeoutRef.current);
+      }
+    };
+  }, []);
   // 协议选择器收缩/展开状态 - 从 localStorage 读取，默认收缩
   const [protocolsExpanded, setProtocolsExpanded] = useState(() => {
     if (typeof window !== "undefined") {
@@ -219,18 +235,55 @@ export default function PlayDrawer({
                   />
                   <button
                     type="button"
-                    title="复制地址"
                     aria-label="复制地址"
                     disabled={!link}
-                    className="absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-[#6e6e73] transition-colors hover:bg-black/[0.06] hover:text-[#1d1d1f] disabled:pointer-events-none disabled:opacity-40"
-                    onClick={() =>
-                      copy2Clipboard(link, {
-                        title: t("stream_address_copied"),
-                        description: link,
-                      })
-                    }
+                    className={`absolute right-1 top-1 inline-flex h-6 w-6 items-center justify-center rounded-full transition-all duration-300 ease-out disabled:pointer-events-none disabled:opacity-40 cursor-pointer ${
+                      copiedLink
+                        ? "bg-[#1d1d1f] text-white shadow-xs scale-[1.05]"
+                        : "text-[#6e6e73] hover:bg-black/[0.06] hover:text-[#1d1d1f]"
+                    }`}
+                    onClick={() => {
+                      if (!link) return;
+                      copy2Clipboard(link);
+                      setCopiedLink(true);
+                      if (copyLinkTimeoutRef.current) {
+                        clearTimeout(copyLinkTimeoutRef.current);
+                      }
+                      copyLinkTimeoutRef.current = setTimeout(() => {
+                        setCopiedLink(false);
+                      }, 1000);
+                    }}
                   >
-                    <Copy className="h-3.5 w-3.5" />
+                    {copiedLink ? (
+                      <svg
+                        className="w-3.5 h-3.5 shrink-0 animate-in zoom-in-75 duration-200"
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                      >
+                        <defs>
+                          <mask id="copy-check-mask-link">
+                            <rect width="16" height="16" fill="white" />
+                            <path
+                              d="M4.5 8.2L6.8 10.5L11.5 5.5"
+                              fill="none"
+                              stroke="black"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </mask>
+                        </defs>
+                        <circle
+                          cx="8"
+                          cy="8"
+                          r="8"
+                          fill="white"
+                          mask="url(#copy-check-mask-link)"
+                        />
+                      </svg>
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -265,37 +318,82 @@ export default function PlayDrawer({
                       addr: getStream()?.rtsp ?? "",
                       copy: true,
                     },
-                  ].map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      title={item.copy ? "点击复制" : undefined}
-                      className={`inline-flex h-6 items-center justify-center rounded-full border px-2.5 text-[10px] font-semibold tracking-wide transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 ${
-                        item.addr === link
-                          ? "bg-[#1d1d1f] text-white border-[#1d1d1f] hover:bg-[#1d1d1f]/90 hover:text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
-                          : "bg-[#f5f5f7] border-black/[0.06] text-[#6e6e73]"
-                      }`}
-                      disabled={!item.addr}
-                      onClick={() => {
-                        if (!item.addr) return;
+                  ].map((item) => {
+                    const buttonElement = (
+                      <button
+                        key={item.name}
+                        type="button"
+                        className={`inline-flex h-6 items-center justify-center rounded-full border px-2.5 text-[10px] font-semibold tracking-wide transition-all duration-300 ease-out disabled:pointer-events-none disabled:opacity-50 ${
+                          copiedProtocol === item.name
+                            ? "bg-[#1d1d1f] border-[#1d1d1f] text-white shadow-[0_2px_8px_rgba(0,0,0,0.25)] scale-[1.02]"
+                            : item.addr === link
+                            ? "bg-[#1d1d1f] text-white border-[#1d1d1f] hover:bg-[#1d1d1f]/90 hover:text-white shadow-[0_1px_4px_rgba(0,0,0,0.12)]"
+                            : "bg-[#f5f5f7] border-black/[0.06] text-[#6e6e73]"
+                        }`}
+                        disabled={!item.addr}
+                        onClick={() => {
+                          if (!item.addr) return;
 
                           if (item.copy === true) {
-                            copy2Clipboard(item.addr, {
-                              title: t("stream_address_copied"),
-                              description: item.addr,
-                            });
+                            copy2Clipboard(item.addr);
+                            setCopiedProtocol(item.name);
+                            if (copyTimeoutRef.current) {
+                              clearTimeout(copyTimeoutRef.current);
+                            }
+                            copyTimeoutRef.current = setTimeout(() => {
+                              setCopiedProtocol(null);
+                            }, 1000);
                             return;
                           }
 
-                        playRef.current?.play(item.addr);
-                        setLink(item.addr);
-                        setSelectedProtocol(item.name);
-                      }}
-                    >
-                      {item.copy && <Copy className="hidden sm:inline w-4 h-4 mr-1" />}
-                      {item.name}
-                    </button>
-                  ))}
+                          playRef.current?.play(item.addr);
+                          setLink(item.addr);
+                          setSelectedProtocol(item.name);
+                        }}
+                      >
+                        {item.copy &&
+                          (copiedProtocol === item.name ? (
+                            <svg
+                              className="w-3.5 h-3.5 mr-1 shrink-0 animate-in zoom-in-75 duration-200"
+                              viewBox="0 0 16 16"
+                              aria-hidden="true"
+                            >
+                              <defs>
+                                <mask id={`copy-check-mask-${item.name}`}>
+                                  <rect width="16" height="16" fill="white" />
+                                  <path
+                                    d="M4.5 8.2L6.8 10.5L11.5 5.5"
+                                    fill="none"
+                                    stroke="black"
+                                    strokeWidth="2.2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </mask>
+                              </defs>
+                              <circle
+                                cx="8"
+                                cy="8"
+                                r="8"
+                                fill="white"
+                                mask={`url(#copy-check-mask-${item.name})`}
+                              />
+                            </svg>
+                          ) : (
+                            <Copy className="hidden sm:inline w-3.5 h-3.5 mr-1" />
+                          ))}
+                        {item.name}
+                      </button>
+                    );
+
+                    return item.copy ? (
+                      <Tooltip key={item.name} title="点击复制" mouseEnterDelay={0.15}>
+                        {buttonElement}
+                      </Tooltip>
+                    ) : (
+                      buttonElement
+                    );
+                  })}
                 </div>
               </div>
 

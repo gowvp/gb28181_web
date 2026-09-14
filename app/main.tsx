@@ -5,11 +5,13 @@ import ReactDOM from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import {
   createBrowserRouter,
+  Navigate,
   Outlet,
   RouterProvider,
 } from "react-router";
 import { Toaster } from "~/components/ui/sonner";
 import { DrawerCSSProvider } from "~/components/xui/drawer";
+import { SettingsProvider } from "~/components/settings/settings_context";
 import {
   LOGIN_PAGE_KEY,
   LOGIN_PAGE_STORAGE_KEY,
@@ -23,7 +25,6 @@ import "./app.css";
 
 import ChannelView from "~/pages/channel/channel";
 import ChannelsView from "~/pages/channels/channels";
-import DashboardView from "~/pages/dashboard/dashboard";
 import DesktopView from "~/pages/desktop/desktop";
 import ConfigView from "~/pages/device/config/config";
 import DeviceView from "~/pages/device/device";
@@ -84,7 +85,9 @@ function RootLayout() {
         >
           <AntdApp>
             <DrawerCSSProvider>
-              <Outlet />
+              <SettingsProvider>
+                <Outlet />
+              </SettingsProvider>
             </DrawerCSSProvider>
           </AntdApp>
         </ConfigProvider>
@@ -113,7 +116,7 @@ const router = createBrowserRouter(
         {
           element: <HomeLayout />,
           children: [
-            { path: "home", element: <DashboardView /> },
+            { path: "home", element: <Navigate to="/desktop" replace /> },
             { path: "devices", element: <DeviceView /> },
             { path: "rtmps", element: <RtmpView /> },
             { path: "rtsps", element: <RtspView /> },

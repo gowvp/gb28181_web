@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
-import { useState } from "react";
-import SettingsModal from "~/components/settings/settings_modal";
+import { useSettings } from "~/components/settings/settings_context";
 import {
   FindMediaServers,
   findMediaServersKey,
@@ -19,7 +18,7 @@ export function MediaServerCard() {
   });
 
   const item = data?.data.items[0];
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { openSettings } = useSettings();
   return (
     <div>
       <div className="h-auto w-full max-w-[150px] max-h-[150px] relative">
@@ -70,7 +69,7 @@ export function MediaServerCard() {
             <button
               type="button"
               onClick={() => {
-                setSettingsOpen(true);
+                openSettings("stream");
               }}
               className="bg-black/50 backdrop-blur-sm text-white p-0.5 rounded-full hover:bg-black/70 transition-colors cursor-pointer"
             >
@@ -87,12 +86,6 @@ export function MediaServerCard() {
           </div>
         </div>
       </div>
-
-      <SettingsModal
-        open={settingsOpen}
-        initialKey="stream"
-        onClose={() => setSettingsOpen(false)}
-      />
     </div>
   );
 }
