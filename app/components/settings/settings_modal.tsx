@@ -1,6 +1,7 @@
-import { KeyRound, Radio, Settings, SlidersHorizontal } from "lucide-react";
+import { Info, KeyRound, Radio, Settings, SlidersHorizontal } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { NetworkModalShell } from "~/components/network/network_modal_shell";
+import AboutSettings from "./about_settings";
 import AccountSettings from "./account_settings";
 import GeneralSettings from "./general_settings";
 import StreamSettings from "./stream_settings";
@@ -10,6 +11,7 @@ const menuItems = [
   { key: "account" as const, label: "账户设置", icon: KeyRound },
   { key: "stream" as const, label: "收流配置", icon: Radio },
   { key: "general" as const, label: "基础配置", icon: SlidersHorizontal },
+  { key: "about" as const, label: "关于", icon: Info },
 ];
 
 export type MenuKey = (typeof menuItems)[number]["key"];
@@ -76,6 +78,7 @@ export default function SettingsModal({
           {activeKey === "account" && <AccountSettings onClose={onClose} />}
           {activeKey === "stream" && <StreamSettings />}
           {activeKey === "general" && <GeneralSettings />}
+          {activeKey === "about" && <AboutSettings />}
         </div>
       </div>
     </NetworkModalShell>
