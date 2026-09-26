@@ -11,7 +11,7 @@ const menuItems = [
   { key: "account" as const, label: "账户设置", icon: KeyRound },
   { key: "stream" as const, label: "收流配置", icon: Radio },
   { key: "general" as const, label: "基础配置", icon: SlidersHorizontal },
-  { key: "about" as const, label: "关于", icon: Info },
+  { key: "about" as const, label: "关于OWL", icon: Info },
 ];
 
 export type MenuKey = (typeof menuItems)[number]["key"];
