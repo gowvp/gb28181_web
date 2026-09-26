@@ -10,6 +10,7 @@ import {
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "~/components/settings/settings_context";
+import { logout } from "~/service/api/user/user";
 import { LanguageSwitcher } from "~/components/language-switcher";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
@@ -221,7 +222,7 @@ function TopMenuUser({
             onClick={async () => {
               setIsLoggingOut(true);
               setTimeout(() => {
-                localStorage.removeItem("token");
+                logout();
                 navigate("/");
                 setIsLoggingOut(false);
               }, 400);

@@ -42,6 +42,7 @@ import {
   findMediaServersKey,
 } from "~/service/api/media/media";
 import { checkVersion, checkVersionKey } from "~/service/api/version/version";
+import { logout } from "~/service/api/user/user";
 import { ErrorHandle } from "~/service/config/error";
 
 // ── 节点组件 ──────────────────────────
@@ -718,7 +719,7 @@ function DesktopFab({ i18n, forceOpen, onOpenChange }: {
           <button
             type="button"
             onClick={() => {
-              localStorage.removeItem("token");
+              logout();
               navigate("/");
             }}
             className="flex items-center gap-2.5 w-full mx-1.5 px-2.5 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"

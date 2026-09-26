@@ -6,7 +6,7 @@ import { AppleInput } from "~/components/xui/apple_input";
 import { toastSuccess, toastWarn } from "~/components/xui/toast";
 import { PUT } from "~/service/config/http";
 import { ErrorHandle } from "~/service/config/error";
-import { getPublicKey, getUserInfo } from "~/service/api/user/user";
+import { getPublicKey, getUserInfo, logout } from "~/service/api/user/user";
 
 interface UpdateCredentialsResponse {
   msg: string;
@@ -56,8 +56,7 @@ export default function AccountSettings({ onClose }: { onClose: () => void }) {
     onError: ErrorHandle,
     onSuccess: () => {
       toastSuccess("凭据更新成功");
-      localStorage.removeItem("GOWVP_TOKEN");
-      localStorage.removeItem("user");
+      logout();
       onClose();
       navigate("/");
     },

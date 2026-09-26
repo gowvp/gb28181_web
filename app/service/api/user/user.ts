@@ -1,4 +1,5 @@
 import { GET, POST, TokenStr } from "../../config/http";
+import { clearAutoToken } from "./auto_login";
 import type {
   LoginRequest,
   LoginResponse,
@@ -29,9 +30,11 @@ async function encryptWithRSA(
 }
 
 // 登录接口，先获取公钥加密凭证后发送
+// autoLogin 为 true 时服务端签发长效 token（至第 7 天凌晨 5 点），供短期自动登录使用
 export async function login(data: {
   username: string;
   password: string;
+  autoLogin?: boolean;
 }): Promise<LoginResponse> {
   // 获取服务器公钥（返回的是 base64 编码的 PEM 字符串）
   const { key: base64PemKey } = await getPublicKey();
@@ -43,6 +46,7 @@ export async function login(data: {
   const credentials = JSON.stringify({
     username: data.username,
     password: data.password,
+    auto_login: data.autoLogin === true,
   });
 
   // 使用 node-forge 进行 RSA-OAEP 加密
@@ -63,10 +67,11 @@ export async function login(data: {
   return result;
 }
 
-// 登出
+// 登出：清除会话 token 与短期自动登录凭据，保留记住的用户名
 export function logout(): void {
   localStorage.removeItem(TokenStr);
   localStorage.removeItem("user");
+  clearAutoToken();
 }
 
 // 获取用户信息

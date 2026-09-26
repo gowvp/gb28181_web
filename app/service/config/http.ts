@@ -192,4 +192,6 @@ export function GetToken() {
 
 export function CleanLoginStoreage() {
   localStorage.removeItem(TokenStr);
+  // 被动登出（401/403）一并清除短期自动登录凭据，避免过期凭据反复触发自动登录
+  localStorage.removeItem("GOWVP_AUTO_TOKEN");
 }

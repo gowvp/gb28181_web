@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router";
 import { ChevronsUpDown, Github, LogOut, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { logout } from "~/service/api/user/user";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   DropdownMenu,
@@ -106,7 +107,7 @@ export function NavUser({
               onClick={async () => {
                 setIsLoggingOut(true);
                 setTimeout(() => {
-                  localStorage.removeItem("token");
+                  logout();
                   navigate("/");
                   setIsLoggingOut(false);
                 }, 400);
