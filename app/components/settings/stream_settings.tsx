@@ -45,6 +45,28 @@ function AdvancedStreamOptions({
         </button>
       </div>
       <div style={{ display: show ? "block" : "none" }}>
+        <div className="flex items-center justify-between pb-3 mb-1 border-b border-slate-100">
+          <div>
+            <div className="text-xs font-semibold text-slate-800">{t("media_type")}</div>
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              {t("media_type_desc")}
+            </div>
+          </div>
+          <Form.Item
+            name="type"
+            initialValue="zlm"
+            rules={[{ required: true, message: t("input_required") }]}
+            className="!mb-0"
+          >
+            <CapsuleRadio
+              options={[
+                { label: "ZLM", value: "zlm", fontMono: true },
+                { label: "Lalmax", value: "lalmax", fontMono: true },
+              ]}
+            />
+          </Form.Item>
+        </div>
+
         <Form.Item
           label={<span className="text-xs font-semibold text-slate-700">ZLM IP</span>}
           name="ip"
@@ -140,7 +162,9 @@ export default function StreamSettings() {
 
   const handleFinishFailed = (errorInfo: any) => {
     const hasAdvancedError = errorInfo?.errorFields?.some((item: any) =>
-      item.name?.some((name: string) => name === "ip" || name === "hook_ip"),
+      item.name?.some(
+        (name: string) => name === "ip" || name === "hook_ip" || name === "type",
+      ),
     );
     if (hasAdvancedError) {
       setShowAdvanced(true);
@@ -168,27 +192,19 @@ export default function StreamSettings() {
           <Input />
         </Form.Item>
 
-        <div className="flex items-center justify-between pb-3 mb-1 border-b border-slate-100">
-          <div>
-            <div className="text-xs font-semibold text-slate-800">{t("media_type")}</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">
-              {t("media_type_desc")}
-            </div>
-          </div>
-          <Form.Item
-            name="type"
-            initialValue="zlm"
-            rules={[{ required: true, message: t("input_required") }]}
-            className="!mb-0"
-          >
-            <CapsuleRadio
-              options={[
-                { label: "ZLM", value: "zlm", fontMono: true },
-                { label: "Lalmax", value: "lalmax", fontMono: true },
-              ]}
-            />
-          </Form.Item>
-        </div>
+        <Form.Item
+          label={<span className="text-xs font-semibold text-slate-700">{t("gb_receive_address")}</span>}
+          name="sdp_ip"
+          rules={[
+            { required: true, message: t("input_required") },
+            { min: 2, max: 20, message: t("address_length") },
+          ]}
+        >
+          <Input
+            placeholder={t("input_gb_address", "请输入 IP 或 域名")}
+            className="!w-full !px-3 !py-2 !text-xs !bg-white !border-slate-200 !rounded-xl focus-within:!ring-2 focus-within:!ring-slate-900/10 focus-within:!border-slate-300 font-mono transition-all"
+          />
+        </Form.Item>
 
         <Form.Item
           label={<span className="text-xs font-semibold text-slate-700">{t("api_secret")}</span>}
@@ -201,20 +217,6 @@ export default function StreamSettings() {
         >
           <Input.Password
             placeholder={t("input_api_secret")}
-            className="!w-full !px-3 !py-2 !text-xs !bg-white !border-slate-200 !rounded-xl focus-within:!ring-2 focus-within:!ring-slate-900/10 focus-within:!border-slate-300 font-mono transition-all"
-          />
-        </Form.Item>
-
-        <Form.Item
-          label={<span className="text-xs font-semibold text-slate-700">{t("gb_receive_address")}</span>}
-          name="sdp_ip"
-          rules={[
-            { required: true, message: t("input_required") },
-            { min: 2, max: 20, message: t("address_length") },
-          ]}
-        >
-          <Input
-            placeholder={t("input_gb_address", "请输入 IP 或 域名")}
             className="!w-full !px-3 !py-2 !text-xs !bg-white !border-slate-200 !rounded-xl focus-within:!ring-2 focus-within:!ring-slate-900/10 focus-within:!border-slate-300 font-mono transition-all"
           />
         </Form.Item>
