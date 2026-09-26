@@ -106,8 +106,12 @@ export function EditForm({ onAddSuccess, onEditSuccess, ref }: PFormProps) {
         hidden={isOnvif}
       >
         <Radio.Group size="middle">
-          <Radio.Button value={0}>{t("udp")}</Radio.Button>
-          <Radio.Button value={1}>{t("tcp_passive")}</Radio.Button>
+          <Radio.Button value={1} className="!font-bold">
+            {t("tcp_passive")}
+          </Radio.Button>
+          <Radio.Button value={0} className="!px-6">
+            {t("udp")}
+          </Radio.Button>
           <Radio.Button value={2}>{t("tcp_active")}</Radio.Button>
         </Radio.Group>
       </Form.Item>
