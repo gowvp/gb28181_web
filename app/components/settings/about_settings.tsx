@@ -57,38 +57,44 @@ export default function AboutSettings() {
         </div>
       </div>
 
-      {/* 链接图标：仅图标，点击跳转 */}
+      {/* 链接图标：仅图标，悬停显示名称，点击跳转 */}
       <div className="flex items-center justify-center gap-5 py-2">
         <a
           href={GITHUB_URL}
           target="_blank"
           rel="noreferrer"
-          title="GitHub"
-          className="text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+          className="group relative text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <GithubBrandIcon className="w-6 h-6" />
+          <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+            GitHub
+          </span>
         </a>
         <a
           href={GITEE_URL}
           target="_blank"
           rel="noreferrer"
-          title="Gitee"
-          className="hover:opacity-80 transition-opacity cursor-pointer"
+          className="group relative hover:opacity-80 transition-opacity cursor-pointer"
         >
           <GiteeIcon className="w-6 h-6" />
+          <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+            Gitee
+          </span>
         </a>
         <a
           href={BILIBILI_URL}
           target="_blank"
           rel="noreferrer"
-          title="哔哩哔哩视频教程"
-          className="hover:opacity-80 transition-opacity cursor-pointer"
+          className="group relative hover:opacity-80 transition-opacity cursor-pointer"
         >
           <img
             src="./assets/imgs/bilibili.png"
             alt="bilibili"
             className="w-6 h-6 rounded-md"
           />
+          <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-0.5 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">
+            视频教程
+          </span>
         </a>
       </div>
 
