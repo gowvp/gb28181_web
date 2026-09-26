@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { SquareArrowOutUpRight } from "lucide-react";
 import { checkVersion, checkVersionKey } from "~/service/api/version/version";
 
 /** 项目相关链接常量 */
@@ -30,33 +29,9 @@ function GithubBrandIcon({ className }: { className?: string }) {
   );
 }
 
-interface AboutLinkItemProps {
-  icon: React.ReactNode;
-  label: string;
-  url: string;
-}
-
-/** 关于面板的单个链接卡片：整卡可点击跳转外链 */
-function AboutLinkItem({ icon, label, url }: AboutLinkItemProps) {
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-50 transition-colors group cursor-pointer"
-    >
-      <span className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700 transition-all shrink-0 overflow-hidden">
-        {icon}
-      </span>
-      <div className="text-xs font-semibold text-slate-800">{label}</div>
-      <SquareArrowOutUpRight className="w-3.5 h-3.5 ml-auto text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
-    </a>
-  );
-}
-
 /**
  * 关于面板：
- * 顶部 OWL 品牌区（logo + 标题 + 版本号），下方为项目链接与版权信息。
+ * 顶部 OWL 品牌区（logo + 标题 + 版本号），中部链接图标，底部版权。
  */
 export default function AboutSettings() {
   const { data: versionInfo } = useQuery({
@@ -68,7 +43,7 @@ export default function AboutSettings() {
   return (
     <div className="max-w-lg">
       {/* OWL 品牌区 */}
-      <div className="flex flex-col items-center pt-2 pb-5">
+      <div className="flex flex-col items-center pt-2 pb-4">
         <img
           src="./assets/imgs/logo.avif"
           alt="OWL"
@@ -82,43 +57,52 @@ export default function AboutSettings() {
         </div>
       </div>
 
-      <div className="space-y-1">
-        <AboutLinkItem
-          icon={<GithubBrandIcon className="w-4 h-4" />}
-          label="GitHub"
-          url={GITHUB_URL}
-        />
-        <AboutLinkItem
-          icon={<GiteeIcon className="w-4 h-4" />}
-          label="Gitee"
-          url={GITEE_URL}
-        />
-        <AboutLinkItem
-          icon={
-            <img
-              src="./assets/imgs/bilibili.png"
-              alt="bilibili"
-              className="w-full h-full object-cover"
-            />
-          }
-          label="哔哩哔哩视频教程"
-          url={BILIBILI_URL}
-        />
+      {/* 链接图标：仅图标，点击跳转 */}
+      <div className="flex items-center justify-center gap-5 py-2">
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="GitHub"
+          className="text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+        >
+          <GithubBrandIcon className="w-6 h-6" />
+        </a>
+        <a
+          href={GITEE_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="Gitee"
+          className="hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          <GiteeIcon className="w-6 h-6" />
+        </a>
+        <a
+          href={BILIBILI_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="哔哩哔哩视频教程"
+          className="hover:opacity-80 transition-opacity cursor-pointer"
+        >
+          <img
+            src="./assets/imgs/bilibili.png"
+            alt="bilibili"
+            className="w-6 h-6 rounded-md"
+          />
+        </a>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-slate-100 text-center">
-        <div className="text-[11px] text-slate-400">
-          ©{" "}
-          <a
-            href={AUTHOR_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="text-blue-500 hover:underline"
-          >
-            ixugo
-          </a>{" "}
-          2024~2026
-        </div>
+      <div className="pt-3 text-center text-[11px] text-slate-400">
+        ©{" "}
+        <a
+          href={AUTHOR_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="hover:text-slate-600 transition-colors"
+        >
+          ixugo
+        </a>{" "}
+        2024~2026
       </div>
     </div>
   );
