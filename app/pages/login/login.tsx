@@ -177,7 +177,10 @@ export default function LoginView() {
       setAutoPhase(1);
       const verifyStart = Date.now();
       try {
-        const baseURL = import.meta.env.VITE_API_BASE_URL || "/api";
+        const baseURL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
+          /\/+$/,
+          "",
+        );
         const resp = await fetch(`${baseURL}/configs/info`, {
           headers: { authorization: `Bearer ${token}` },
           signal: abort.signal,
