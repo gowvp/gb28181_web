@@ -9,6 +9,9 @@ const REMEMBERED_USER_KEY = "GOWVP_USER";
 
 // PBKDF2 固定盐：仅用于派生本地加密密钥，不作为安全边界
 const KDF_SALT = "gowvp-auto-login-v1";
+const KDF_ITERATIONS = 100_000;
+const KEY_BYTES = 32;
+const GCM_TAG_BYTES = 16;
 
 async function deriveKey(username: string): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey(
@@ -22,14 +25,36 @@ async function deriveKey(username: string): Promise<CryptoKey> {
     {
       name: "PBKDF2",
       salt: new TextEncoder().encode(KDF_SALT),
-      iterations: 100_000,
+      iterations: KDF_ITERATIONS,
       hash: "SHA-256",
     },
     material,
-    { name: "AES-GCM", length: 256 },
+    { name: "AES-GCM", length: KEY_BYTES * 8 },
     false,
     ["encrypt", "decrypt"],
   );
+}
+
+// 普通 HTTP 环境没有 SubtleCrypto；复用已有依赖，保持 PBKDF2 与 AES-GCM 格式一致。
+async function createCompatibleCipher(username: string, decrypt = false) {
+  const forge = (await import("node-forge")).default;
+  const key = await new Promise<string>((resolve, reject) => {
+    forge.pkcs5.pbkdf2(
+      forge.util.encodeUtf8(username),
+      KDF_SALT,
+      KDF_ITERATIONS,
+      KEY_BYTES,
+      forge.md.sha256.create(),
+      (error, derived) => {
+        if (error) reject(error);
+        else resolve(derived);
+      },
+    );
+  });
+  const cipher = decrypt
+    ? forge.cipher.createDecipher("AES-GCM", key)
+    : forge.cipher.createCipher("AES-GCM", key);
+  return { forge, cipher };
 }
 
 function toBase64(buf: ArrayBuffer): string {
@@ -45,8 +70,19 @@ export async function saveAutoToken(
   username: string,
   token: string,
 ): Promise<void> {
-  const key = await deriveKey(username);
   const iv = crypto.getRandomValues(new Uint8Array(12));
+  if (!crypto.subtle) {
+    const { forge, cipher } = await createCompatibleCipher(username);
+    cipher.start({ iv: String.fromCharCode(...iv) });
+    cipher.update(forge.util.createBuffer(token, "utf8"));
+    if (!cipher.finish()) throw new Error("自动登录凭据加密失败");
+    localStorage.setItem(
+      AUTO_TOKEN_KEY,
+      `${toBase64(iv.buffer)}.${forge.util.encode64(cipher.output.getBytes() + cipher.mode.tag.getBytes())}`,
+    );
+    return;
+  }
+  const key = await deriveKey(username);
   const cipher = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     key,
@@ -65,6 +101,19 @@ export async function loadAutoToken(username: string): Promise<string | null> {
   const [ivB64, cipherB64] = raw.split(".");
   if (!ivB64 || !cipherB64) return null;
   try {
+    if (!crypto.subtle) {
+      const { forge, cipher } = await createCompatibleCipher(username, true);
+      const encrypted = forge.util.decode64(cipherB64);
+      cipher.start({
+        iv: forge.util.decode64(ivB64),
+        tag: forge.util.createBuffer(encrypted.slice(-GCM_TAG_BYTES)),
+      });
+      cipher.update(
+        forge.util.createBuffer(encrypted.slice(0, -GCM_TAG_BYTES)),
+      );
+      if (!cipher.finish()) return null;
+      return forge.util.decodeUtf8(cipher.output.getBytes());
+    }
     const key = await deriveKey(username);
     const plain = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv: fromBase64(ivB64) as BufferSource },
