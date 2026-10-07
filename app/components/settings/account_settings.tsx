@@ -4,40 +4,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AppleInput } from "~/components/xui/apple_input";
 import { toastSuccess, toastWarn } from "~/components/xui/toast";
-import { PUT } from "~/service/config/http";
+import {
+  getUserInfo,
+  logout,
+  updateCredentials,
+} from "~/service/api/user/user";
 import { ErrorHandle } from "~/service/config/error";
-import { getPublicKey, getUserInfo, logout } from "~/service/api/user/user";
-
-interface UpdateCredentialsResponse {
-  msg: string;
-}
-
-/** 使用动态导入加载 node-forge 进行 RSA-OAEP 加密 */
-async function encryptWithRSA(
-  publicKeyPem: string,
-  data: string,
-): Promise<string> {
-  const forge = (await import("node-forge")).default;
-  const publicKey = forge.pki.publicKeyFromPem(publicKeyPem);
-  const encrypted = publicKey.encrypt(data, "RSA-OAEP", {
-    md: forge.md.sha256.create(),
-    mgf1: { md: forge.md.sha256.create() },
-  });
-  return forge.util.encode64(encrypted);
-}
-
-/** 修改账户凭据，旧密码+新账号+新密码一起加密传输 */
-async function updateCredentials(data: {
-  username: string;
-  old_password: string;
-  password: string;
-}): Promise<UpdateCredentialsResponse> {
-  const { key: base64PemKey } = await getPublicKey();
-  const pemKey = atob(base64PemKey);
-  const encrypted = await encryptWithRSA(pemKey, JSON.stringify(data));
-  const res = await PUT<UpdateCredentialsResponse>("/users", { data: encrypted });
-  return res.data;
-}
 
 /**
  * 账户设置面板

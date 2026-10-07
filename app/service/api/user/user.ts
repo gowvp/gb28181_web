@@ -1,10 +1,13 @@
-import { GET, POST, TokenStr } from "../../config/http";
+import { GET, POST, PUT, TokenStr } from "../../config/http";
 import { clearAutoToken } from "./auto_login";
 import type {
   LoginRequest,
   LoginResponse,
   PublicKeyResponse,
 } from "./state.d.ts";
+
+// 默认凭据修改标记随登录会话保存，桌面刷新后仍需完成修改。
+export const ACCOUNT_RESET_REQUIRED_KEY = "gowvp_reset_account";
 
 // 获取 RSA 公钥接口，用于加密登录凭证
 export async function getPublicKey(): Promise<PublicKeyResponse> {
@@ -62,15 +65,33 @@ export async function login(data: {
   if (result.token) {
     localStorage.setItem(TokenStr, result.token);
     localStorage.setItem("user", result.user);
+    if (result.reset_account === true) {
+      localStorage.setItem(ACCOUNT_RESET_REQUIRED_KEY, "true");
+    } else {
+      localStorage.removeItem(ACCOUNT_RESET_REQUIRED_KEY);
+    }
   }
 
   return result;
+}
+
+/** 修改账户凭据，复用登录的 RSA-OAEP 加密方式供设置页和默认账号弹窗调用。 */
+export async function updateCredentials(data: {
+  username: string;
+  old_password: string;
+  password: string;
+}): Promise<{ msg: string }> {
+  const { key } = await getPublicKey();
+  const encrypted = await encryptWithRSA(atob(key), JSON.stringify(data));
+  const response = await PUT<{ msg: string }>("/users", { data: encrypted });
+  return response.data;
 }
 
 // 登出：清除会话 token 与短期自动登录凭据，保留记住的用户名
 export function logout(): void {
   localStorage.removeItem(TokenStr);
   localStorage.removeItem("user");
+  localStorage.removeItem(ACCOUNT_RESET_REQUIRED_KEY);
   clearAutoToken();
 }
 
