@@ -15,6 +15,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import logger from "~/lib/logger";
+import { getLoginErrorMessage } from "~/service/api/user/login_error";
 import { GetMetadata } from "~/service/api/metadata/metadata";
 import {
   clearAutoToken,
@@ -253,10 +254,10 @@ export default function LoginView() {
       await afterLoginSuccess();
       message.success("登录成功！");
     } catch (error) {
-      logger.error("login failed:", error);
-      setLoginError(
-        error instanceof Error ? error.message : "登录失败，请重试",
-      );
+      const errorMessage = getLoginErrorMessage(error);
+      // Axios errors carry request data and authorization headers; log only the prompt.
+      logger.error("login failed:", errorMessage);
+      setLoginError(errorMessage);
     } finally {
       setLoading(false);
     }
