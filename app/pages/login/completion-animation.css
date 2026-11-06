@@ -1,0 +1,24 @@
+.init-completion-modal { max-width: calc(100vw - 32px); padding-bottom: 0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, sans-serif; }
+.init-completion-modal .ant-modal-container { overflow: hidden; padding: 0; border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 28px; background: rgba(255, 255, 255, 0.97); backdrop-filter: blur(24px) saturate(140%); box-shadow: 0 24px 80px -24px rgba(29, 29, 31, 0.25); }
+.init-completion { padding: 46px 24px 38px; color: #1d1d1f; text-align: center; color-scheme: light; }
+.init-completion-visual { position: relative; width: 128px; height: 128px; margin: 0 auto 28px; display: grid; place-items: center; }
+.init-completion-orbit { position: absolute; inset: 0; animation: init-completion-orbit 1450ms cubic-bezier(0.2, 0.65, 0.25, 1) both; }
+.init-completion-orbit span { position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: #0071e3; transform: rotate(var(--angle)) translateY(-58px); }
+.init-completion-orbit span:nth-child(even) { width: 3px; height: 3px; background: #91bff1; }
+.init-completion-disc { display: grid; place-items: center; width: 88px; height: 88px; border: 1px solid #deebf9; border-radius: 50%; background: #f0f7ff; animation: init-completion-disc 700ms cubic-bezier(0.2, 0.65, 0.25, 1) both; }
+.init-completion-disc svg { width: 50px; height: 50px; overflow: visible; }
+.init-completion-disc path { stroke: #0071e3; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: init-completion-check 650ms 650ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards; }
+.init-completion h2 { margin: 0 0 8px; font-size: 24px; font-weight: 600; letter-spacing: -0.025em; }
+.init-completion p { margin: 0; font-size: 12px; line-height: 20px; color: #86868b; }
+@keyframes init-completion-orbit { 0% { opacity: 0; transform: rotate(-100deg) scale(0.75); } 15% { opacity: 0.8; } 65% { opacity: 0.55; } 100% { opacity: 0; transform: rotate(140deg) scale(0.95); } }
+@keyframes init-completion-disc { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes init-completion-check { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .init-completion-modal, .init-completion-modal * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .init-completion-orbit, .init-completion-disc, .init-completion-disc path { animation: none !important; }
+  .init-completion-orbit { display: none; }
+  .init-completion-disc path { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .init-completion-modal .ant-modal-container { background: #fff; backdrop-filter: none; }
+}

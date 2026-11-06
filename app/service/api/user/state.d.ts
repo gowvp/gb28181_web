@@ -12,7 +12,6 @@ export interface PublicKeyResponse {
 export interface LoginResponse {
   token: string;
   user: string;
-  reset_account: boolean;
 }
 
 export interface UserInfo {

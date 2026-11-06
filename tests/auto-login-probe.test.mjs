@@ -85,7 +85,7 @@ async function runProbe(baseURL) {
       );
     },
   });
-  module.exports.default();
+  module.exports.LoginFormView({ pageConfig: {} });
   effects.at(-1)();
   // 等待挂载回调的异步探针及成功跳转完成。
   for (let i = 0; i < 20; i++) await Promise.resolve();

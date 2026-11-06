@@ -6,9 +6,6 @@ import type {
   PublicKeyResponse,
 } from "./state.d.ts";
 
-// 默认凭据修改标记随登录会话保存，桌面刷新后仍需完成修改。
-export const ACCOUNT_RESET_REQUIRED_KEY = "gowvp_reset_account";
-
 // 获取 RSA 公钥接口，用于加密登录凭证
 export async function getPublicKey(): Promise<PublicKeyResponse> {
   const response = await GET<PublicKeyResponse>("/login/key");
@@ -24,7 +21,7 @@ async function encryptWithRSA(
   const publicKey = forge.pki.publicKeyFromPem(publicKeyPem);
 
   // 使用 RSA-OAEP + SHA-256 加密（与服务端匹配）
-  const encrypted = publicKey.encrypt(data, "RSA-OAEP", {
+  const encrypted = publicKey.encrypt(forge.util.encodeUtf8(data), "RSA-OAEP", {
     md: forge.md.sha256.create(),
     mgf1: { md: forge.md.sha256.create() },
   });
@@ -33,7 +30,7 @@ async function encryptWithRSA(
 }
 
 // 登录接口，先获取公钥加密凭证后发送
-// autoLogin 为 true 时服务端签发长效 token（至第 7 天凌晨 5 点），供短期自动登录使用
+// autoLogin 为 true 时服务端签发长效 token（至第 15 天凌晨 5 点），供短期自动登录使用
 export async function login(data: {
   username: string;
   password: string;
@@ -65,17 +62,12 @@ export async function login(data: {
   if (result.token) {
     localStorage.setItem(TokenStr, result.token);
     localStorage.setItem("user", result.user);
-    if (result.reset_account === true) {
-      localStorage.setItem(ACCOUNT_RESET_REQUIRED_KEY, "true");
-    } else {
-      localStorage.removeItem(ACCOUNT_RESET_REQUIRED_KEY);
-    }
   }
 
   return result;
 }
 
-/** 修改账户凭据，复用登录的 RSA-OAEP 加密方式供设置页和默认账号弹窗调用。 */
+/** 修改账户凭据，复用登录的 RSA-OAEP 加密方式供设置页主动修改账号密码。 */
 export async function updateCredentials(data: {
   username: string;
   old_password: string;
@@ -91,7 +83,6 @@ export async function updateCredentials(data: {
 export function logout(): void {
   localStorage.removeItem(TokenStr);
   localStorage.removeItem("user");
-  localStorage.removeItem(ACCOUNT_RESET_REQUIRED_KEY);
   clearAutoToken();
 }
 
@@ -116,4 +107,61 @@ export function isLoggedIn(): boolean {
 // 获取token
 export function getToken(): string | null {
   return localStorage.getItem(TokenStr);
+}
+
+export interface InitializeRequest {
+  username: string;
+  password: string;
+  sip?: { host?: string; id?: string; password?: string };
+  onvif_password?: string;
+  media?: { sdp_ip?: string };
+}
+
+/** Encrypt only the account credentials, as for login. Other setup fields remain JSON. */
+export async function initialize(
+  data: InitializeRequest,
+): Promise<{ msg: string; restart_required: boolean }> {
+  const { key } = await getPublicKey();
+  const encrypted = await encryptWithRSA(
+    atob(key),
+    JSON.stringify({
+      username: data.username,
+      password: data.password,
+    }),
+  );
+  const response = await POST<{ msg: string; restart_required: boolean }>(
+    "/init",
+    {
+      data: encrypted,
+      ...(data.sip ? { sip: data.sip } : {}),
+      ...(data.media ? { media: data.media } : {}),
+      ...(data.onvif_password ? { onvif_password: data.onvif_password } : {}),
+    },
+  );
+  return response.data;
+}
+
+export interface InitializationPort {
+  id: string;
+  label: string;
+  ports: string;
+  protocols: string[];
+  direction: string;
+  condition: string;
+  description: string;
+}
+
+export interface InitializationSetup {
+  need_init: true;
+  sip: { host: string; port: number; id: string };
+  onvif: { username: string };
+  media: { sdp_ip: string; type: string };
+  firewall: InitializationPort[];
+  notes: string[];
+}
+
+export type InitializationResponse = { need_init: false } | InitializationSetup;
+
+export async function getInitialization(): Promise<InitializationResponse> {
+  return (await GET<InitializationResponse>("/init")).data;
 }

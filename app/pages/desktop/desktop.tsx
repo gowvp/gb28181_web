@@ -29,7 +29,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSettings } from "~/components/settings/settings_context";
-import ResetAccountModal from "~/components/settings/reset_account_modal";
 import AppTour from "~/components/tour/app-tour";
 import FloorPlanEditor from "./floor_plan";
 import {
@@ -43,7 +42,7 @@ import {
   findMediaServersKey,
 } from "~/service/api/media/media";
 import { checkVersion, checkVersionKey } from "~/service/api/version/version";
-import { ACCOUNT_RESET_REQUIRED_KEY, logout } from "~/service/api/user/user";
+import { logout } from "~/service/api/user/user";
 import { ErrorHandle } from "~/service/config/error";
 
 // ── 节点组件 ──────────────────────────
@@ -437,7 +436,6 @@ const initialEdges: Edge[] = [
  */
 export default function DesktopView() {
   const { t, i18n } = useTranslation(["desktop", "common"]);
-  const [resetAccount] = useState(() => localStorage.getItem(ACCOUNT_RESET_REQUIRED_KEY) === "true");
   const [viewMode, setViewMode] = useState<DesktopViewMode>(() => loadDesktopViewMode() ?? "dataflow");
   const [nodes, setNodes] = useState<Node[]>(getInitialNodes(t));
   const [edges] = useState<Edge[]>(initialEdges);
@@ -544,8 +542,7 @@ export default function DesktopView() {
       />
 
       {/* 登录后引导 */}
-      <ResetAccountModal open={resetAccount} />
-      {viewMode === "dataflow" && !resetAccount && (
+      {viewMode === "dataflow" && (
         <AppTour
           onBeforeStep={(step) => {
             // 第5步（FAB菜单）和第6步（语言）需要展开 FAB

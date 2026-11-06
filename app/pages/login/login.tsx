@@ -15,7 +15,6 @@ import {
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import logger from "~/lib/logger";
-import { getLoginErrorMessage } from "~/service/api/user/login_error";
 import { GetMetadata } from "~/service/api/metadata/metadata";
 import {
   clearAutoToken,
@@ -24,9 +23,17 @@ import {
   saveAutoToken,
   saveRememberedUser,
 } from "~/service/api/user/auto_login";
-import { login } from "~/service/api/user/user";
+import { getLoginErrorMessage } from "~/service/api/user/login_error";
+import {
+  getInitialization,
+  type InitializationSetup,
+  login,
+} from "~/service/api/user/user";
 import { TokenStr } from "~/service/config/http";
 import { startWs } from "~/service/ws";
+import FeaturesModal from "./features-modal";
+import CompletionAnimation from "./completion-animation";
+import InitializeView from "./initialize";
 
 type FieldType = {
   username?: string;
@@ -72,13 +79,128 @@ function ForgotPasswordDialog() {
 }
 
 export default function LoginView() {
+  const [state, setState] = useState<"loading" | "init" | "login" | "error">(
+    "loading",
+  );
+  const [pageConfig, setPageConfig] =
+    useState<LoginPageConfig>(getLoginPageConfig);
+  const [initialUsername, setInitialUsername] = useState("");
+  const [restartRequired, setRestartRequired] = useState(false);
+  // Only the successful POST /init event opens this modal. Do not persist it:
+  // reloading or returning later must never replay the feature introduction.
+  const [showFeatures, setShowFeatures] = useState(false);
+  const [showCompletion, setShowCompletion] = useState(false);
+  const completeAnimation = React.useCallback(() => {
+    setShowCompletion(false);
+    setShowFeatures(true);
+  }, []);
+  const [setup, setSetup] = useState<InitializationSetup | null>(null);
+  const check = React.useCallback(async () => {
+    setState("loading");
+    try {
+      const info = await getInitialization();
+      if (typeof info.need_init !== "boolean")
+        throw new Error("初始化状态缺失");
+      if (
+        info.need_init &&
+        (!info.sip ||
+          !info.onvif ||
+          !info.media ||
+          !Array.isArray(info.firewall) ||
+          !Array.isArray(info.notes))
+      ) {
+        throw new Error("初始化信息缺失");
+      }
+      setSetup(info.need_init ? info : null);
+      setState(info.need_init ? "init" : "login");
+    } catch {
+      setState("error");
+    }
+  }, []);
+  React.useEffect(() => {
+    void check();
+  }, [check]);
+  // Appearance metadata is optional and never controls setup or automatic login.
+  React.useEffect(() => {
+    GetMetadata(LOGIN_PAGE_KEY)
+      .then((res) => {
+        if (!res.data.ext) return;
+        try {
+          const remote: LoginPageConfig = JSON.parse(res.data.ext);
+          setPageConfig(remote);
+          localStorage.setItem(LOGIN_PAGE_STORAGE_KEY, res.data.ext);
+          if (remote.subtitle) syncDocumentTitle(remote.subtitle);
+        } catch {
+          /* Retain cached appearance. */
+        }
+      })
+      .catch(() => {
+        /* Retain cached appearance. */
+      });
+  }, []);
+  if (state === "init" && setup)
+    return (
+      <InitializeView
+        info={setup}
+        onConflict={check}
+        onSuccess={(username, restart) => {
+          clearAutoToken();
+          localStorage.removeItem(TokenStr);
+          localStorage.removeItem("user");
+          setInitialUsername(username);
+          setRestartRequired(restart);
+          setShowCompletion(true);
+          setState("login");
+        }}
+      />
+    );
+  if (state !== "login")
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div
+          role={state === "error" ? "alert" : "status"}
+          className="text-center space-y-4"
+        >
+          <p>
+            {state === "error"
+              ? "无法获取初始化状态，请检查服务连接后重试"
+              : "正在检查初始化状态…"}
+          </p>
+          {state === "error" && (
+            <Button onClick={() => void check()}>重试</Button>
+          )}
+        </div>
+      </div>
+    );
+  return (
+    <>
+      <LoginFormView
+        pageConfig={pageConfig}
+        initialUsername={initialUsername}
+        restartRequired={restartRequired}
+      />
+      {showCompletion && <CompletionAnimation onComplete={completeAnimation} />}
+      {showFeatures && (
+        <FeaturesModal open onStart={() => setShowFeatures(false)} />
+      )}
+    </>
+  );
+}
+
+export function LoginFormView({
+  pageConfig,
+  initialUsername = "",
+  restartRequired = false,
+}: {
+  pageConfig: LoginPageConfig;
+  initialUsername?: string;
+  restartRequired?: boolean;
+}) {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  const [pageConfig, setPageConfig] =
-    useState<LoginPageConfig>(getLoginPageConfig);
   // 短期自动登录默认不勾选，且不持久化勾选状态：每次想续期都需主动勾选
   const [autoLoginChecked, setAutoLoginChecked] = useState(false);
   const [autoLogging, setAutoLogging] = useState(false);
@@ -87,29 +209,6 @@ export default function LoginView() {
   // 防止 StrictMode 双调用与手动/自动登录并发
   const autoLoginStarted = useRef(false);
   const autoLoginAbort = useRef<AbortController | null>(null);
-
-  React.useEffect(() => {
-    GetMetadata(LOGIN_PAGE_KEY)
-      .then((res) => {
-        if (!res.data?.ext) return;
-        try {
-          const remote: LoginPageConfig = JSON.parse(res.data.ext);
-          const cached = JSON.stringify(pageConfig);
-          if (JSON.stringify(remote) !== cached) {
-            setPageConfig(remote);
-            localStorage.setItem(LOGIN_PAGE_STORAGE_KEY, res.data.ext);
-          }
-          if (remote.subtitle) {
-            syncDocumentTitle(remote.subtitle);
-          }
-        } catch {
-          /* ignore */
-        }
-      })
-      .catch(() => {
-        /* 网络不通时静默使用 localStorage 缓存 */
-      });
-  }, []);
 
   // 登录成功后的公共收尾：同步服务端 metadata、启动 ws、跳转桌面
   const afterLoginSuccess = async () => {
@@ -142,6 +241,10 @@ export default function LoginView() {
     if (autoLoginStarted.current) return;
     autoLoginStarted.current = true;
 
+    if (initialUsername) {
+      form.setFieldsValue({ username: initialUsername });
+      return;
+    }
     const username = loadRememberedUser();
     if (username) {
       form.setFieldsValue({ username });
@@ -339,6 +442,12 @@ export default function LoginView() {
           </div>
 
           <CardContent className="px-8 pb-10 pt-0">
+            {restartRequired && (
+              <p role="status" className="mb-4 text-sm text-amber-700">
+                账号已初始化。SIP / ONVIF
+                配置已保存，请重启服务使其完整生效；现在可使用新账号登录。
+              </p>
+            )}
             {loginError && (
               <div className="flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -359,7 +468,7 @@ export default function LoginView() {
               >
                 <Input
                   prefix={<User className="h-4 w-4 text-gray-400" />}
-                  placeholder="admin"
+                  placeholder="请输入用户名"
                   size="large"
                   autoComplete="nope"
                   className="h-12 rounded-xl border-gray-200 hover:border-blue-400 focus:border-blue-500"
@@ -373,7 +482,7 @@ export default function LoginView() {
               >
                 <Input.Password
                   prefix={<Lock className="h-4 w-4 text-gray-400" />}
-                  placeholder="admin"
+                  placeholder="请输入密码"
                   size="large"
                   autoComplete="new-password"
                   className="h-12 rounded-xl border-gray-200 hover:border-blue-400 focus:border-blue-500"
