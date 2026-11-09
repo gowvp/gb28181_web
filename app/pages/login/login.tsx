@@ -79,23 +79,21 @@ function ForgotPasswordDialog() {
 }
 
 export default function LoginView() {
-  const [state, setState] = useState<"loading" | "init" | "login" | "error">(
-    "loading",
-  );
+  const [state, setState] = useState<
+    "loading" | "init" | "completion" | "features" | "login" | "error"
+  >("loading");
+  const checkRequest = useRef(0);
   const [pageConfig, setPageConfig] =
     useState<LoginPageConfig>(getLoginPageConfig);
   const [initialUsername, setInitialUsername] = useState("");
-  const [restartRequired, setRestartRequired] = useState(false);
-  // Only the successful POST /init event opens this modal. Do not persist it:
-  // reloading or returning later must never replay the feature introduction.
-  const [showFeatures, setShowFeatures] = useState(false);
-  const [showCompletion, setShowCompletion] = useState(false);
+  // Only a successful POST /init enters this flow. Keep it in memory so a
+  // refresh checks the server instead of replaying the feature introduction.
   const completeAnimation = React.useCallback(() => {
-    setShowCompletion(false);
-    setShowFeatures(true);
+    setState((current) => (current === "completion" ? "features" : current));
   }, []);
   const [setup, setSetup] = useState<InitializationSetup | null>(null);
   const check = React.useCallback(async () => {
+    const request = ++checkRequest.current;
     setState("loading");
     try {
       const info = await getInitialization();
@@ -111,14 +109,18 @@ export default function LoginView() {
       ) {
         throw new Error("初始化信息缺失");
       }
+      if (request !== checkRequest.current) return;
       setSetup(info.need_init ? info : null);
       setState(info.need_init ? "init" : "login");
     } catch {
-      setState("error");
+      if (request === checkRequest.current) setState("error");
     }
   }, []);
   React.useEffect(() => {
     void check();
+    return () => {
+      checkRequest.current++;
+    };
   }, [check]);
   // Appearance metadata is optional and never controls setup or automatic login.
   React.useEffect(() => {
@@ -143,58 +145,64 @@ export default function LoginView() {
       <InitializeView
         info={setup}
         onConflict={check}
-        onSuccess={(username, restart) => {
+        onSuccess={(username) => {
+          // A late initialization check must not bypass the Start button.
+          checkRequest.current++;
           clearAutoToken();
           localStorage.removeItem(TokenStr);
           localStorage.removeItem("user");
           setInitialUsername(username);
-          setRestartRequired(restart);
-          setShowCompletion(true);
-          setState("login");
+          setState("completion");
         }}
       />
+    );
+  if (state === "completion" || state === "features")
+    return (
+      <div className="init-shell" data-testid="init-welcome">
+        {state === "completion" ? (
+          <CompletionAnimation onComplete={completeAnimation} />
+        ) : (
+          <FeaturesModal
+            open
+            onStart={() =>
+              setState((current) =>
+                current === "features" ? "login" : current,
+              )
+            }
+          />
+        )}
+      </div>
     );
   if (state !== "login")
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div
-          role={state === "error" ? "alert" : "status"}
-          className="text-center space-y-4"
-        >
-          <p>
-            {state === "error"
-              ? "无法获取初始化状态，请检查服务连接后重试"
-              : "正在检查初始化状态…"}
-          </p>
-          {state === "error" && (
+        {state === "error" ? (
+          <div role="alert" className="text-center space-y-4">
+            <p>无法获取初始化状态，请检查服务连接后重试</p>
             <Button onClick={() => void check()}>重试</Button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div role="status" aria-label="正在加载初始化状态" aria-busy={true}>
+            <div
+              data-testid="init-loading-spinner"
+              aria-hidden="true"
+              className="h-8 w-8 rounded-full border-2 border-gray-200 border-t-blue-600 animate-spin motion-reduce:animate-none"
+            />
+          </div>
+        )}
       </div>
     );
   return (
-    <>
-      <LoginFormView
-        pageConfig={pageConfig}
-        initialUsername={initialUsername}
-        restartRequired={restartRequired}
-      />
-      {showCompletion && <CompletionAnimation onComplete={completeAnimation} />}
-      {showFeatures && (
-        <FeaturesModal open onStart={() => setShowFeatures(false)} />
-      )}
-    </>
+    <LoginFormView pageConfig={pageConfig} initialUsername={initialUsername} />
   );
 }
 
 export function LoginFormView({
   pageConfig,
   initialUsername = "",
-  restartRequired = false,
 }: {
   pageConfig: LoginPageConfig;
   initialUsername?: string;
-  restartRequired?: boolean;
 }) {
   const navigate = useNavigate();
   const [form] = Form.useForm();
@@ -442,12 +450,6 @@ export function LoginFormView({
           </div>
 
           <CardContent className="px-8 pb-10 pt-0">
-            {restartRequired && (
-              <p role="status" className="mb-4 text-sm text-amber-700">
-                账号已初始化。SIP / ONVIF
-                配置已保存，请重启服务使其完整生效；现在可使用新账号登录。
-              </p>
-            )}
             {loginError && (
               <div className="flex items-center gap-2 px-3 py-2 mb-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm">
                 <AlertTriangle className="w-4 h-4 shrink-0" />

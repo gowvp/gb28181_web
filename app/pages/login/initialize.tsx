@@ -14,7 +14,7 @@ type Fields = {
   sdp_ip?: string;
   onvif_password?: string;
 };
-const STEPS = ["国标信息", "ONVIF", "防火墙与安全组", "账号密码"];
+const STEPS = ["GB/T 28181", "ONVIF", "防火墙与安全组", "账号密码"];
 const STEP_FIELDS: (keyof Fields)[][] = [
   ["sip_host", "sip_id", "sip_password", "sdp_ip"],
   ["onvif_password"],
@@ -27,7 +27,7 @@ export default function InitializeView({
   onConflict,
 }: {
   info: InitializationSetup;
-  onSuccess: (username: string, restartRequired: boolean) => void;
+  onSuccess: (username: string) => void;
   onConflict: () => void;
 }) {
   const [step, setStep] = useState(0);
@@ -84,7 +84,7 @@ export default function InitializeView({
         ...(values.sip_id?.trim() ? { id: values.sip_id.trim() } : {}),
         ...(values.sip_password ? { password: values.sip_password } : {}),
       };
-      const result = await initialize({
+      await initialize({
         username: values.username.trim(),
         password: values.password,
         ...(Object.keys(sip).length ? { sip } : {}),
@@ -96,8 +96,7 @@ export default function InitializeView({
           : {}),
       });
       form.resetFields();
-      message.success("初始化成功，请使用新账号登录");
-      onSuccess(values.username.trim(), result.restart_required);
+      onSuccess(values.username.trim());
     } catch (err) {
       const response = (
         err as { response?: { status?: number; data?: { msg?: string } } }
@@ -121,7 +120,11 @@ export default function InitializeView({
     <div className="init-shell">
       <div className="init-panel" data-testid="init-panel">
         <header className="init-header">
-          <div className="init-toolbar">
+          <div className="init-heading-row">
+            <div className="init-title">
+              <h2>{STEPS[step]}</h2>
+              {step !== 2 && <span className="init-step-tag">必填</span>}
+            </div>
             <div className="init-brand">
               <span className="init-brand-mark" aria-hidden="true">
                 ◈
@@ -129,26 +132,13 @@ export default function InitializeView({
               <span>平台初始设置</span>
             </div>
           </div>
-          <p className="init-reassurance">
-            {step === 2 ? "还差一点点就完成啦" : ""}
-          </p>
-          <div className="init-heading-row">
-            <h2>{STEPS[step]}</h2>
-            {step !== 2 && (
-              <span className="init-step-tag">
-                {step < 2 ? "选填" : "必填"}
-              </span>
-            )}
-          </div>
-          <p className="init-description">
-            {step === 0
-              ? "添加设备接入信息，也可以保留现有配置继续。"
-              : step === 1
-                ? "为 HA、NVR 等客户端设置独立的 ONVIF 访问凭据。"
-                : step === 2
-                  ? "查看各端口的用途，按需要放行即可。"
-                  : "设置你的登录账号。完成后统一保存，再使用新账号登录。"}
-          </p>
+          {(step === 1 || step === 2) && (
+            <p className="init-description">
+              {step === 1
+                ? "为 Home Assistant、NVR 等客户端设置独立的 ONVIF 访问凭据。"
+                : "查看各端口的用途，按需要放行即可。"}
+            </p>
+          )}
         </header>
         <Form
           form={form}
@@ -183,7 +173,7 @@ export default function InitializeView({
             )}
             <section
               hidden={step !== 0}
-              aria-label="国标信息"
+              aria-label="GB/T 28181"
               className="init-page init-connection"
             >
               <Form.Item name="sip_host" label="SIP 服务地址">
@@ -196,45 +186,43 @@ export default function InitializeView({
                 name="sip_id"
                 label="国标 ID"
                 rules={[
+                  { required: true, message: "请输入国标 ID" },
                   { pattern: /^\d{20}$/, message: "请输入 20 位数字国标 ID" },
                 ]}
               >
-                <Input placeholder="20 位数字" maxLength={20} />
-              </Form.Item>
-              <Form.Item
-                noStyle
-                shouldUpdate={(prev, current) => prev.sip_id !== current.sip_id}
-              >
-                {({ getFieldValue }) => (
-                  <Form.Item label="国标域">
-                    <Input
-                      value={getFieldValue("sip_id")?.slice(0, 10) || ""}
-                      placeholder="根据国标 ID 自动生成"
-                      readOnly
-                    />
-                  </Form.Item>
-                )}
+                <Input placeholder="20 位数字" maxLength={20} showCount />
               </Form.Item>
               <Form.Item label="SIP 监听端口（TCP / UDP）">
                 <Input value={info.sip.port} readOnly />
               </Form.Item>
-              <Form.Item name="sip_password" label="SIP 注册密码">
+              <Form.Item
+                name="sip_password"
+                label="SIP 注册密码"
+                tooltip="默认未设置 SIP 密码时支持免密注册；若部署配置已有 SIP 密码，留空仍保留该密码。设备单独设置的注册密码仍然生效。"
+              >
                 <Input.Password
                   autoComplete="new-password"
                   maxLength={128}
-                  placeholder="留空保留已有值"
+                  placeholder="留空支持免密注册"
                 />
               </Form.Item>
               <Form.Item
                 name="sdp_ip"
                 label="国标收流 IP"
+                rules={[
+                  {
+                    required: true,
+                    whitespace: true,
+                    message: "请输入国标收流 IP",
+                  },
+                ]}
                 tooltip="设备将向此地址推送媒体流；与 SIP 信令地址及媒体管理 API 地址独立。"
               >
                 <Input placeholder="设备可达的 IPv4 或域名" maxLength={253} />
               </Form.Item>
               <p className="init-note">
                 收流 IP
-                应能被设备访问；部署在云端或容器中时，需同时核对公网地址和端口映射。修改接入配置后需重启服务完整生效。
+                应能被设备访问；部署在云端或容器中时，需同时核对公网地址和端口映射。
               </p>
             </section>
             <section
@@ -245,16 +233,26 @@ export default function InitializeView({
               <Form.Item label="ONVIF 用户名">
                 <Input value={info.onvif.username} readOnly />
               </Form.Item>
-              <Form.Item name="onvif_password" label="ONVIF 密码">
+              <Form.Item
+                name="onvif_password"
+                label="ONVIF 密码"
+                rules={[
+                  {
+                    required: true,
+                    whitespace: true,
+                    message: "请输入 ONVIF 密码",
+                  },
+                ]}
+              >
                 <Input.Password
                   autoComplete="new-password"
                   maxLength={128}
-                  placeholder="留空保留已有独立密码"
+                  placeholder="请输入 ONVIF 密码"
                 />
               </Form.Item>
               <p className="init-note">
-                用于 HA、NVR 等客户端访问本机 ONVIF
-                服务，不是摄像头登录密码。用户名沿用部署配置；自定义密码保存后需重启生效。
+                用于 Home Assistant、NVR 等客户端访问本机 ONVIF
+                服务，不是摄像头登录密码。
               </p>
             </section>
             <section
@@ -273,7 +271,7 @@ export default function InitializeView({
                   <thead className="bg-gray-50 text-gray-600">
                     <tr>
                       <th className="p-3">用途</th>
-                      <th className="p-3">服务端端口 / 范围</th>
+                      <th className="p-3">端口</th>
                       <th className="p-3">协议</th>
                     </tr>
                   </thead>

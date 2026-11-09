@@ -11,7 +11,7 @@
   -webkit-font-smoothing: antialiased;
 }
 .init-panel {
-  width: min(54rem, 100%);
+  width: min(700px, 100%);
   height: min(46rem, calc(100dvh - 48px));
   min-height: 0;
   display: flex;
@@ -24,21 +24,20 @@
   backdrop-filter: blur(24px) saturate(140%);
 }
 .init-header { flex: 0 0 auto; padding: 28px 36px 20px; }
-.init-toolbar { display: flex; align-items: center; justify-content: space-between; }
-.init-brand { display: flex; align-items: center; gap: 9px; color: #6e6e73; font-size: 12px; font-weight: 500; letter-spacing: 0.015em; }
+.init-brand { display: flex; align-items: center; flex-shrink: 0; white-space: nowrap; gap: 9px; color: #6e6e73; font-size: 12px; font-weight: 500; letter-spacing: 0.015em; }
 .init-brand-mark { color: #1d1d1f; font-size: 21px; line-height: 1; }
-.init-reassurance { height: 20px; margin: 20px 0 10px; color: #0071e3; font-size: 12px; line-height: 20px; }
-.init-heading-row { display: flex; align-items: center; gap: 12px; }
+.init-heading-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.init-title { display: flex; align-items: center; min-width: 0; gap: 12px; }
 .init-heading-row h2 { margin: 0; font-size: 26px; font-weight: 600; line-height: 34px; letter-spacing: -0.035em; }
 .init-step-tag { padding: 3px 8px; border-radius: 6px; background: #f5f5f7; color: #6e6e73; font-size: 10px; font-weight: 500; white-space: nowrap; }
 .init-description { margin: 7px 0 0; height: 40px; color: #6e6e73; font-size: 13px; line-height: 20px; }
 .init-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .init-content { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #c8c8cc transparent; padding: 4px 30px 24px 36px; scroll-padding-top: 12px; }
 .init-page[hidden] { display: none !important; }
-.init-connection, .init-onvif { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 22px; }
+.init-connection, .init-onvif { display: grid; grid-template-columns: minmax(0, 1fr); }
 .init-note { grid-column: 1 / -1; margin: 5px 0 0; color: #86868b; font-size: 12px; line-height: 20px; }
-.init-account { max-width: 460px; }
-.init-content .ant-form-item { margin-bottom: 18px; min-width: 0; }
+.init-account { max-width: 380px; }
+.init-content .ant-form-item { width: min(380px, 100%); margin-bottom: 18px; min-width: 0; }
 .init-content .ant-form-item .ant-form-item-label { padding-bottom: 7px; }
 .init-content .ant-form-item .ant-form-item-label > label { color: #48484a; font-size: 12px; font-weight: 500; }
 .init-content .ant-input, .init-content .ant-input-affix-wrapper { border-radius: 9px; border-color: #d8d8dc; font-size: 13px; box-shadow: none; }
@@ -74,7 +73,6 @@
   .init-heading-row h2 { font-size: 23px; line-height: 32px; }
   .init-description { font-size: 12px; }
   .init-content { padding: 2px 14px 20px 20px; }
-  .init-connection, .init-onvif { grid-template-columns: minmax(0, 1fr); }
   .init-content .ant-form-item { margin-bottom: 12px; }
   .init-content .ant-input, .init-content .ant-input-affix-wrapper { font-size: 16px; }
   .init-content input.ant-input, .init-content .ant-input-affix-wrapper { height: 44px; }
@@ -87,8 +85,14 @@
   .init-ports td:first-child { grid-column: 1 / -1; padding-bottom: 5px; }
   .init-ports td:nth-child(2), .init-ports td:nth-child(3) { padding-top: 7px; }
   .init-ports td:nth-child(2)::before, .init-ports td:nth-child(3)::before { display: block; margin-bottom: 4px; color: #86868b; font-size: 10px; }
-  .init-ports td:nth-child(2)::before { content: "服务端端口 / 范围"; }
+  .init-ports td:nth-child(2)::before { content: "端口"; }
   .init-ports td:nth-child(3)::before { content: "协议"; }
+}
+@media (max-width: 380px) {
+  .init-heading-row, .init-title { gap: 8px; }
+  .init-heading-row h2 { font-size: 18px; line-height: 28px; }
+  .init-brand { gap: 6px; font-size: 10px; }
+  .init-brand-mark { font-size: 16px; }
 }
 @media (max-height: 600px) {
   .init-header { padding-top: 14px; padding-bottom: 12px; }

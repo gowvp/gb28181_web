@@ -40,7 +40,8 @@ function load(path, overrides = {}, globals = {}) {
   let cursor = 0;
   const effects = [],
     changes = [],
-    validations = [];
+    validations = [],
+    notifications = [];
   const module = { exports: {} };
   const values = {};
   const form = {
@@ -84,7 +85,7 @@ function load(path, overrides = {}, globals = {}) {
       return [
         slots[i],
         (value) => {
-          slots[i] = value;
+          slots[i] = typeof value === "function" ? value(slots[i]) : value;
         },
       ];
     },
@@ -117,7 +118,14 @@ function load(path, overrides = {}, globals = {}) {
         return {
           Form: Object.assign("Form", { useForm: () => [form], Item: "Item" }),
           Input: { Password: "Password" },
-          message: { success() {}, info() {} },
+          message: {
+            success(value) {
+              notifications.push(["success", value]);
+            },
+            info(value) {
+              notifications.push(["info", value]);
+            },
+          },
         };
       if (name === "~/components/settings/general_settings")
         return {
@@ -136,6 +144,7 @@ function load(path, overrides = {}, globals = {}) {
     effects,
     changes,
     validations,
+    notifications,
     form,
     render(props) {
       cursor = 0;
@@ -236,7 +245,22 @@ function text(node) {
   return [node.props?.children].flat(Infinity).map(text).join(" ");
 }
 
-test("独立 GET /init 控制初始化，metadata 失败不阻塞，成功后回登录", async () => {
+test("初始化状态加载只显示旋转动画，保留屏幕阅读器提示", () => {
+  const app = load("../app/pages/login/login.tsx");
+  const status = find(app.render(), (n) => n.props?.role === "status");
+  assert.equal(status.props["aria-label"], "正在加载初始化状态");
+  assert.equal(status.props["aria-busy"], true);
+  assert.equal(text(status).trim(), "");
+  const spinner = find(
+    status,
+    (n) => n.props?.["data-testid"] === "init-loading-spinner",
+  );
+  assert.ok(spinner);
+  assert.equal(spinner.props["aria-hidden"], "true");
+  assert.match(spinner.props.className, /animate-spin/);
+});
+
+test("独立 GET /init 控制初始化，成功后点击开始使用才进入登录", async () => {
   let resolve;
   const pending = new Promise((r) => {
     resolve = r;
@@ -268,9 +292,12 @@ test("独立 GET /init 控制初始化，metadata 失败不阻塞，成功后回
   assert.equal(setup.type, "./initialize");
   assert.equal(setup.props.info.sip.port, 17060);
   assert.equal(appearanceCalls, 1);
-  setup.props.onSuccess("operator", true);
+  setup.props.onSuccess("operator");
   const completed = app.render();
-  const login = find(completed, (n) => n.type === app.exports.LoginFormView);
+  assert.equal(
+    find(completed, (n) => n.type === app.exports.LoginFormView),
+    null,
+  );
   const animation = find(completed, (n) => n.type === "./completion-animation");
   assert.ok(animation);
   assert.equal(
@@ -281,8 +308,10 @@ test("独立 GET /init 控制初始化，metadata 失败不阻塞，成功后回
   const features = find(app.render(), (n) => n.type === "./features-modal");
   assert.ok(features);
   assert.equal(features.props.open, true);
-  assert.equal(login.props.initialUsername, "operator");
-  assert.equal(login.props.restartRequired, true);
+  assert.equal(
+    find(app.render(), (n) => n.type === app.exports.LoginFormView),
+    null,
+  );
   assert.equal(cleared, 1);
   assert.ok(
     app.changes.some(([op, key]) => op === "remove" && key === "TokenStr"),
@@ -292,8 +321,47 @@ test("独立 GET /init 控制初始化，metadata 失败不阻塞，成功后回
     find(app.render(), (n) => n.type === "./features-modal"),
     null,
   );
+  const login = find(app.render(), (n) => n.type === app.exports.LoginFormView);
+  assert.ok(login);
+  assert.equal(login.props.initialUsername, "operator");
+  animation.props.onComplete();
   assert.ok(find(app.render(), (n) => n.type === app.exports.LoginFormView));
+  assert.equal(
+    find(app.render(), (n) => n.type === "./features-modal"),
+    null,
+  );
 });
+
+test("保存成功后迟到的初始化检查不会绕过开始使用按钮", async () => {
+  let resolveLate;
+  let checks = 0;
+  const app = load("../app/pages/login/login.tsx", {
+    "~/service/api/user/user": {
+      getInitialization: () =>
+        ++checks === 1
+          ? Promise.resolve(setupInfo())
+          : new Promise((resolve) => {
+              resolveLate = resolve;
+            }),
+    },
+    "~/service/api/user/auto_login": { clearAutoToken() {} },
+  });
+  app.render();
+  app.effects[0]();
+  await flush();
+  const setup = app.render();
+  app.effects[0]();
+  setup.props.onSuccess("operator");
+  resolveLate({ need_init: false });
+  await flush();
+  const tree = app.render();
+  assert.ok(find(tree, (n) => n.type === "./completion-animation"));
+  assert.equal(
+    find(tree, (n) => n.type === app.exports.LoginFormView),
+    null,
+  );
+});
+
 for (const outcome of [false, "missing", "failed", "incomplete"]) {
   test(`GET /init ${outcome} 决定登录或重试`, async () => {
     const app = load("../app/pages/login/login.tsx", {
@@ -395,6 +463,140 @@ const credentials = {
   confirm_password: "chosen",
 };
 
+test("接入信息按单列排列，隐藏派生国标域与重启提示", () => {
+  const h = formHarness(() => ({}));
+  const connection = find(
+    h.render(),
+    (n) => n.props?.className === "init-page init-connection",
+  );
+  const fields = connection.props.children.filter((n) => n?.type === "Item");
+  assert.deepEqual(
+    Array.from(fields, (n) => n.props.label),
+    [
+      "SIP 服务地址",
+      "国标 ID",
+      "SIP 监听端口（TCP / UDP）",
+      "SIP 注册密码",
+      "国标收流 IP",
+    ],
+  );
+  assert.equal(
+    find(connection, (n) => n.props?.label === "国标域"),
+    null,
+  );
+  const listener = fields[2].props.children;
+  assert.equal(listener.props.value, setupInfo().sip.port);
+  assert.equal(listener.props.readOnly, true);
+  const note = find(connection, (n) => n.props?.className === "init-note");
+  assert.doesNotMatch(text(note), /重启/);
+  const loginSource = readFileSync(
+    new URL("../app/pages/login/login.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(loginSource, /请重启服务|重启生效/);
+  const css = readFileSync(
+    new URL("../app/pages/login/initialize.css", import.meta.url),
+    "utf8",
+  );
+  const layout = css.match(/\.init-connection, \.init-onvif \{([^}]+)\}/)?.[1];
+  assert.match(layout, /grid-template-columns:\s*minmax\(0, 1fr\);/);
+});
+
+test("删除接入说明，输入宽度限制为380px并兼容窄屏", async () => {
+  const h = formHarness(() => ({}));
+  assert.doesNotMatch(text(h.render()), /添加设备接入信息/);
+  assert.equal(
+    find(h.render(), (n) => n.props?.className === "init-description"),
+    null,
+  );
+  await h.next();
+  assert.match(
+    text(h.render()),
+    /为 Home Assistant、NVR 等客户端设置独立的 ONVIF 访问凭据/,
+  );
+  await h.back();
+  assert.equal(
+    find(h.render(), (n) => n.props?.className === "init-description"),
+    null,
+  );
+  const css = readFileSync(
+    new URL("../app/pages/login/initialize.css", import.meta.url),
+    "utf8",
+  );
+  const panel = css.match(/\.init-panel \{([^}]+)\}/)?.[1];
+  assert.match(panel, /width:\s*min\(700px, 100%\);/);
+  const field = css.match(/\.init-content \.ant-form-item \{([^}]+)\}/)?.[1];
+  assert.match(field, /width:\s*min\(380px, 100%\);/);
+});
+
+test("所有初始化步骤均不显示鼓励语或保留提示占位", async () => {
+  const h = formHarness(() => ({}));
+  const reassurance = () =>
+    find(h.render(), (n) => n.props?.className === "init-reassurance");
+  assert.equal(reassurance(), null);
+  await h.next();
+  assert.equal(reassurance(), null);
+  await h.next();
+  assert.equal(reassurance(), null);
+  await h.next();
+  assert.equal(reassurance(), null);
+});
+
+test("SIP 密码显示免密注册提示，并说明已有密码的保留规则", () => {
+  const h = formHarness(() => ({}));
+  const password = find(h.render(), (n) => n.props?.name === "sip_password");
+  assert.equal(password.props.children.props.placeholder, "留空支持免密注册");
+  assert.match(password.props.tooltip, /默认未设置 SIP 密码时支持免密注册/);
+  assert.match(
+    password.props.tooltip,
+    /若部署配置已有 SIP 密码，留空仍保留该密码/,
+  );
+});
+
+test("国标 ID 显示长度，ID、收流 IP 和 ONVIF 密码均必填", () => {
+  const h = formHarness(() => ({}));
+  const field = (name) => find(h.render(), (n) => n.props?.name === name);
+  for (const name of ["sip_id", "sdp_ip", "onvif_password"]) {
+    assert.ok(field(name).props.rules.some((rule) => rule.required));
+  }
+  const id = field("sip_id");
+  assert.equal(id.props.children.props.showCount, true);
+  assert.equal(id.props.children.props.maxLength, 20);
+  const pattern = id.props.rules.find((rule) => rule.pattern).pattern;
+  assert.equal(pattern.test("34020000002000000001"), true);
+  assert.equal(pattern.test("3402000000200000000"), false);
+  assert.equal(field("sip_password").props.rules, undefined);
+  assert.equal(
+    field("sip_password").props.children.props.placeholder,
+    "留空支持免密注册",
+  );
+  assert.equal(
+    field("onvif_password").props.children.props.placeholder,
+    "请输入 ONVIF 密码",
+  );
+  assert.equal(
+    find(h.render(), (n) => n.props?.className === "init-step-tag").props
+      .children,
+    "必填",
+  );
+});
+
+test("ONVIF 与账号步骤不再显示已删除的配置说明", async () => {
+  const h = formHarness(() => ({}));
+  await h.next();
+  assert.doesNotMatch(
+    text(h.render()),
+    /用户名沿用部署配置|自定义密码保存后需重启生效/,
+  );
+  await h.next();
+  await h.next();
+  assert.doesNotMatch(text(h.render()), /设置你的登录账号|完成后统一保存/);
+  assert.equal(
+    find(h.render(), (n) => n.props?.className === "init-description"),
+    null,
+  );
+});
+
 test("端口页使用接口端口并提示按compose映射放行，不显示仅供核对", async () => {
   for (const [web, sip] of [
     [15123, 15060],
@@ -449,7 +651,7 @@ function heading(h) {
 
 test("四步流转，账号最后填写，中间步骤不提交，返回保留所有值", async () => {
   const h = formHarness(() => ({ restart_required: true }));
-  assert.equal(heading(h), "国标信息");
+  assert.equal(heading(h), "GB/T 28181");
   assert.equal(
     find(h.render(), (n) => n.props?.["aria-label"] === "初始化步骤"),
     null,
@@ -464,7 +666,7 @@ test("四步流转，账号最后填写，中间步骤不提交，返回保留�
   h.app.form.setFieldsValue({ onvif_password: "onvif" });
   await h.next();
   assert.equal(heading(h), "防火墙与安全组");
-  assert.match(text(h.render()), /还差一点点就完成啦/);
+  assert.doesNotMatch(text(h.render()), /还差一点点就完成啦/);
   const table = find(h.render(), (n) => n.type === "table");
   assert.match(text(table), /31001-31100/);
   assert.match(text(table), /554/);
@@ -483,7 +685,7 @@ test("四步流转，账号最后填写，中间步骤不提交，返回保留�
   assert.equal(heading(h), "ONVIF");
   assert.equal(h.app.form.values.onvif_password, "onvif");
   await h.back();
-  assert.equal(heading(h), "国标信息");
+  assert.equal(heading(h), "GB/T 28181");
   assert.equal(h.app.form.values.sip_password, "sip");
   await h.account();
   assert.equal(heading(h), "账号密码");
@@ -496,21 +698,29 @@ test("四步流转，账号最后填写，中间步骤不提交，返回保留�
     media: { sdp_ip: "198.51.100.10" },
     onvif_password: "onvif",
   });
-  assert.deepEqual(h.successes, [["operator", true]]);
+  assert.deepEqual(h.successes, [["operator"]]);
+  assert.deepEqual(h.app.notifications, [], "初始化成功不再弹出消息提示");
 });
 
-test("选填步骤可留空，当前步骤验证失败不前进", async () => {
+test("SIP 服务地址和注册密码可留空，当前步骤验证失败不前进", async () => {
   const h = formHarness(() => ({ restart_required: false }));
   h.app.form.rejectNext = true;
   await h.next();
-  assert.equal(heading(h), "国标信息");
+  assert.equal(heading(h), "GB/T 28181");
   assert.equal(h.calls.length, 0);
-  h.app.form.setFieldsValue({ sip_host: "", sip_id: "", sdp_ip: "" });
+  h.app.form.setFieldsValue({
+    sip_host: "",
+    sip_password: "",
+    onvif_password: "synthetic-onvif",
+  });
   await h.account();
   await h.submit(credentials);
   assert.deepEqual(JSON.parse(JSON.stringify(h.calls[0])), {
     username: "operator",
     password: "chosen",
+    sip: { id: "34020000002000000001" },
+    media: { sdp_ip: "192.0.2.8" },
+    onvif_password: "synthetic-onvif",
   });
 });
 
